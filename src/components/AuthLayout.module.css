@@ -1,0 +1,66 @@
+.contenedor {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 2fr 3fr;
+}
+
+.marca {
+  background: var(--color-accent);
+  color: var(--color-surface);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 3rem;
+}
+
+.wordmark {
+  font-family: var(--font-display);
+  font-size: 2.75rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.tagline {
+  margin-top: 1.25rem;
+  max-width: 32ch;
+  font-size: 1.0625rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.panelForm {
+  background: var(--color-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.formAncho {
+  width: 100%;
+  max-width: 26rem;
+}
+
+.titulo {
+  font-size: 1.75rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (max-width: 800px) {
+  .contenedor {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+
+  .marca {
+    padding: 1.75rem;
+    text-align: left;
+  }
+
+  .wordmark {
+    font-size: 1.75rem;
+  }
+
+  .tagline {
+    display: none; /* en mobile, solo el wordmark — la franja es angosta */
+  }
+}
