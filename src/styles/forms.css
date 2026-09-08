@@ -1,8 +1,6 @@
 /* src/styles/forms.css
  *
- * Primitivas de formulario compartidas entre Login y Registro. No usa CSS
- * Modules a propósito: son solo dos páginas por ahora, y así se puede
- * revisar todo el vocabulario visual del form en un solo archivo.
+ * Primitivas de formulario compartidas entre Login y Registro.
  */
 
 .campo {
@@ -19,13 +17,15 @@
 
 .input {
   width: 100%;
-  padding: 0.625rem 0.75rem;
+  padding: 0.875rem 1rem;
   font-size: 1rem;
   font-family: var(--font-body);
   color: var(--color-ink);
-  background: var(--color-paper);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+  background: var(--color-surface);
+  border: 0.5px solid var(--color-border);
+  border-radius: 10px;
+  outline: none;
+  transition: border-color 0.2s;
 }
 
 .input:focus {
@@ -46,21 +46,23 @@
   padding: 0.75rem 1rem;
   margin-bottom: 1.25rem;
   border: 1px solid var(--color-negative);
-  border-radius: var(--radius);
+  border-radius: 10px;
   color: var(--color-negative);
   font-size: 0.9375rem;
+  background: rgba(168, 59, 45, 0.1);
 }
 
 .botonPrimario {
   width: 100%;
-  padding: 0.75rem;
+  padding: 1rem;
   font-size: 1rem;
   font-weight: 600;
-  color: var(--color-surface);
+  color: white;
   background: var(--color-accent);
   border: none;
-  border-radius: var(--radius);
+  border-radius: 10px;
   cursor: pointer;
+  transition: opacity 0.2s, background 0.2s;
 }
 
 .botonPrimario:hover:not(:disabled) {
@@ -73,7 +75,7 @@
 }
 
 .textoSecundario {
-  margin-top: 1.5rem;
+  margin-top: 1rem;
   font-size: 0.9375rem;
   color: var(--color-ink-soft);
 }

@@ -1,7 +1,7 @@
 // src/pages/Registro.tsx
 
 import { useEffect, useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { AuthLayout } from "../components/AuthLayout";
 import { useAuth } from "../auth/AuthContext";
 import { ApiRequestError, request } from "../api/client";
@@ -25,11 +25,6 @@ export function Registro() {
   const [erroresCampo, setErroresCampo] = useState<ErroresPorCampo>({});
 
   useEffect(() => {
-    // Público, no necesita auth. Se pide un per_page generoso porque el
-    // select tiene que mostrar todas las carreras del instituto; si el
-    // catálogo llegara a crecer mucho, esto se reemplaza por un buscador
-    // (lo maneja Integrante 2 en /materias/buscar), pero para el MVP de
-    // Fundaciones alcanza con una sola página grande.
     request<Paginated<Carrera>>("/materias/carreras", {
       params: { per_page: 100 },
     })
@@ -70,10 +65,38 @@ export function Registro() {
 
   return (
     <AuthLayout titulo="Crear cuenta">
+      <button
+        onClick={() => navigate("/login")}
+        style={{
+          background: "none",
+          border: "none",
+          color: "var(--color-ink-soft)",
+          cursor: "pointer",
+          marginBottom: 24,
+          padding: 0,
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          fontSize: 14,
+        }}
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+          <path d="M19 12H5M5 12l7 7M5 12l7-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        Volver
+      </button>
+
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ fontSize: 24, fontWeight: 800, color: "var(--color-ink)", letterSpacing: "-0.4px", marginBottom: 4 }}>
+          Crear cuenta
+        </div>
+        <div style={{ color: "var(--color-ink-soft)", fontSize: 14 }}>Completá tus datos para empezar</div>
+      </div>
+
       {errorGeneral && <div className="mensajeGeneral">{errorGeneral}</div>}
 
-      <form onSubmit={handleSubmit} noValidate>
-        <div className="campo">
+      <form onSubmit={handleSubmit} noValidate style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <div className="campo" style={{ marginBottom: 0 }}>
           <label className="etiqueta" htmlFor="nombre">
             Nombre completo
           </label>
@@ -81,6 +104,7 @@ export function Registro() {
             id="nombre"
             type="text"
             className={`input ${erroresCampo.nombre ? "inputConError" : ""}`}
+            placeholder="Nombre y apellido"
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
             minLength={2}
@@ -92,7 +116,7 @@ export function Registro() {
           )}
         </div>
 
-        <div className="campo">
+        <div className="campo" style={{ marginBottom: 0 }}>
           <label className="etiqueta" htmlFor="email">
             Email
           </label>
@@ -100,6 +124,7 @@ export function Registro() {
             id="email"
             type="email"
             className={`input ${erroresCampo.email ? "inputConError" : ""}`}
+            placeholder="Email institucional"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -110,7 +135,7 @@ export function Registro() {
           )}
         </div>
 
-        <div className="campo">
+        <div className="campo" style={{ marginBottom: 0 }}>
           <label className="etiqueta" htmlFor="password">
             Contraseña
           </label>
@@ -118,6 +143,7 @@ export function Registro() {
             id="password"
             type="password"
             className={`input ${erroresCampo.password ? "inputConError" : ""}`}
+            placeholder="Contraseña"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             minLength={8}
@@ -125,7 +151,7 @@ export function Registro() {
             autoComplete="new-password"
             aria-describedby="password-ayuda"
           />
-          <p id="password-ayuda" className="textoSecundario" style={{ marginTop: "0.375rem" }}>
+          <p id="password-ayuda" className="textoSecundario" style={{ marginTop: "0.375rem", marginBottom: 0 }}>
             Mínimo 8 caracteres, con al menos una letra y un número.
           </p>
           {erroresCampo.password && (
@@ -133,7 +159,7 @@ export function Registro() {
           )}
         </div>
 
-        <div className="campo">
+        <div className="campo" style={{ marginBottom: 0 }}>
           <label className="etiqueta" htmlFor="carrera">
             Carrera
           </label>
@@ -159,13 +185,16 @@ export function Registro() {
           )}
         </div>
 
-        <button type="submit" className="botonPrimario" disabled={cargando}>
-          {cargando ? "Creando cuenta..." : "Crear cuenta"}
-        </button>
+        <div style={{ marginTop: 16 }}>
+          <button type="submit" className="botonPrimario" disabled={cargando}>
+            {cargando ? "Creando cuenta..." : "Continuar"}
+          </button>
+        </div>
       </form>
 
-      <p className="textoSecundario">
-        ¿Ya tenés cuenta? <Link to="/login">Iniciá sesión</Link>
+      <p style={{ color: "var(--color-ink-soft)", fontSize: 12, textAlign: "center", marginTop: 20, lineHeight: 1.5 }}>
+        Al registrarte aceptás los{" "}
+        <span style={{ color: "var(--color-accent)" }}>términos y condiciones</span>
       </p>
     </AuthLayout>
   );

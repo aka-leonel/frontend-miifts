@@ -1,10 +1,12 @@
 .app {
+  width: min(100%, 380px);
   min-height: 100vh;
+  margin: 0 auto;
   background: var(--color-paper);
 }
 
 .contenido {
-  max-width: 72rem;
+  width: 100%;
   margin: 0 auto;
-  padding: 2rem 1.5rem;
+  padding: 1.5rem 1rem;
 }

@@ -9,23 +9,23 @@
 @import "./styles/forms.css";
 
 :root {
-  /* Color */
-  --color-paper: #f2f4f5; /* fondo general — gris-azulado pálido, no crema */
-  --color-surface: #ffffff; /* paneles/cards sobre el paper */
-  --color-ink: #16232e; /* texto principal — azul-tinta, no negro neutro */
-  --color-ink-soft: #4c5a66; /* texto secundario */
-  --color-accent: #c97a2b; /* acento cálido tipo resaltador */
-  --color-accent-dark: #a85e1c; /* hover/active del acento */
-  --color-positive: #2f6f5e; /* estados "aprobada" / éxito */
-  --color-negative: #a83b2d; /* errores / "lapicera roja" */
-  --color-border: #dcd9d2;
+  /* Color (Figma theme) */
+  --color-paper: #111218; /* fondo general — oscuro del mockup */
+  --color-surface: #1A1B23; /* paneles/cards */
+  --color-ink: #E8E8F0; /* texto principal claro */
+  --color-ink-soft: #9A9AB0; /* texto secundario */
+  --color-accent: #8C7DFF; /* violeta primario */
+  --color-accent-dark: #6B5CE7; /* variante para links/hover */
+  --color-positive: #3FB950; /* éxito */
+  --color-negative: #a83b2d; /* errores */
+  --color-border: #2A2B36; /* bordes / separadores */
 
   /* Tipografía */
   --font-display: "Source Serif 4", Georgia, serif;
   --font-body: "Inter", system-ui, -apple-system, sans-serif;
 
   /* Layout */
-  --radius: 6px;
+  --radius: 14px; /* radio más acorde al diseño */
   --max-line: 60ch;
 }
 
