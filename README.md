@@ -1,77 +1,124 @@
-# React + TypeScript + Vite
+# miIFTS — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Front del MVP de miIFTS: auth, catálogo académico, mis cursadas + promedio,
+recordatorios y recursos, consumiendo la API de
+[`backend-ifts`](https://github.com/aka-leonel/backend-ifts).
 
-Currently, two official plugins are available:
+**Stack:** Vite + React + TypeScript + React Router + TanStack Query.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Requisitos
 
-## React Compiler
+- Node.js 18+
+- El backend corriendo en paralelo (ver `backend-ifts/TESTING.md`)
 
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
+## Cómo correr
 
-Note: This will impact Vite dev & build performances.
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Queda escuchando en **http://localhost:5173**.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+> El backend por defecto solo acepta CORS desde ese puerto
+> (`http://localhost:5173`). Si corrés el front en otro puerto, hay que
+> agregarlo a `CORS_ORIGINS` en el backend.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### Levantar el backend en paralelo
+
+En otra terminal, parado en la carpeta del backend:
+
+```powershell
+.\venv\Scripts\Activate.ps1
+uvicorn app.main:app --reload
+```
+
+Si es la primera vez (o la base está vacía — por ejemplo recién clonaste el
+repo), cargá los datos de prueba **antes** de levantar el server:
+
+```powershell
+python seed.py
+```
+
+Sin esto, listados como el `<select>` de carreras del registro van a
+aparecer vacíos aunque todo el resto funcione bien.
+
+## Variables de entorno
+
+Archivo `.env` en la raíz:
+
+```dotenv
+VITE_API_URL=http://localhost:8000
+```
+
+Apunta a la URL base del backend. Cambiarla si el backend corre en otro
+puerto o hostname.
+
+## Estructura del proyecto
 
 ```
+src/
+├── api/            # capa HTTP genérica: client.ts, types.ts, scope.ts
+├── auth/           # Context de sesión, llamadas de auth, RutaProtegida
+├── components/     # componentes compartidos (Navbar, AppLayout, AuthLayout)
+├── pages/          # una página por ruta (Login, Registro, Home, ...)
+├── features/       # código específico de cada feature (catálogo, cursadas, recursos)
+├── styles/         # CSS compartido no acoplado a un componente puntual
+└── App.tsx         # ruteo principal
+```
+
+### La capa `api/` — para todo el equipo
+
+- **`api/client.ts`** — `request<T>(path, options)`. Es el único lugar que
+  debería llamar a `fetch()` en todo el proyecto. Maneja base URL, header
+  `Authorization` (con `auth: true`), parseo de errores a `ApiRequestError`
+  (`.status`, `.detail`, `.errors`), y un `401` global que desloguea solo.
+- **`api/types.ts`** — tipos calcados del contrato del backend
+  (`docs/INTEGRACION_FRONT.md` del repo de backend). Si el contrato cambia,
+  actualizar acá primero.
+- **`api/scope.ts`** — `getMiUsuarioId()`. Solo hace falta para los dos
+  `GET` que todavía llevan el id en la URL
+  (`/materias/usuario/{id}`, `/materias/promedio/{id}`). En todo lo demás
+  (POST/PATCH/DELETE de cursadas y recordatorios) **no** hay que mandar
+  `usuario_id` — sale del token solo.
+
+### Auth — cómo usarlo desde cualquier pantalla
+
+```tsx
+import { useAuth } from "../auth/AuthContext";
+
+function MiComponente() {
+  const { usuario, token, login, registro, logout } = useAuth();
+  // usuario: Usuario | null — datos del usuario logueado
+  // usuario?.rol === "admin" para mostrar/ocultar cosas de admin
+}
+```
+
+Toda ruta que necesite sesión va anidada dentro del `<Route>` protegido en
+`App.tsx` (el que envuelve `<AppLayout />`), así hereda Navbar y el redirect
+automático a `/login` sin hacer nada extra.
+
+## Regenerar los tipos desde el contrato real
+
+Si el backend cambia el contrato, la forma más confiable de actualizar
+`api/types.ts` es regenerar contra el OpenAPI real (con el backend
+levantado):
+
+```bash
+npx openapi-typescript http://localhost:8000/openapi.json -o src/api/schema.generado.d.ts
+```
+
+Esto genera un archivo aparte con los tipos "crudos" del OpenAPI — no
+reemplaza automáticamente `api/types.ts` (que tiene nombres en español y
+algunos ajustes manuales), pero sirve para diffear y detectar qué cambió.
+
+## Estado actual (Fundaciones)
+
+- [x] Scaffolding, tipos, cliente HTTP
+- [x] Login / Registro / Logout
+- [x] `<RutaProtegida>` y manejo de 401 global
+- [x] Navbar con link condicional a admin
+- [x] Integrado TanStack Query (QueryClientProvider)
+- [x] Ruta `/admin/catalogo` y guard admin (`RutaAdmin`)
+- [x] Manejo de expiración de sesión: timers y bandera `expirandoPronto`
+- [x] Extender sesión mediante re-login (modal en Navbar) — no hay endpoint de refresh en el backend; se reautentica con /auth/login

@@ -1,0 +1,1 @@
+export { CatalogoAdmin } from "./Catalogo";

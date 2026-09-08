@@ -8,16 +8,18 @@ import {
   useContext,
   useEffect,
   useState,
+  useRef,
   type ReactNode,
 } from "react";
 import type { RegistroRequest, Usuario } from "../api/types";
-import { loginRequest, registroRequest } from "./api";
+import { loginRequest, meRequest, registroRequest } from "./api";
 import {
   clearSesion,
   getToken,
   getUsuarioGuardado,
   setToken,
   setUsuarioGuardado,
+  getTokenExpSeconds,
 } from "./storage";
 import { setUnauthorizedHandler } from "../api/client";
 
@@ -26,6 +28,15 @@ interface AuthContextValue {
   token: string | null;
   /** true mientras se resuelve login/registro (para deshabilitar botones) */
   cargando: boolean;
+  /**
+   * true solo al arrancar la app, mientras se confirma contra el backend
+   * que el token guardado en localStorage todavía es válido. Útil para
+   * evitar mostrar una pantalla protegida con datos potencialmente
+   * vencidos por una fracción de segundo.
+   */
+  verificandoSesion: boolean;
+  /** true si la sesión expirará en breve (p.ej. < 60s) */
+  expirandoPronto: boolean;
   login: (email: string, password: string) => Promise<void>;
   registro: (payload: RegistroRequest) => Promise<void>;
   logout: () => void;
@@ -41,8 +52,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
   const [token, setTokenState] = useState<string | null>(() => getToken());
   const [cargando, setCargando] = useState(false);
+  // Arranca en true solo si había un token guardado: recién ahí tiene
+  // sentido esperar la confirmación antes de mostrar una pantalla protegida.
+  const [verificandoSesion, setVerificandoSesion] = useState(
+    () => getToken() !== null
+  );
+
+  // Estado que indica que la sesión expirará pronto (p.ej. < 60s). Sirve para
+  // que la UI muestre un banner/pregunta antes del logout automático.
+  const [expirandoPronto, setExpirandoPronto] = useState(false);
+
+  const logoutTimerRef = useRef<number | null>(null);
+  const warnTimerRef = useRef<number | null>(null);
+  const WARN_MS = 60_000; // avisar 60s antes
+
+  function clearTimers() {
+    if (logoutTimerRef.current) {
+      clearTimeout(logoutTimerRef.current);
+      logoutTimerRef.current = null;
+    }
+    if (warnTimerRef.current) {
+      clearTimeout(warnTimerRef.current);
+      warnTimerRef.current = null;
+    }
+  }
 
   function logout(): void {
+    clearTimers();
+    setExpirandoPronto(false);
     clearSesion();
     setUsuarioState(null);
     setTokenState(null);
@@ -55,6 +92,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUnauthorizedHandler(logout);
   }, []);
 
+  useEffect(() => {
+    // Confirmación de sesión al arrancar: el token guardado puede haber
+    // expirado (dura 24h, sin refresh) mientras la pestaña estaba cerrada.
+    // Sin esto, la app "cree" que hay sesión hasta que el usuario dispare
+    // el primer request protegido y recién ahí lo desloguee.
+    const tokenGuardado = getToken();
+    if (!tokenGuardado) {
+      setVerificandoSesion(false);
+      return;
+    }
+
+    meRequest()
+      .then((usuarioActualizado) => {
+        setUsuarioGuardado(usuarioActualizado);
+        setUsuarioState(usuarioActualizado);
+      })
+      .catch(() => {
+        // Un 401 acá ya disparó el logout vía setUnauthorizedHandler.
+        // Cualquier otro error de red se ignora: nos quedamos con los
+        // datos que había en localStorage en vez de desloguear por un
+        // problema de conectividad pasajero.
+      })
+      .finally(() => setVerificandoSesion(false));
+
+    // Además, programar timers de expiración basados en el token actual
+    // (si el token ya expiró, logout inmediato).
+    const expSec = getTokenExpSeconds(tokenGuardado);
+    if (expSec) {
+      const msUntilExpiry = expSec * 1000 - Date.now();
+      if (msUntilExpiry <= 0) {
+        logout();
+      } else {
+        clearTimers();
+        // aviso WARN_MS antes
+        if (msUntilExpiry > WARN_MS) {
+          warnTimerRef.current = window.setTimeout(() => {
+            setExpirandoPronto(true);
+          }, msUntilExpiry - WARN_MS);
+        } else {
+          // si queda menos del umbral, avisamos ya
+          setExpirandoPronto(true);
+        }
+        logoutTimerRef.current = window.setTimeout(() => {
+          logout();
+        }, msUntilExpiry);
+      }
+    }
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function login(email: string, password: string): Promise<void> {
     setCargando(true);
     try {
@@ -64,6 +152,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data.usuario) {
         setUsuarioGuardado(data.usuario);
         setUsuarioState(data.usuario);
+      }
+
+      // configurar timers según el token nuevo
+      clearTimers();
+      const expSec = getTokenExpSeconds(data.access_token);
+      if (expSec) {
+        const msUntilExpiry = expSec * 1000 - Date.now();
+        if (msUntilExpiry <= 0) {
+          logout();
+        } else {
+          if (msUntilExpiry > WARN_MS) {
+            warnTimerRef.current = window.setTimeout(() => {
+              setExpirandoPronto(true);
+            }, msUntilExpiry - WARN_MS);
+          } else {
+            setExpirandoPronto(true);
+          }
+          logoutTimerRef.current = window.setTimeout(() => {
+            logout();
+          }, msUntilExpiry);
+        }
       }
     } finally {
       setCargando(false);
@@ -85,7 +194,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ usuario, token, cargando, login, registro, logout }}
+      value={{
+        usuario,
+        token,
+        cargando,
+        verificandoSesion,
+        expirandoPronto,
+        login,
+        registro,
+        logout,
+      }}
     >
       {children}
     </AuthContext.Provider>

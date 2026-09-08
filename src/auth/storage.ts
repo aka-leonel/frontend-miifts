@@ -36,3 +36,21 @@ export function clearSesion(): void {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USUARIO_KEY);
 }
+
+/**
+ * Intenta extraer la reclamación `exp` de un JWT y devolverla en segundos
+ * desde epoch. Devuelve null si no se puede parsear.
+ */
+export function getTokenExpSeconds(token?: string | null): number | null {
+  const raw = token ?? getToken();
+  if (!raw) return null;
+  try {
+    const parts = raw.split(".");
+    if (parts.length < 2) return null;
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+    if (typeof payload.exp === "number") return payload.exp;
+    return null;
+  } catch {
+    return null;
+  }
+}

@@ -1,18 +1,23 @@
 // src/App.tsx
 
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "./queryClient";
 import { AuthProvider } from "./auth/AuthContext";
 import { RutaProtegida } from "./auth/RutaProtegida";
+import { RutaAdmin } from "./auth/RutaAdmin";
 import { AppLayout } from "./components/AppLayout";
 import { Login } from "./pages/Login";
 import { Registro } from "./pages/Registro";
 import { Home } from "./pages/Home";
+import { CatalogoAdmin } from "./pages/admin";
 
 export function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <Routes>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <BrowserRouter>
+          <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/registro" element={<Registro />} />
 
@@ -24,13 +29,22 @@ export function App() {
             }
           >
             <Route path="/" element={<Home />} />
+            <Route
+              path="/admin/catalogo"
+              element={
+                <RutaAdmin>
+                  <CatalogoAdmin />
+                </RutaAdmin>
+              }
+            />
             {/* Integrantes 2, 3 y 4: sus rutas van acá adentro, así
                 heredan Navbar + <RutaProtegida /> gratis. */}
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }
