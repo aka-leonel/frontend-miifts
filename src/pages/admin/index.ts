@@ -1,1 +1,0 @@
-export { CatalogoAdmin } from "./Catalogo";
