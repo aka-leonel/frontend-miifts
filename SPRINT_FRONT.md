@@ -39,7 +39,7 @@ chicos de vista/formulario que necesite (los de dominio ya están generados).
   `<html class="dark">`).
 - `AppShell` + `BottomTabs` (5: Inicio · Materias · Recordat. · Convenios · Perfil).
 - Onboarding: `/login`, `/registro`, `/onboarding/carrera`.
-- Primitivos base (Tier 0): `Button`, `Field`, `TextInput`, `Select`, `NumberInput`,
+scm-history-item:c%3A%5CUsers%5Cgonza%5Csource%5Crepos%5CProyectoIntegrador%5Cfrontend-miifts?%7B%22repositoryId%22%3A%22scm0%22%2C%22historyItemId%22%3A%224eec44fb844cc42837774b181d9eaf093bae0686%22%2C%22historyItemParentId%22%3A%225ec66663046e6b05e5aaff3fa60bf7e96fcbf060%22%2C%22historyItemDisplayId%22%3A%224eec44f%22%7D- Primitivos base (Tier 0): `Button`, `Field`, `TextInput`, `Select`, `NumberInput`,
   `Switch`, `Chip`, `Card`, `Modal`, `Tabs`, `IconButton`.
 - `features/catalogo/`: `getCarreras()`, `useCarreras()`.
 
