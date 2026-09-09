@@ -1,84 +1,41 @@
-/* src/index.css
- *
- * Sistema de tokens del front de miIFTS. Cualquier color/tipografía nuevo
- * que agregue el equipo debería, en lo posible, salir de estas variables
- * en vez de un hex suelto en cada componente.
- */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import 'tailwindcss';
 
-@import url("https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Inter:wght@400;500;600&display=swap");
-@import "./styles/forms.css";
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
 
-:root {
-  /* Color */
-  --color-paper: #f2f4f5; /* fondo general — gris-azulado pálido, no crema */
-  --color-surface: #ffffff; /* paneles/cards sobre el paper */
-  --color-ink: #16232e; /* texto principal — azul-tinta, no negro neutro */
-  --color-ink-soft: #4c5a66; /* texto secundario */
-  --color-accent: #c97a2b; /* acento cálido tipo resaltador */
-  --color-accent-dark: #a85e1c; /* hover/active del acento */
-  --color-positive: #2f6f5e; /* estados "aprobada" / éxito */
-  --color-negative: #a83b2d; /* errores / "lapicera roja" */
-  --color-border: #dcd9d2;
-
-  /* Tipografía */
-  --font-display: "Source Serif 4", Georgia, serif;
-  --font-body: "Inter", system-ui, -apple-system, sans-serif;
-
-  /* Layout */
-  --radius: 6px;
-  --max-line: 60ch;
+@theme inline {
+  --color-bg: #111218;
+  --color-card: #1A1B23;
+  --color-border: #2A2B36;
+  --color-violet: #8C7DFF;
+  --color-lime: #CFFF5E;
+  --color-green: #3FB950;
+  --color-text: #E8E8F0;
+  --color-muted: #9A9AB0;
+  --font-sans: 'Inter', system-ui, sans-serif;
 }
 
 * {
+  font-family: 'Inter', system-ui, sans-serif;
   box-sizing: border-box;
 }
 
-html,
-body,
-#root {
-  height: 100%;
+::-webkit-scrollbar { display: none; }
+* { scrollbar-width: none; }
+
+.swipe-card {
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+.swipe-card.swiped {
+  transform: translateX(100%);
+  opacity: 0;
 }
 
-body {
-  margin: 0;
-  font-family: var(--font-body);
-  color: var(--color-ink);
-  background: var(--color-paper);
-  -webkit-font-smoothing: antialiased;
-}
-
-h1,
-h2,
-h3 {
-  font-family: var(--font-display);
-  font-weight: 600;
-  line-height: 1.15;
-  margin: 0 0 0.5em;
-}
-
-p {
-  margin: 0 0 1em;
-  max-width: var(--max-line);
-}
-
-a {
-  color: var(--color-accent-dark);
-}
-
-button {
-  font-family: inherit;
-}
-
-/* Foco de teclado visible en toda la app — no lo saques con outline: none
-   sin poner un reemplazo igual de visible. */
-:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  * {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
-  }
+.accordion-content {
+  overflow: hidden;
+  transition: max-height 0.3s ease;
 }
