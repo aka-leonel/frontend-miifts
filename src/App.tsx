@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { FormModal, ListState, Toaster, type FormSpec } from "./components";
+import { ConveniosScreen as ConveniosFeatureScreen } from "./features/convenios";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Screen =
@@ -1101,7 +1102,7 @@ export default function App() {
       case "materias": return <MateriasScreen onGo={setScreen} />;
       case "detalle": return <DetalleScreen onGo={setScreen} />;
       case "recordatorios": return <RecordatoriosScreen />;
-      case "convenios": return <ConveniosScreen />;
+      case "convenios": return <ConveniosFeatureScreen />;
       case "perfil": return <PerfilScreen onGo={setScreen} />;
     }
   };
