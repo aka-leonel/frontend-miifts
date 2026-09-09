@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { FormModal, ListState, Toaster, type FormSpec } from "./components";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Screen =
@@ -37,6 +38,13 @@ interface Recordatorio {
   fecha: string;
   hora: string;
   tipo: string;
+}
+
+interface DemoItem {
+  id: number;
+  title: string;
+  category: string;
+  active: boolean;
 }
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
@@ -392,6 +400,122 @@ function ScreenWrap({ children, padBottom = false }: { children: React.ReactNode
   return <div style={{ flex: 1, overflowY: "auto", paddingBottom: padBottom ? 90 : 24 }}>{children}</div>;
 }
 
+const demoSpec: FormSpec<DemoItem> = {
+  title: (item) => (item?.id ? "Editar elemento" : "Agregar elemento"),
+  fields: [
+    { name: "title", label: "Título", type: "text", placeholder: "Ej: Reunión de práctica" },
+    {
+      name: "category",
+      label: "Categoría",
+      type: "select",
+      options: [
+        { value: "infra", label: "Infra" },
+        { value: "ux", label: "UX" },
+        { value: "convenios", label: "Convenios" },
+      ],
+    },
+    { name: "active", label: "Activo", type: "switch" },
+  ],
+  submit: {
+    create: async (values) => values,
+    update: async (_id, values) => values,
+  },
+};
+
+function SharedInfraDemo() {
+  const [items, setItems] = useState<DemoItem[]>([
+    { id: 1, title: "Modal reutilizable", category: "infra", active: true },
+    { id: 2, title: "Toaster global", category: "ux", active: false },
+  ]);
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState<DemoItem | undefined>();
+
+  const handleCreate = (values: DemoItem) => {
+    setItems((current) => [{ ...values, id: Date.now() }, ...current]);
+  };
+
+  const handleUpdate = (id: string | number, values: DemoItem) => {
+    setItems((current) => current.map((item) => (item.id === Number(id) ? { ...item, ...values } : item)));
+  };
+
+  return (
+    <div className="rounded-2xl border border-border bg-card p-4">
+      <div className="mb-4 flex items-center justify-between gap-4">
+        <div>
+          <div className="text-sm font-semibold uppercase tracking-[0.1em] text-violet">Infra compartida</div>
+          <div className="mt-1 text-lg font-bold text-text">FormModal + ListState + Toaster</div>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setSelected(undefined);
+            setOpen(true);
+          }}
+          className="rounded-xl bg-violet px-3 py-2 text-sm font-semibold text-white"
+        >
+          Nuevo
+        </button>
+      </div>
+
+      <ListState loading={false} error={null} items={items} emptyTitle="No hay elementos" emptyDescription="Agregá un registro para ver el estado vacío.">
+        <div className="space-y-3">
+          {items.map((item) => (
+            <div key={item.id} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-[#111218] p-3">
+              <div>
+                <div className="text-sm font-semibold text-text">{item.title}</div>
+                <div className="mt-1 text-xs uppercase tracking-[0.08em] text-muted">{item.category}</div>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className={item.active ? "text-xs font-semibold text-lime" : "text-xs font-semibold text-muted"}>
+                  {item.active ? "Activo" : "Inactivo"}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelected(item);
+                    setOpen(true);
+                  }}
+                  className="rounded-lg border border-border bg-transparent px-2 py-1 text-xs text-muted"
+                >
+                  Editar
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </ListState>
+
+      <FormModal
+        open={open}
+        item={selected}
+        spec={{
+          ...demoSpec,
+          submit: {
+            create: async (values) => {
+              handleCreate(values);
+            },
+            update: async (id, values) => {
+              handleUpdate(id, values);
+            },
+          },
+        }}
+        initialValues={
+          selected ?? {
+            id: 0,
+            title: "",
+            category: "infra",
+            active: true,
+          }
+        }
+        onClose={() => {
+          setOpen(false);
+          setSelected(undefined);
+        }}
+      />
+    </div>
+  );
+}
+
 // ─── Screen 1: Login ──────────────────────────────────────────────────────────
 function LoginScreen({ onGo }: { onGo: (s: Screen) => void }) {
   const [email, setEmail] = useState("");
@@ -517,6 +641,9 @@ function InicioScreen({ onGo }: { onGo: (s: Screen) => void }) {
   return (
     <ScreenWrap padBottom>
       <div style={{ padding: "52px 24px 0" }}>
+        <div style={{ marginBottom: 20 }}>
+          <SharedInfraDemo />
+        </div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
           <div>
             <div style={{ color: MUTED, fontSize: 13 }}>Bienvenida de vuelta</div>
@@ -984,6 +1111,7 @@ export default function App() {
       <div style={{ width: "100%", maxWidth: 430, minHeight: "100vh", background: BG, position: "relative", display: "flex", flexDirection: "column", color: TEXT }}>
         {renderScreen()}
         {showNav && activeTab && <BottomNav active={activeTab} onNav={handleNav} />}
+        <Toaster />
       </div>
     </div>
   );
