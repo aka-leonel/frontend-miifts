@@ -11,7 +11,11 @@ export function useConvenios(params: { page?: number; carrera_id?: number } = {}
   useEffect(() => {
     let mounted = true;
 
-    setState({ data: null, loading: true, error: null });
+    // El reset de loading va en un callback (nunca suelto en el cuerpo del
+    // efecto) para no disparar un render síncrono en cascada.
+    queueMicrotask(() => {
+      if (mounted) setState({ data: null, loading: true, error: null });
+    });
 
     getConvenios(params)
       .then((data) => {
@@ -43,7 +47,9 @@ export function useTalentoTech(params: { page?: number; categoria?: string; carr
   useEffect(() => {
     let mounted = true;
 
-    setState({ data: null, loading: true, error: null });
+    queueMicrotask(() => {
+      if (mounted) setState({ data: null, loading: true, error: null });
+    });
 
     getTalentoTech(params)
       .then((data) => {

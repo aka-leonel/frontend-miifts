@@ -14,8 +14,11 @@ export class ApiError extends Error {
   }
 }
 
-export type ApiClientOptions = RequestInit & {
+export type ApiClientOptions = Omit<RequestInit, "body"> & {
   auth?: boolean;
+  // Cualquier feature puede mandar el objeto tipado tal cual (`{ titulo, ... }`);
+  // acá abajo se decide si hace falta JSON.stringify o no.
+  body?: unknown;
 };
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
@@ -53,7 +56,18 @@ export async function apiClient<T>(path: string, options: ApiClientOptions = {})
 
   if (!response.ok) {
     const detail = payload?.detail ?? payload?.message ?? "La solicitud falló.";
-    const errors = payload?.errors ?? {};
+    // El backend manda `errors` como array `{ campo, msg }[]` (ver
+    // INTEGRACION_FRONT.md §1.2/§1.8), no como Record<campo, mensaje>. Sin
+    // este mapeo, useApiForm() nunca encuentra el campo correcto en un 422.
+    const rawErrors = payload?.errors;
+    const errors: ApiFieldErrors = Array.isArray(rawErrors)
+      ? rawErrors.reduce<ApiFieldErrors>((acc, item) => {
+          if (item && typeof item.campo === "string" && typeof item.msg === "string") {
+            acc[item.campo] = item.msg;
+          }
+          return acc;
+        }, {})
+      : (rawErrors ?? {});
     throw new ApiError(response.status, detail, errors);
   }
 
