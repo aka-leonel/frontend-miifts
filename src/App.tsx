@@ -1,6 +1,12 @@
 import { useState } from "react";
 import { FormModal, ListState, Toaster, type FormSpec } from "./components";
 import { ConveniosScreen as ConveniosFeatureScreen } from "./features/convenios";
+import { RecordatoriosScreen as RecordatoriosFeatureScreen } from "./features/recordatorios";
+import { PerfilScreen as PerfilFeatureScreen } from "./features/perfil";
+import { useRecordatorios } from "./features/recordatorios";
+import { useMisMaterias } from "./features/materias";
+import { useAuthMe } from "./features/perfil";
+import type { EstadoCursada } from "./api/types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Screen =
@@ -77,18 +83,6 @@ const carreras = [
   "Redes y Comunicaciones",
   "Ciberseguridad",
   "Ciencia de Datos",
-];
-
-const conveniosUniversidades = [
-  { nombre: "UBA — Cs. Exactas", requisitos: "Regular en 5 materias", logo: "U" },
-  { nombre: "UTN — FRBA", requisitos: "Aprobación de 1er año", logo: "U" },
-  { nombre: "UNSAM", requisitos: "Promedio ≥ 6", logo: "U" },
-];
-
-const conveniosTalento = [
-  { nombre: "Talento Tech — IA", requisitos: "Alumno activo IFTS", logo: "T" },
-  { nombre: "Talento Tech — UX", requisitos: "Alumno activo IFTS", logo: "T" },
-  { nombre: "Talento Tech — Ciberseg.", requisitos: "Alumno activo IFTS", logo: "T" },
 ];
 
 // ─── Design tokens ─────────────────────────────────────────────────────────────
@@ -600,10 +594,8 @@ function CarreraScreen({ onGo }: { onGo: (s: Screen) => void }) {
 }
 
 // ─── ByteCard ─────────────────────────────────────────────────────────────────
-function ByteCard() {
-  const aprobadas = materiasInit.filter((m) => m.estado === "Aprobada").length;
-  const total = 10;
-  const pct = Math.round((aprobadas / total) * 100);
+function ByteCard({ aprobadas, total }: { aprobadas: number; total: number }) {
+  const pct = total > 0 ? Math.round((aprobadas / total) * 100) : 0;
   return (
     <div style={{ background: CARD, border: `0.5px solid ${BORDER}`, borderRadius: 14, padding: "16px 18px", display: "flex", alignItems: "center", gap: 16 }}>
       <div style={{ flexShrink: 0 }}>
@@ -635,9 +627,23 @@ function ByteCard() {
 }
 
 // ─── Screen 4: Inicio ─────────────────────────────────────────────────────────
+const ESTADO_A_BADGE: Record<EstadoCursada, BadgeStatus> = {
+  cursando: "En curso",
+  aprobada: "Aprobada",
+  pendiente: "Pendiente",
+};
+
 function InicioScreen({ onGo }: { onGo: (s: Screen) => void }) {
   const [query, setQuery] = useState("");
   const dotColor: Record<string, string> = { parcial: VIOLET, tp: LIME, final: GREEN, otro: "#C084FC" };
+
+  const me = useAuthMe();
+  const misMaterias = useMisMaterias(1);
+  const proximos = useRecordatorios({ per_page: 3 });
+
+  const cursadas = misMaterias.data?.items ?? [];
+  const aprobadas = cursadas.filter((c) => c.estado === "aprobada").length;
+  const totalPlan = misMaterias.data?.total ?? 0;
 
   return (
     <ScreenWrap padBottom>
@@ -648,7 +654,9 @@ function InicioScreen({ onGo }: { onGo: (s: Screen) => void }) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
           <div>
             <div style={{ color: MUTED, fontSize: 13 }}>Bienvenida de vuelta</div>
-            <div style={{ color: TEXT, fontSize: 22, fontWeight: 800, letterSpacing: -0.4 }}>Hola, Martina 👋</div>
+            <div style={{ color: TEXT, fontSize: 22, fontWeight: 800, letterSpacing: -0.4 }}>
+              Hola, {me.data?.nombre?.split(" ")[0] ?? "…"} 👋
+            </div>
           </div>
           <div style={{ width: 40, height: 40, borderRadius: 12, background: `linear-gradient(135deg, ${VIOLET} 0%, #6B5CE7 100%)`, display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 700, fontSize: 15 }}>MR</div>
         </div>
@@ -662,7 +670,7 @@ function InicioScreen({ onGo }: { onGo: (s: Screen) => void }) {
             style={{ width: "100%", background: CARD, border: `0.5px solid ${BORDER}`, borderRadius: 10, padding: "12px 16px 12px 40px", color: TEXT, fontSize: 14, outline: "none" }} />
         </div>
 
-        <div style={{ marginBottom: 28 }}><ByteCard /></div>
+        <div style={{ marginBottom: 28 }}><ByteCard aprobadas={aprobadas} total={totalPlan} /></div>
 
         <div style={{ marginBottom: 24 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
@@ -670,12 +678,17 @@ function InicioScreen({ onGo }: { onGo: (s: Screen) => void }) {
             <button onClick={() => onGo("recordatorios")} style={{ background: "none", border: "none", color: VIOLET, fontSize: 13, fontWeight: 500, cursor: "pointer" }}>Ver todos</button>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {recordatoriosInit.slice(0, 3).map((r) => (
+            {(proximos.data?.items ?? []).length === 0 && !proximos.loading && (
+              <div style={{ color: MUTED, fontSize: 13 }}>Sin recordatorios próximos.</div>
+            )}
+            {(proximos.data?.items ?? []).map((r) => (
               <div key={r.id} style={{ background: CARD, border: `0.5px solid ${BORDER}`, borderRadius: 14, padding: "13px 16px", display: "flex", alignItems: "center", gap: 12 }}>
                 <div style={{ width: 8, height: 8, borderRadius: "50%", background: dotColor[r.tipo] ?? MUTED, flexShrink: 0 }} />
                 <div style={{ flex: 1 }}>
                   <div style={{ color: TEXT, fontSize: 13, fontWeight: 500 }}>{r.titulo}</div>
-                  <div style={{ color: MUTED, fontSize: 12, marginTop: 2 }}>{r.fecha} · {r.hora}</div>
+                  <div style={{ color: MUTED, fontSize: 12, marginTop: 2 }}>
+                    {new Date(r.fecha).toLocaleString("es-AR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                  </div>
                 </div>
               </div>
             ))}
@@ -688,11 +701,16 @@ function InicioScreen({ onGo }: { onGo: (s: Screen) => void }) {
             <button onClick={() => onGo("materias")} style={{ background: "none", border: "none", color: VIOLET, fontSize: 13, fontWeight: 500, cursor: "pointer" }}>Ver todas</button>
           </div>
           <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 4 }}>
-            {materiasInit.map((m) => (
-              <div key={m.id} onClick={() => onGo("detalle")} style={{ background: CARD, border: `0.5px solid ${BORDER}`, borderRadius: 14, padding: "14px 16px", minWidth: 150, maxWidth: 150, cursor: "pointer", flexShrink: 0 }}>
-                <Badge status={m.estado} />
-                <div style={{ color: TEXT, fontSize: 13, fontWeight: 600, marginTop: 10, lineHeight: 1.3 }}>{m.nombre}</div>
-                {m.nota && <div style={{ color: MUTED, fontSize: 12, marginTop: 6 }}>Nota: {m.nota}</div>}
+            {cursadas.length === 0 && !misMaterias.loading && (
+              <div style={{ color: MUTED, fontSize: 13 }}>Todavía no cargaste materias.</div>
+            )}
+            {cursadas.map((c) => (
+              <div key={c.id} onClick={() => onGo("materias")} style={{ background: CARD, border: `0.5px solid ${BORDER}`, borderRadius: 14, padding: "14px 16px", minWidth: 150, maxWidth: 150, cursor: "pointer", flexShrink: 0 }}>
+                <Badge status={ESTADO_A_BADGE[c.estado]} />
+                <div style={{ color: TEXT, fontSize: 13, fontWeight: 600, marginTop: 10, lineHeight: 1.3 }}>
+                  {c.materia?.nombre ?? `Materia #${c.materia_id}`}
+                </div>
+                {c.nota_final != null && <div style={{ color: MUTED, fontSize: 12, marginTop: 6 }}>Nota: {c.nota_final}</div>}
               </div>
             ))}
           </div>
@@ -864,209 +882,9 @@ function DetalleScreen({ onGo }: { onGo: (s: Screen) => void }) {
   );
 }
 
-// ─── Screen 7: Recordatorios ──────────────────────────────────────────────────
-function RecordatoriosScreen() {
-  const [lista, setLista] = useState(recordatoriosInit);
-  const [showModal, setShowModal] = useState(false);
-  const [editando, setEditando] = useState<Recordatorio | null>(null);
-  const [swiping, setSwiping] = useState<number | null>(null);
-
-  const dotColor: Record<string, string> = { parcial: VIOLET, tp: LIME, final: GREEN, otro: "#C084FC" };
-  const tipoLabel: Record<string, string> = { parcial: "Parcial", tp: "TP", final: "Final", otro: "Otro" };
-
-  const handleDelete = (id: number) => {
-    setSwiping(id);
-    setTimeout(() => { setLista((prev) => prev.filter((r) => r.id !== id)); setSwiping(null); }, 300);
-  };
-
-  const semana1 = lista.filter((r) => r.id <= 3);
-  const semana2 = lista.filter((r) => r.id > 3);
-
-  const ReminderCard = ({ r }: { r: Recordatorio }) => (
-    <div style={{ background: CARD, border: `0.5px solid ${BORDER}`, borderRadius: 14, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, transition: "transform 0.3s ease, opacity 0.3s ease", transform: swiping === r.id ? "translateX(100%)" : "translateX(0)", opacity: swiping === r.id ? 0 : 1, overflow: "hidden" }}>
-      <div style={{ width: 10, height: 10, borderRadius: "50%", background: dotColor[r.tipo] ?? MUTED, flexShrink: 0 }} />
-      <div style={{ flex: 1 }}>
-        <div style={{ color: TEXT, fontSize: 13, fontWeight: 600 }}>{r.titulo}</div>
-        <div style={{ color: MUTED, fontSize: 12, marginTop: 3 }}>
-          <span style={{ background: `${dotColor[r.tipo] ?? MUTED}20`, color: dotColor[r.tipo] ?? MUTED, borderRadius: 20, padding: "2px 8px", fontSize: 11, marginRight: 6 }}>{tipoLabel[r.tipo] ?? r.tipo}</span>
-          {r.fecha} · {r.hora}
-        </div>
-      </div>
-      <button onClick={() => { setEditando(r); setShowModal(true); }} style={{ background: "none", border: `0.5px solid ${BORDER}`, borderRadius: 8, padding: "5px 10px", color: MUTED, fontSize: 12, cursor: "pointer" }}>Editar</button>
-      <button onClick={() => handleDelete(r.id)} style={{ background: "none", border: "none", color: "#FF6B6B", cursor: "pointer", padding: 4 }}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-      </button>
-    </div>
-  );
-
-  return (
-    <>
-      <ScreenWrap padBottom>
-        <div style={{ padding: "52px 24px 0" }}>
-          <div style={{ marginBottom: 24 }}>
-            <div style={{ color: TEXT, fontSize: 22, fontWeight: 800, letterSpacing: -0.4 }}>Recordatorios</div>
-            <div style={{ color: MUTED, fontSize: 13, marginTop: 4 }}>{lista.length} recordatorio{lista.length !== 1 ? "s" : ""} activo{lista.length !== 1 ? "s" : ""}</div>
-          </div>
-          {semana1.length > 0 && (
-            <div style={{ marginBottom: 24 }}>
-              <div style={{ color: MUTED, fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 12 }}>Esta semana</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>{semana1.map((r) => <ReminderCard key={r.id} r={r} />)}</div>
-            </div>
-          )}
-          {semana2.length > 0 && (
-            <div>
-              <div style={{ color: MUTED, fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 12 }}>Próxima semana</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>{semana2.map((r) => <ReminderCard key={r.id} r={r} />)}</div>
-            </div>
-          )}
-          {lista.length === 0 && (
-            <div style={{ textAlign: "center", paddingTop: 60, color: MUTED }}>
-              <div style={{ fontSize: 40, marginBottom: 12 }}>🔔</div>
-              <div style={{ fontSize: 15, fontWeight: 600, color: TEXT }}>Sin recordatorios</div>
-              <div style={{ fontSize: 13, marginTop: 4 }}>Tocá + para agregar uno</div>
-            </div>
-          )}
-        </div>
-      </ScreenWrap>
-      <FAB onClick={() => { setEditando(null); setShowModal(true); }} />
-      {showModal && (
-        <ModalRecordatorio
-          initial={editando ?? undefined}
-          onClose={() => { setShowModal(false); setEditando(null); }}
-          onSave={(d) => {
-            if (editando) {
-              setLista((prev) => prev.map((r) => r.id === editando.id ? { ...r, ...d } : r));
-            } else {
-              setLista((prev) => [...prev, { id: Date.now(), titulo: d.titulo ?? "", fecha: d.fecha ?? "", hora: d.hora ?? "", tipo: d.tipo ?? "otro" }]);
-            }
-          }}
-        />
-      )}
-    </>
-  );
-}
-
-// ─── Screen 8: Convenios ──────────────────────────────────────────────────────
-function ConveniosScreen() {
-  const [tab, setTab] = useState<"universidades" | "talento">("universidades");
-  const items = tab === "universidades" ? conveniosUniversidades : conveniosTalento;
-  return (
-    <ScreenWrap padBottom>
-      <div style={{ padding: "52px 24px 0" }}>
-        <div style={{ marginBottom: 22 }}>
-          <div style={{ color: TEXT, fontSize: 22, fontWeight: 800, letterSpacing: -0.4 }}>Convenios</div>
-          <div style={{ color: MUTED, fontSize: 13, marginTop: 4 }}>Oportunidades para estudiantes IFTS</div>
-        </div>
-        <div style={{ display: "flex", background: CARD, border: `0.5px solid ${BORDER}`, borderRadius: 10, padding: 4, marginBottom: 24 }}>
-          {(["universidades", "talento"] as const).map((t) => (
-            <button key={t} onClick={() => setTab(t)} style={{ flex: 1, background: tab === t ? VIOLET : "none", border: "none", borderRadius: 8, padding: "9px 0", color: tab === t ? "#fff" : MUTED, fontSize: 13, fontWeight: tab === t ? 600 : 400, cursor: "pointer", transition: "all 0.2s" }}>
-              {t === "universidades" ? "Universidades" : "Talento Tech"}
-            </button>
-          ))}
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {items.map((item, i) => (
-            <div key={i} style={{ background: CARD, border: `0.5px solid ${BORDER}`, borderRadius: 14, padding: "16px 18px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-                <div style={{ width: 44, height: 44, borderRadius: 12, background: tab === "universidades" ? "rgba(140,125,255,0.15)" : "rgba(207,255,94,0.12)", display: "flex", alignItems: "center", justifyContent: "center", color: tab === "universidades" ? VIOLET : LIME, fontWeight: 800, fontSize: 16, flexShrink: 0 }}>
-                  {item.logo}
-                </div>
-                <div>
-                  <div style={{ color: TEXT, fontSize: 14, fontWeight: 600 }}>{item.nombre}</div>
-                  <div style={{ color: MUTED, fontSize: 12, marginTop: 3 }}>{item.requisitos}</div>
-                </div>
-              </div>
-              <button style={{ width: "100%", background: "rgba(140,125,255,0.1)", border: `0.5px solid ${VIOLET}`, borderRadius: 10, padding: "10px 0", color: VIOLET, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-                Más info
-              </button>
-            </div>
-          ))}
-        </div>
-      </div>
-    </ScreenWrap>
-  );
-}
-
-// ─── Screen 9: Mi Perfil ──────────────────────────────────────────────────────
-function PerfilScreen({ onGo }: { onGo: (s: Screen) => void }) {
-  const [nombre, setNombre] = useState("Martina Ríos");
-  const [carrera, setCarrera] = useState("Desarrollo de Software");
-  const [saved, setSaved] = useState(false);
-
-  const aprobadas = materiasInit.filter((m) => m.estado === "Aprobada").length;
-  const total = 10;
-  const pct = Math.round((aprobadas / total) * 100);
-
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-  };
-
-  return (
-    <ScreenWrap padBottom>
-      <div style={{ padding: "52px 24px 0" }}>
-        <div style={{ marginBottom: 28 }}>
-          <div style={{ color: TEXT, fontSize: 22, fontWeight: 800, letterSpacing: -0.4 }}>Mi Perfil</div>
-          <div style={{ color: MUTED, fontSize: 13, marginTop: 4 }}>Configurá tu cuenta</div>
-        </div>
-
-        {/* Avatar */}
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: 32 }}>
-          <div style={{ position: "relative" }}>
-            <div style={{ width: 88, height: 88, borderRadius: 28, background: `linear-gradient(135deg, ${VIOLET} 0%, #6B5CE7 100%)`, display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 30, fontWeight: 800 }}>
-              MR
-            </div>
-            <div style={{ position: "absolute", bottom: -4, right: -4, width: 28, height: 28, borderRadius: "50%", background: LIME, border: `2px solid ${BG}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="#111218" strokeWidth="2" strokeLinecap="round" /><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="#111218" strokeWidth="2" strokeLinecap="round" /></svg>
-            </div>
-          </div>
-        </div>
-
-        {/* Fields */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 24 }}>
-          <div>
-            <label style={{ color: MUTED, fontSize: 11, fontWeight: 600, display: "block", marginBottom: 6 }}>NOMBRE</label>
-            <input value={nombre} onChange={(e) => setNombre(e.target.value)}
-              style={{ width: "100%", background: CARD, border: `0.5px solid ${BORDER}`, borderRadius: 10, padding: "14px 16px", color: TEXT, fontSize: 15, outline: "none" }}
-              onFocus={(e) => (e.target.style.borderColor = VIOLET)}
-              onBlur={(e) => (e.target.style.borderColor = BORDER)} />
-          </div>
-          <div>
-            <label style={{ color: MUTED, fontSize: 11, fontWeight: 600, display: "block", marginBottom: 6 }}>EMAIL</label>
-            <input value="martina.rios@ifts.edu.ar" readOnly
-              style={{ width: "100%", background: CARD, border: `0.5px solid ${BORDER}`, borderRadius: 10, padding: "14px 16px", color: MUTED, fontSize: 15, outline: "none", cursor: "not-allowed" }} />
-          </div>
-          <div>
-            <label style={{ color: MUTED, fontSize: 11, fontWeight: 600, display: "block", marginBottom: 6 }}>CARRERA</label>
-            <select value={carrera} onChange={(e) => setCarrera(e.target.value)}
-              style={{ width: "100%", background: CARD, border: `0.5px solid ${BORDER}`, borderRadius: 10, padding: "14px 16px", color: TEXT, fontSize: 15, outline: "none", cursor: "pointer" }}>
-              {carreras.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-        </div>
-
-        <button onClick={handleSave} style={{ width: "100%", background: saved ? GREEN : VIOLET, border: "none", borderRadius: 10, padding: "15px 24px", color: "#fff", fontSize: 15, fontWeight: 600, cursor: "pointer", transition: "background 0.3s", marginBottom: 28 }}>
-          {saved ? "✓ Guardado" : "Guardar cambios"}
-        </button>
-
-        {/* Progreso Byte */}
-        <div style={{ background: CARD, border: `0.5px solid ${BORDER}`, borderRadius: 14, padding: "16px 18px", marginBottom: 24 }}>
-          <div style={{ color: TEXT, fontWeight: 600, fontSize: 14, marginBottom: 4 }}>Tu progreso con <span style={{ color: LIME }}>Byte</span></div>
-          <div style={{ color: MUTED, fontSize: 12, marginBottom: 10 }}>{aprobadas} de {total} materias aprobadas</div>
-          <div style={{ background: "#2A2B36", borderRadius: 20, height: 6, overflow: "hidden" }}>
-            <div style={{ width: `${pct}%`, height: "100%", background: `linear-gradient(90deg, ${VIOLET} 0%, ${LIME} 100%)`, borderRadius: 20 }} />
-          </div>
-          <div style={{ color: MUTED, fontSize: 11, marginTop: 4 }}>{pct}% del plan completado</div>
-        </div>
-
-        {/* Cerrar sesión */}
-        <button onClick={() => onGo("login")} style={{ width: "100%", background: "rgba(255,107,107,0.12)", border: "0.5px solid rgba(255,107,107,0.4)", borderRadius: 10, padding: "15px 24px", color: "#FF6B6B", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>
-          Cerrar sesión
-        </button>
-      </div>
-    </ScreenWrap>
-  );
-}
+// ─── Screens 7–9: Recordatorios / Convenios / Mi Perfil ───────────────────────
+// Reemplazados por las pantallas reales (Integrante 4, ver imports arriba):
+// RecordatoriosFeatureScreen, ConveniosFeatureScreen, PerfilFeatureScreen.
 
 // ─── App root ─────────────────────────────────────────────────────────────────
 const navToScreen: Record<NavTab, Screen> = {
@@ -1101,9 +919,9 @@ export default function App() {
       case "inicio": return <InicioScreen onGo={setScreen} />;
       case "materias": return <MateriasScreen onGo={setScreen} />;
       case "detalle": return <DetalleScreen onGo={setScreen} />;
-      case "recordatorios": return <RecordatoriosScreen />;
+      case "recordatorios": return <RecordatoriosFeatureScreen />;
       case "convenios": return <ConveniosFeatureScreen />;
-      case "perfil": return <PerfilScreen onGo={setScreen} />;
+      case "perfil": return <PerfilFeatureScreen onCerrarSesion={() => setScreen("login")} />;
     }
   };
 

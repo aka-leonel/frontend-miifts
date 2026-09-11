@@ -26,7 +26,9 @@ export function useToast() {
 
   useEffect(() => {
     listeners.add(setItems);
-    return () => listeners.delete(setItems);
+    return () => {
+      listeners.delete(setItems);
+    };
   }, []);
 
   const pushToast = (message: string, kind: ToastKind = "info", timeout = 3000) => {

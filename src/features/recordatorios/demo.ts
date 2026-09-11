@@ -2,8 +2,6 @@ import { ApiError } from "../../api/client";
 import type { Paginated, Recordatorio, RecordatorioCreate } from "../../api/types";
 import type { RecordatorioFiltros } from "./service";
 
-const TIPOS = ["parcial", "tp", "final", "otro"] as const;
-
 export const demoTipos: Record<string, { label: string; color: string }> = {
   parcial: { label: "Parcial", color: "bg-violet/20 text-violet" },
   tp: { label: "TP", color: "bg-lime/20 text-lime" },
