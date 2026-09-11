@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { FormModal, ListState, Toaster, type FormSpec } from "./components";
 import { ConveniosScreen as ConveniosFeatureScreen } from "./features/convenios";
+import InicioReal from "./features/materias/InicioScreen";
+import MisMateriasReal from "./features/materias/MisMateriasScreen";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Screen =
@@ -1098,8 +1100,8 @@ export default function App() {
       case "login": return <LoginScreen onGo={setScreen} />;
       case "registro": return <RegistroScreen onGo={setScreen} />;
       case "carrera": return <CarreraScreen onGo={setScreen} />;
-      case "inicio": return <InicioScreen onGo={setScreen} />;
-      case "materias": return <MateriasScreen onGo={setScreen} />;
+      case "inicio": return <InicioReal onOpenMateria={() => setScreen("detalle")} />;
+      case "materias": return <MisMateriasReal onOpenMateria={() => setScreen("detalle")} />;
       case "detalle": return <DetalleScreen onGo={setScreen} />;
       case "recordatorios": return <RecordatoriosScreen />;
       case "convenios": return <ConveniosFeatureScreen />;

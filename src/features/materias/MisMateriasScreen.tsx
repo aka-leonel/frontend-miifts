@@ -5,20 +5,16 @@ import { ApiError } from "../../api/client";
 import { getMiUsuario } from "../../api/scope";
 import { useMateriasDeCarrera } from "../catalogo/hooks";
 import type { Cursada } from "../../api/types";
-import { estadoBadgeClasses, estadoLabel, type EstadoUI } from "./estado";
+import { estadoLabel, type EstadoUI } from "./estado";
 import { useBorrarCursada, useMisMaterias, usePromedio } from "./hooks";
+import ByteWidget from "./ByteWidget";
+import MateriaCard from "./MateriaCard";
 import PromedioCard from "./PromedioCard";
 import { materiaUsuarioInitial, materiaUsuarioSpec } from "./materiaUsuarioSpec";
 
 const chips: (EstadoUI | "Todas")[] = ["Todas", "En curso", "Regular", "Aprobada", "Pendiente"];
 
-function cursadaSubtitulo(cursada: Cursada): string {
-  const partes: string[] = [];
-  if (cursada.nota_parcial_1 != null) partes.push(`1er ${cursada.nota_parcial_1}`);
-  if (cursada.nota_parcial_2 != null) partes.push(`2do ${cursada.nota_parcial_2}`);
-  if (cursada.nota_final != null) partes.push(`Final ${cursada.nota_final}`);
-  return partes.length > 0 ? partes.join(" · ") : "Sin notas cargadas";
-}
+
 
 export default function MisMateriasScreen({ onOpenMateria }: { onOpenMateria?: (id: number) => void }) {
   const { pushToast } = useToast();
@@ -51,6 +47,7 @@ export default function MisMateriasScreen({ onOpenMateria }: { onOpenMateria?: (
 
   const items = lista.data?.items ?? [];
   const filtrados = chip === "Todas" ? items : items.filter((item) => estadoLabel(item) === chip);
+  const aprobadas = items.filter((c) => c.estado === "aprobada").length;
 
   const spec = materiaUsuarioSpec({
     materias: materiasDeMiCarrera.data?.items ?? [],
@@ -92,6 +89,9 @@ export default function MisMateriasScreen({ onOpenMateria }: { onOpenMateria?: (
         </div>
 
         <PromedioCard promedio={promedio.data} loading={promedio.loading} />
+        <div className="mb-4">
+          <ByteWidget aprobadas={aprobadas} total={10} />
+        </div>
 
         <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
           {chips.map((option) => (
@@ -120,55 +120,15 @@ export default function MisMateriasScreen({ onOpenMateria }: { onOpenMateria?: (
           onRetry={() => lista.refetch()}
         >
           <div className="space-y-3">
-            {filtrados.map((cursada) => {
-              const estado = estadoLabel(cursada);
-              return (
-                <div
-                  key={cursada.id}
-                  onClick={() => onOpenMateria?.(cursada.materia_id)}
-                  className="rounded-2xl border border-border bg-card p-4 transition hover:border-violet/40"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-semibold text-text">
-                        {cursada.materia?.nombre ?? `Materia #${cursada.materia_id}`}
-                      </div>
-                      <div className="mt-1 text-xs text-muted">{cursadaSubtitulo(cursada)}</div>
-                    </div>
-                    <span
-                      className={[
-                        "flex-shrink-0 rounded-full px-3 py-1 text-xs font-semibold",
-                        estadoBadgeClasses[estado],
-                      ].join(" ")}
-                    >
-                      {estado}
-                    </span>
-                  </div>
-                  <div className="mt-3 flex gap-2 border-t border-border pt-3">
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setModal({ open: true, item: cursada });
-                      }}
-                      className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted transition hover:text-text"
-                    >
-                      Editar
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setToDelete(cursada);
-                      }}
-                      className="rounded-lg border border-red-500/40 px-3 py-1.5 text-xs font-medium text-red-300 transition"
-                    >
-                      Borrar
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+            {filtrados.map((cursada) => (
+              <MateriaCard
+                key={cursada.id}
+                cursada={cursada}
+                onOpen={onOpenMateria}
+                onEdit={() => setModal({ open: true, item: cursada })}
+                onDelete={() => setToDelete(cursada)}
+              />
+            ))}
           </div>
         </ListState>
 
