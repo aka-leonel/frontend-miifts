@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { FormModal, ListState, Toaster, type FormSpec } from "./components";
+import { Toaster } from "./components";
 import { ConveniosScreen as ConveniosFeatureScreen } from "./features/convenios";
 import InicioReal from "./features/materias/InicioScreen";
 import MisMateriasReal from "./features/materias/MisMateriasScreen";
+import { MateriaDetalleScreen as MateriaDetalleFeatureScreen } from "./features/materia-detalle/MateriaDetalleScreen";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Screen =
@@ -43,13 +44,6 @@ interface Recordatorio {
   tipo: string;
 }
 
-interface DemoItem {
-  id: number;
-  title: string;
-  category: string;
-  active: boolean;
-}
-
 // ─── Data ─────────────────────────────────────────────────────────────────────
 const materiasInit: Materia[] = [
   { id: 1, nombre: "Análisis Matemático I", estado: "Regular", nota: 7, requisito: "Álgebra" },
@@ -79,18 +73,6 @@ const carreras = [
   "Redes y Comunicaciones",
   "Ciberseguridad",
   "Ciencia de Datos",
-];
-
-const conveniosUniversidades = [
-  { nombre: "UBA — Cs. Exactas", requisitos: "Regular en 5 materias", logo: "U" },
-  { nombre: "UTN — FRBA", requisitos: "Aprobación de 1er año", logo: "U" },
-  { nombre: "UNSAM", requisitos: "Promedio ≥ 6", logo: "U" },
-];
-
-const conveniosTalento = [
-  { nombre: "Talento Tech — IA", requisitos: "Alumno activo IFTS", logo: "T" },
-  { nombre: "Talento Tech — UX", requisitos: "Alumno activo IFTS", logo: "T" },
-  { nombre: "Talento Tech — Ciberseg.", requisitos: "Alumno activo IFTS", logo: "T" },
 ];
 
 // ─── Design tokens ─────────────────────────────────────────────────────────────
@@ -271,7 +253,7 @@ function ModalRecurso({ initial, onClose, onSave }: {
 }) {
   const [titulo, setTitulo] = useState(initial?.nombre ?? "");
   const [link, setLink] = useState(initial?.link ?? "");
-  const [tipo, setTipo] = useState(initial?.tipo ?? "meet");
+  const [tipo, setTipo] = useState<string>(initial?.tipo ?? "meet");
 
   return (
     <Modal title={initial ? "Editar recurso" : "Agregar recurso"} onClose={onClose}>
@@ -403,122 +385,6 @@ function ScreenWrap({ children, padBottom = false }: { children: React.ReactNode
   return <div style={{ flex: 1, overflowY: "auto", paddingBottom: padBottom ? 90 : 24 }}>{children}</div>;
 }
 
-const demoSpec: FormSpec<DemoItem> = {
-  title: (item) => (item?.id ? "Editar elemento" : "Agregar elemento"),
-  fields: [
-    { name: "title", label: "Título", type: "text", placeholder: "Ej: Reunión de práctica" },
-    {
-      name: "category",
-      label: "Categoría",
-      type: "select",
-      options: [
-        { value: "infra", label: "Infra" },
-        { value: "ux", label: "UX" },
-        { value: "convenios", label: "Convenios" },
-      ],
-    },
-    { name: "active", label: "Activo", type: "switch" },
-  ],
-  submit: {
-    create: async (values) => values,
-    update: async (_id, values) => values,
-  },
-};
-
-function SharedInfraDemo() {
-  const [items, setItems] = useState<DemoItem[]>([
-    { id: 1, title: "Modal reutilizable", category: "infra", active: true },
-    { id: 2, title: "Toaster global", category: "ux", active: false },
-  ]);
-  const [open, setOpen] = useState(false);
-  const [selected, setSelected] = useState<DemoItem | undefined>();
-
-  const handleCreate = (values: DemoItem) => {
-    setItems((current) => [{ ...values, id: Date.now() }, ...current]);
-  };
-
-  const handleUpdate = (id: string | number, values: DemoItem) => {
-    setItems((current) => current.map((item) => (item.id === Number(id) ? { ...item, ...values } : item)));
-  };
-
-  return (
-    <div className="rounded-2xl border border-border bg-card p-4">
-      <div className="mb-4 flex items-center justify-between gap-4">
-        <div>
-          <div className="text-sm font-semibold uppercase tracking-[0.1em] text-violet">Infra compartida</div>
-          <div className="mt-1 text-lg font-bold text-text">FormModal + ListState + Toaster</div>
-        </div>
-        <button
-          type="button"
-          onClick={() => {
-            setSelected(undefined);
-            setOpen(true);
-          }}
-          className="rounded-xl bg-violet px-3 py-2 text-sm font-semibold text-white"
-        >
-          Nuevo
-        </button>
-      </div>
-
-      <ListState loading={false} error={null} items={items} emptyTitle="No hay elementos" emptyDescription="Agregá un registro para ver el estado vacío.">
-        <div className="space-y-3">
-          {items.map((item) => (
-            <div key={item.id} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-[#111218] p-3">
-              <div>
-                <div className="text-sm font-semibold text-text">{item.title}</div>
-                <div className="mt-1 text-xs uppercase tracking-[0.08em] text-muted">{item.category}</div>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className={item.active ? "text-xs font-semibold text-lime" : "text-xs font-semibold text-muted"}>
-                  {item.active ? "Activo" : "Inactivo"}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelected(item);
-                    setOpen(true);
-                  }}
-                  className="rounded-lg border border-border bg-transparent px-2 py-1 text-xs text-muted"
-                >
-                  Editar
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </ListState>
-
-      <FormModal
-        open={open}
-        item={selected}
-        spec={{
-          ...demoSpec,
-          submit: {
-            create: async (values) => {
-              handleCreate(values);
-            },
-            update: async (id, values) => {
-              handleUpdate(id, values);
-            },
-          },
-        }}
-        initialValues={
-          selected ?? {
-            id: 0,
-            title: "",
-            category: "infra",
-            active: true,
-          }
-        }
-        onClose={() => {
-          setOpen(false);
-          setSelected(undefined);
-        }}
-      />
-    </div>
-  );
-}
-
 // ─── Screen 1: Login ──────────────────────────────────────────────────────────
 function LoginScreen({ onGo }: { onGo: (s: Screen) => void }) {
   const [email, setEmail] = useState("");
@@ -602,152 +468,9 @@ function CarreraScreen({ onGo }: { onGo: (s: Screen) => void }) {
 }
 
 // ─── ByteCard ─────────────────────────────────────────────────────────────────
-function ByteCard() {
-  const aprobadas = materiasInit.filter((m) => m.estado === "Aprobada").length;
-  const total = 10;
-  const pct = Math.round((aprobadas / total) * 100);
-  return (
-    <div style={{ background: CARD, border: `0.5px solid ${BORDER}`, borderRadius: 14, padding: "16px 18px", display: "flex", alignItems: "center", gap: 16 }}>
-      <div style={{ flexShrink: 0 }}>
-        <svg width="56" height="56" viewBox="0 0 56 56" fill="none">
-          <ellipse cx="28" cy="16" rx="14" ry="4" fill={LIME} />
-          <rect x="14" y="12" width="28" height="6" rx="2" fill={LIME} />
-          <rect x="22" y="16" width="18" height="4" rx="2" fill="#A8D420" />
-          <rect x="16" y="18" width="24" height="20" rx="6" fill="#2A2B36" stroke={BORDER} strokeWidth="0.5" />
-          <circle cx="23" cy="27" r="3.5" fill={VIOLET} />
-          <circle cx="33" cy="27" r="3.5" fill={VIOLET} />
-          <circle cx="24" cy="26" r="1.2" fill="white" />
-          <circle cx="34" cy="26" r="1.2" fill="white" />
-          <path d="M23 33 Q28 36 33 33" stroke={LIME} strokeWidth="1.5" strokeLinecap="round" fill="none" />
-          <rect x="20" y="40" width="16" height="10" rx="4" fill="#2A2B36" stroke={BORDER} strokeWidth="0.5" />
-          <line x1="28" y1="18" x2="28" y2="12" stroke={LIME} strokeWidth="1.5" />
-          <circle cx="28" cy="11" r="2" fill={LIME} />
-        </svg>
-      </div>
-      <div style={{ flex: 1 }}>
-        <div style={{ color: TEXT, fontWeight: 600, fontSize: 14, marginBottom: 4 }}>¡Hola! Soy <span style={{ color: LIME }}>Byte</span> 👾</div>
-        <div style={{ color: MUTED, fontSize: 12, marginBottom: 10 }}>{aprobadas} de {total} materias aprobadas</div>
-        <div style={{ background: "#2A2B36", borderRadius: 20, height: 6, overflow: "hidden" }}>
-          <div style={{ width: `${pct}%`, height: "100%", background: `linear-gradient(90deg, ${VIOLET} 0%, ${LIME} 100%)`, borderRadius: 20 }} />
-        </div>
-        <div style={{ color: MUTED, fontSize: 11, marginTop: 4 }}>{pct}% del plan completado</div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Screen 4: Inicio ─────────────────────────────────────────────────────────
-function InicioScreen({ onGo }: { onGo: (s: Screen) => void }) {
-  const [query, setQuery] = useState("");
-  const dotColor: Record<string, string> = { parcial: VIOLET, tp: LIME, final: GREEN, otro: "#C084FC" };
-
-  return (
-    <ScreenWrap padBottom>
-      <div style={{ padding: "52px 24px 0" }}>
-        <div style={{ marginBottom: 20 }}>
-          <SharedInfraDemo />
-        </div>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
-          <div>
-            <div style={{ color: MUTED, fontSize: 13 }}>Bienvenida de vuelta</div>
-            <div style={{ color: TEXT, fontSize: 22, fontWeight: 800, letterSpacing: -0.4 }}>Hola, Martina 👋</div>
-          </div>
-          <div style={{ width: 40, height: 40, borderRadius: 12, background: `linear-gradient(135deg, ${VIOLET} 0%, #6B5CE7 100%)`, display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 700, fontSize: 15 }}>MR</div>
-        </div>
-
-        <div style={{ position: "relative", marginBottom: 24 }}>
-          <svg style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)" }} width="16" height="16" viewBox="0 0 24 24" fill="none">
-            <circle cx="11" cy="11" r="8" stroke={MUTED} strokeWidth="1.5" />
-            <path d="M21 21l-4.35-4.35" stroke={MUTED} strokeWidth="1.5" strokeLinecap="round" />
-          </svg>
-          <input placeholder="Buscar materia o recurso..." value={query} onChange={(e) => setQuery(e.target.value)}
-            style={{ width: "100%", background: CARD, border: `0.5px solid ${BORDER}`, borderRadius: 10, padding: "12px 16px 12px 40px", color: TEXT, fontSize: 14, outline: "none" }} />
-        </div>
-
-        <div style={{ marginBottom: 28 }}><ByteCard /></div>
-
-        <div style={{ marginBottom: 24 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-            <div style={{ color: TEXT, fontWeight: 700, fontSize: 15 }}>Próximos</div>
-            <button onClick={() => onGo("recordatorios")} style={{ background: "none", border: "none", color: VIOLET, fontSize: 13, fontWeight: 500, cursor: "pointer" }}>Ver todos</button>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {recordatoriosInit.slice(0, 3).map((r) => (
-              <div key={r.id} style={{ background: CARD, border: `0.5px solid ${BORDER}`, borderRadius: 14, padding: "13px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ width: 8, height: 8, borderRadius: "50%", background: dotColor[r.tipo] ?? MUTED, flexShrink: 0 }} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ color: TEXT, fontSize: 13, fontWeight: 500 }}>{r.titulo}</div>
-                  <div style={{ color: MUTED, fontSize: 12, marginTop: 2 }}>{r.fecha} · {r.hora}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-            <div style={{ color: TEXT, fontWeight: 700, fontSize: 15 }}>Mis materias</div>
-            <button onClick={() => onGo("materias")} style={{ background: "none", border: "none", color: VIOLET, fontSize: 13, fontWeight: 500, cursor: "pointer" }}>Ver todas</button>
-          </div>
-          <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 4 }}>
-            {materiasInit.map((m) => (
-              <div key={m.id} onClick={() => onGo("detalle")} style={{ background: CARD, border: `0.5px solid ${BORDER}`, borderRadius: 14, padding: "14px 16px", minWidth: 150, maxWidth: 150, cursor: "pointer", flexShrink: 0 }}>
-                <Badge status={m.estado} />
-                <div style={{ color: TEXT, fontSize: 13, fontWeight: 600, marginTop: 10, lineHeight: 1.3 }}>{m.nombre}</div>
-                {m.nota && <div style={{ color: MUTED, fontSize: 12, marginTop: 6 }}>Nota: {m.nota}</div>}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </ScreenWrap>
-  );
-}
-
-// ─── Screen 5: Materias ───────────────────────────────────────────────────────
-function MateriasScreen({ onGo }: { onGo: (s: Screen) => void }) {
-  const chips: (BadgeStatus | "Todas")[] = ["Todas", "En curso", "Regular", "Aprobada", "Pendiente"];
-  const [active, setActive] = useState<BadgeStatus | "Todas">("Todas");
-  const [showModal, setShowModal] = useState(false);
-
-  const filtered = active === "Todas" ? materiasInit : materiasInit.filter((m) => m.estado === active);
-
-  return (
-    <>
-      <ScreenWrap padBottom>
-        <div style={{ padding: "52px 24px 0" }}>
-          <div style={{ marginBottom: 22 }}>
-            <div style={{ color: TEXT, fontSize: 22, fontWeight: 800, letterSpacing: -0.4 }}>Mis Materias</div>
-            <div style={{ color: MUTED, fontSize: 13, marginTop: 4 }}>Desarrollo de Software</div>
-          </div>
-          <div style={{ display: "flex", gap: 8, overflowX: "auto", marginBottom: 22, paddingBottom: 2 }}>
-            {chips.map((c) => (
-              <button key={c} onClick={() => setActive(c)} style={{ flexShrink: 0, background: active === c ? VIOLET : CARD, border: `0.5px solid ${active === c ? VIOLET : BORDER}`, borderRadius: 20, padding: "7px 16px", color: active === c ? "#fff" : MUTED, fontSize: 13, fontWeight: active === c ? 600 : 400, cursor: "pointer", transition: "all 0.2s" }}>
-                {c}
-              </button>
-            ))}
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {filtered.map((m) => (
-              <div key={m.id} onClick={() => onGo("detalle")} style={{ background: CARD, border: `0.5px solid ${BORDER}`, borderRadius: 14, padding: "16px 18px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <div>
-                  <div style={{ color: TEXT, fontSize: 14, fontWeight: 600, marginBottom: 8 }}>{m.nombre}</div>
-                  <Badge status={m.estado} />
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  {m.nota && <div style={{ background: "rgba(140,125,255,0.12)", borderRadius: 10, padding: "4px 10px", color: VIOLET, fontSize: 13, fontWeight: 700 }}>{m.nota}</div>}
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 18l6-6-6-6" stroke={MUTED} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </ScreenWrap>
-      <FAB onClick={() => setShowModal(true)} />
-      {showModal && <ModalMateria onClose={() => setShowModal(false)} onSave={() => {}} />}
-    </>
-  );
-}
+// ─── Screens 4–5: Inicio / Materias ────────────────────────────────────────────
+// Reemplazadas por las pantallas reales (Integrante 2, ver imports arriba):
+// InicioReal, MisMateriasReal.
 
 // ─── Screen 6: Detalle de materia ─────────────────────────────────────────────
 function DetalleScreen({ onGo }: { onGo: (s: Screen) => void }) {
@@ -949,45 +672,7 @@ function RecordatoriosScreen() {
 }
 
 // ─── Screen 8: Convenios ──────────────────────────────────────────────────────
-function ConveniosScreen() {
-  const [tab, setTab] = useState<"universidades" | "talento">("universidades");
-  const items = tab === "universidades" ? conveniosUniversidades : conveniosTalento;
-  return (
-    <ScreenWrap padBottom>
-      <div style={{ padding: "52px 24px 0" }}>
-        <div style={{ marginBottom: 22 }}>
-          <div style={{ color: TEXT, fontSize: 22, fontWeight: 800, letterSpacing: -0.4 }}>Convenios</div>
-          <div style={{ color: MUTED, fontSize: 13, marginTop: 4 }}>Oportunidades para estudiantes IFTS</div>
-        </div>
-        <div style={{ display: "flex", background: CARD, border: `0.5px solid ${BORDER}`, borderRadius: 10, padding: 4, marginBottom: 24 }}>
-          {(["universidades", "talento"] as const).map((t) => (
-            <button key={t} onClick={() => setTab(t)} style={{ flex: 1, background: tab === t ? VIOLET : "none", border: "none", borderRadius: 8, padding: "9px 0", color: tab === t ? "#fff" : MUTED, fontSize: 13, fontWeight: tab === t ? 600 : 400, cursor: "pointer", transition: "all 0.2s" }}>
-              {t === "universidades" ? "Universidades" : "Talento Tech"}
-            </button>
-          ))}
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {items.map((item, i) => (
-            <div key={i} style={{ background: CARD, border: `0.5px solid ${BORDER}`, borderRadius: 14, padding: "16px 18px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-                <div style={{ width: 44, height: 44, borderRadius: 12, background: tab === "universidades" ? "rgba(140,125,255,0.15)" : "rgba(207,255,94,0.12)", display: "flex", alignItems: "center", justifyContent: "center", color: tab === "universidades" ? VIOLET : LIME, fontWeight: 800, fontSize: 16, flexShrink: 0 }}>
-                  {item.logo}
-                </div>
-                <div>
-                  <div style={{ color: TEXT, fontSize: 14, fontWeight: 600 }}>{item.nombre}</div>
-                  <div style={{ color: MUTED, fontSize: 12, marginTop: 3 }}>{item.requisitos}</div>
-                </div>
-              </div>
-              <button style={{ width: "100%", background: "rgba(140,125,255,0.1)", border: `0.5px solid ${VIOLET}`, borderRadius: 10, padding: "10px 0", color: VIOLET, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-                Más info
-              </button>
-            </div>
-          ))}
-        </div>
-      </div>
-    </ScreenWrap>
-  );
-}
+// Reemplazada por ConveniosFeatureScreen (Integrante 1, ver imports arriba).
 
 // ─── Screen 9: Mi Perfil ──────────────────────────────────────────────────────
 function PerfilScreen({ onGo }: { onGo: (s: Screen) => void }) {
@@ -1090,19 +775,33 @@ const screenToNav: Partial<Record<Screen, NavTab>> = {
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>("login");
+  // No hay react-router en esta app todavía (el resto navega con este mismo
+  // switch, no con URLs) — mientras tanto, la materia que se está viendo en
+  // "detalle" se guarda acá y se pasa por prop.
+  const [materiaIdSeleccionada, setMateriaIdSeleccionada] = useState<number | null>(null);
 
   const handleNav = (tab: NavTab) => setScreen(navToScreen[tab]);
   const showNav = !["login", "registro", "carrera"].includes(screen);
   const activeTab = screenToNav[screen];
+
+  function abrirDetalle(materiaId: number) {
+    setMateriaIdSeleccionada(materiaId);
+    setScreen("detalle");
+  }
 
   const renderScreen = () => {
     switch (screen) {
       case "login": return <LoginScreen onGo={setScreen} />;
       case "registro": return <RegistroScreen onGo={setScreen} />;
       case "carrera": return <CarreraScreen onGo={setScreen} />;
-      case "inicio": return <InicioReal onOpenMateria={() => setScreen("detalle")} />;
-      case "materias": return <MisMateriasReal onOpenMateria={() => setScreen("detalle")} />;
-      case "detalle": return <DetalleScreen onGo={setScreen} />;
+      case "inicio": return <InicioReal onOpenMateria={abrirDetalle} />;
+      case "materias": return <MisMateriasReal onOpenMateria={abrirDetalle} />;
+      case "detalle":
+        return materiaIdSeleccionada != null ? (
+          <MateriaDetalleFeatureScreen materiaId={materiaIdSeleccionada} onVolver={() => setScreen("materias")} />
+        ) : (
+          <DetalleScreen onGo={setScreen} />
+        );
       case "recordatorios": return <RecordatoriosScreen />;
       case "convenios": return <ConveniosFeatureScreen />;
       case "perfil": return <PerfilScreen onGo={setScreen} />;

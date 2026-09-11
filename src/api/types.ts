@@ -34,6 +34,13 @@ export interface Materia {
   duracion_cuatrimestres?: number | null;
 }
 
+export interface Correlativa {
+  id: number;
+  materia_id: number;
+  requiere_id: number;
+  requiere: Materia | null;
+}
+
 export type EstadoCursada = "cursando" | "aprobada" | "pendiente";
 
 export interface Cursada {
@@ -77,6 +84,25 @@ export type RecordatorioCreate = {
   fecha: string;
   tipo: string;
   materia_id?: number | null;
+};
+
+export interface Recurso {
+  id: number;
+  usuario_id: number;
+  fecha_creacion: string;
+  titulo: string;
+  url: string;
+  descripcion: string;
+  tipo: string | null;
+  materia_id: number;
+}
+
+export type RecursoCreate = {
+  titulo: string;
+  url: string;
+  descripcion: string;
+  tipo?: string | null;
+  materia_id: number;
 };
 
 export interface Token {

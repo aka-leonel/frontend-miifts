@@ -42,8 +42,13 @@ export default function FormModal<T extends Record<string, unknown>>({
       return;
     }
 
-    setValues(initialValues);
-    clearErrors();
+    // En un callback (no suelto en el cuerpo del efecto) para no disparar
+    // un render síncrono en cascada.
+    queueMicrotask(() => {
+      setValues(initialValues);
+      clearErrors();
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, item?.id]);
 
   if (!open) return null;

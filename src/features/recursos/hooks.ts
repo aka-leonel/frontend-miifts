@@ -1,34 +1,36 @@
+import { useAsync, useAsyncAction } from "../../hooks/useAsyncQuery";
+import { createRecurso, deleteRecurso, getRecursosDeMateria, updateRecurso } from "./service";
+import type { Recurso, RecursoCreate } from "../../api/types";
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import * as service from './service';
+export function useRecursosDeMateria(materiaId: number) {
+  return useAsync<Recurso[]>(() => getRecursosDeMateria(materiaId), [materiaId]);
+}
 
-export const useRecursosDeMateria = (materiaId: number) => {
-  return useQuery({
-    queryKey: ['recursos-materia', materiaId],
-    queryFn: () => service.getRecursosDeMateria(materiaId),
-  });
-};
+export function useCrearRecurso(onSuccess?: () => Promise<void> | void) {
+  const action = useAsyncAction<[RecursoCreate], Recurso>((body) => createRecurso(body));
+  const run = async (body: RecursoCreate) => {
+    const result = await action.run(body);
+    await onSuccess?.();
+    return result;
+  };
+  return { ...action, run };
+}
 
-export const useCrearRecurso = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: service.createRecurso,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['recursos-materia'] }),
-  });
-};
+export function useEditarRecurso(onSuccess?: () => Promise<void> | void) {
+  const action = useAsyncAction<[number, RecursoCreate], Recurso>((id, body) => updateRecurso(id, body));
+  const run = async (id: number, body: RecursoCreate) => {
+    const result = await action.run(id, body);
+    await onSuccess?.();
+    return result;
+  };
+  return { ...action, run };
+}
 
-export const useEditarRecurso = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: any }) => service.updateRecurso(id, data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['recursos-materia'] }),
-  });
-};
-
-export const useBorrarRecurso = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: service.deleteRecurso,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['recursos-materia'] }),
-  });
-};
+export function useBorrarRecurso(onSuccess?: () => Promise<void> | void) {
+  const action = useAsyncAction<[number], void>((id) => deleteRecurso(id));
+  const run = async (id: number) => {
+    await action.run(id);
+    await onSuccess?.();
+  };
+  return { ...action, run };
+}

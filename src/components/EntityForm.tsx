@@ -48,16 +48,16 @@ function renderField<T extends Record<string, unknown>>(
         <button
           type="button"
           aria-pressed={Boolean(value)}
-          onClick={() => onChange(field.name as keyof T, !Boolean(value))}
+          onClick={() => onChange(field.name as keyof T, !value)}
           className={[
             "relative h-6 w-11 rounded-full border transition",
-            Boolean(value) ? "border-violet bg-violet" : "border-border bg-[#2A2B36]",
+            value ? "border-violet bg-violet" : "border-border bg-[#2A2B36]",
           ].join(" ")}
         >
           <span
             className={[
               "absolute top-1 h-4 w-4 rounded-full bg-white transition",
-              Boolean(value) ? "left-6" : "left-1",
+              value ? "left-6" : "left-1",
             ].join(" ")}
           />
         </button>

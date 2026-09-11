@@ -1,14 +1,18 @@
-
-// TODO: Implementar con API real
-import { apiClient } from '../../lib/apiClient';
-import type { Materia, Correlativa } from '../../api/types';
+// Integrante 3 — Detalle de materia. Capa service (puras, sin React).
+import { apiClient } from "../../lib/apiClient";
+import { DEMO_MODE } from "../../api/demo";
+import type { Correlativa, Materia, Paginated } from "../../api/types";
+import { demoGetCorrelativas, demoGetMateria } from "./demo";
 
 export const getMateria = async (id: number): Promise<Materia> => {
-  // return apiClient(`/materias/${id}`);
-  return Promise.resolve({ id, nombre: 'Materia Mock', codigo: 'M01', carrera_id: 1, anio: 1, cuatrimestre: 1 });
+  if (DEMO_MODE) return demoGetMateria(id);
+  return apiClient<Materia>(`/materias/${id}`, { auth: false });
 };
 
 export const getCorrelativas = async (materiaId: number): Promise<Correlativa[]> => {
-  // return apiClient(`/materias/correlativas/${materiaId}`);
-  return Promise.resolve([]);
+  if (DEMO_MODE) return demoGetCorrelativas(materiaId);
+  const res = await apiClient<Paginated<Correlativa>>(`/materias/correlativas/${materiaId}?per_page=100`, {
+    auth: false,
+  });
+  return res.items;
 };

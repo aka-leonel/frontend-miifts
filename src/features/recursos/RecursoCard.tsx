@@ -1,40 +1,65 @@
-import { Card, Button } from '../../components';
-import { useBorrarRecurso } from './hooks';
+// Integrante 3 (INTEGRACION_FRONT.md §2.7 Tier 3). Presentacional puro —
+// mismo criterio que <MateriaCard> de Integrante 2: el padre decide si hay
+// `onEdit`/`onDelete` (solo cuando `recurso.usuario_id === usuario.id`) y
+// maneja el `<ConfirmDialog>` de borrado.
+import type { Recurso } from "../../api/types";
 
-interface RecursoCardProps {
-  id: number;
-  titulo: string;
-  url: string;
-  descripcion: string;
-  tipo: string | null;
-  usuarioId: number;
-  currentUserId: number; // Para verificar ownership
-  onEdit: () => void;
+interface Props {
+  recurso: Recurso;
+  onEdit?: () => void;
+  onDelete?: () => void;
+  disabled?: boolean;
 }
 
-export const RecursoCard = ({ 
-  id, titulo, url, descripcion, tipo, usuarioId, currentUserId, onEdit 
-}: RecursoCardProps) => {
-  const borrarRecurso = useBorrarRecurso();
-
-  const isOwner = usuarioId === currentUserId;
+export function RecursoCard({ recurso, onEdit, onDelete, disabled }: Props) {
+  const esDueno = Boolean(onEdit || onDelete);
 
   return (
-    <Card className="p-4 space-y-2">
-      <div className="flex justify-between items-start">
-        <h3 className="font-semibold text-text">{titulo}</h3>
-        {tipo && <span className="text-xs text-accent uppercase">{tipo}</span>}
-      </div>
-      <p className="text-sm text-surface2">{descripcion}</p>
-      <a href={url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline">
-        Ver recurso
-      </a>
-      {isOwner && (
-        <div className="flex gap-2 mt-2">
-          <Button variant="ghost" onClick={onEdit} size="sm">Editar</Button>
-          <Button variant="danger" onClick={() => borrarRecurso.mutate(id)} size="sm">Borrar</Button>
+    <div className="rounded-2xl border border-border bg-card p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="truncate text-sm font-semibold text-text">{recurso.titulo}</div>
+          {recurso.descripcion ? <p className="mt-1 text-sm text-muted">{recurso.descripcion}</p> : null}
         </div>
-      )}
-    </Card>
+        {recurso.tipo ? (
+          <span className="flex-shrink-0 rounded-full bg-surface2 px-2 py-0.5 text-xs uppercase text-muted">
+            {recurso.tipo}
+          </span>
+        ) : null}
+      </div>
+
+      <a
+        href={recurso.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-2 inline-block text-sm text-violet underline"
+      >
+        Ver recurso ↗
+      </a>
+
+      {esDueno ? (
+        <div className="mt-3 flex gap-2 border-t border-border pt-3">
+          {onEdit ? (
+            <button
+              type="button"
+              onClick={onEdit}
+              className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted transition hover:text-text"
+            >
+              Editar
+            </button>
+          ) : null}
+          {onDelete ? (
+            <button
+              type="button"
+              onClick={onDelete}
+              disabled={disabled}
+              className="rounded-lg border border-red-500/40 px-3 py-1.5 text-xs font-medium text-red-300 disabled:opacity-50"
+            >
+              Borrar
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
   );
-};
+}

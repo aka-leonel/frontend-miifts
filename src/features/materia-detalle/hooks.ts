@@ -1,17 +1,11 @@
+import { useAsync } from "../../hooks/useAsyncQuery";
+import { getCorrelativas, getMateria } from "./service";
+import type { Correlativa, Materia } from "../../api/types";
 
-import { useQuery } from '@tanstack/react-query';
-import * as service from './service';
+export function useMateria(id: number) {
+  return useAsync<Materia>(() => getMateria(id), [id]);
+}
 
-export const useMateria = (id: number) => {
-  return useQuery({
-    queryKey: ['materia', id],
-    queryFn: () => service.getMateria(id),
-  });
-};
-
-export const useCorrelativas = (id: number) => {
-  return useQuery({
-    queryKey: ['correlativas', id],
-    queryFn: () => service.getCorrelativas(id),
-  });
-};
+export function useCorrelativas(id: number) {
+  return useAsync<Correlativa[]>(() => getCorrelativas(id), [id]);
+}

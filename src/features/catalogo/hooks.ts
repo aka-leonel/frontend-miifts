@@ -28,7 +28,9 @@ export function useAsync<T>(fetcher: () => Promise<T>, deps: unknown[]) {
     return () => {
       active = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // `deps` es a propósito el array que pasa cada caller (fetcher genérico):
+    // no puede ser un literal acá.
+    // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/use-memo
   }, deps);
 
   useEffect(() => load(), [load]);
