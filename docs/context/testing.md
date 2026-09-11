@@ -33,3 +33,41 @@ Unit: ApiClient parser, AuthContext, Pagination. Integration: Page+Service+MSW. 
 
 ## 4. Limitaciones
 Sin runner/MSW/CI instalado; backend http://localhost:8000 vivo para E2E.
+
+## 5. Reporte — Integrante 2 MATERIAS+INICIO (2026-09-11, Tester)
+
+### Dependencias instaladas
+- `npm install` con Node 23.10.0 (mise requiere 22, nvm 21.7 incompatible con vite 8/rolldown) → `vite build` OK (50 módulos, 74kB gzip) tras switch a 23.10.0. Sin `pnpm` en PATH, se usó `npm`. Faltantes opcionales no instalados: `@tanstack/react-query`, `react-router-dom`, `vitest`/`msw` (diferidos per D009) — no bloquean Int.2 que usa `useAsync` local.
+
+### Alcance validado
+Archivos Int.2: `features/catalogo/service.ts|hooks.ts`, `features/materias/service.ts|hooks.ts|estado.ts|materiaUsuarioSpec.ts|MateriaCard.tsx|ByteWidget.tsx|PromedioCard.tsx|MisMateriasScreen.tsx|InicioScreen.tsx`, `features/recordatorios/hooks.ts` (stub unblock), `App.tsx` integración.
+
+### Evidencia
+
+| Check | Resultado | Evidencia |
+|-------|-----------|-----------|
+| **Build** | PASS | `npx vite build` con Node 23.10 → `✓ built in 239ms`, `dist/assets/index-*.js 250kB` |
+| **Typecheck Int.2** | PASS | `tsc --skipLibCheck` → 0 errores en `MateriaCard|ByteWidget|InicioScreen|recordatorios/hooks`; errores restantes son pre-existentes de Int.3 (`Correlativa` missing, `@tanstack/react-query` missing, `Card/Section/Button` missing) y `App.tsx` DemoItem mock |
+| **T2-CAT-01 catálogo** | PASS | `getMateriasDeCarrera(carreraId, {page,per_page})` → `GET /materias/carrera/{id}?page=&per_page=100`, `Paginated<Materia>`, demo paginate con `total_pages`, hook `useMateriasDeCarrera(carreraId)` |
+| **T2-MAT service** | PASS | `getMisMaterias(page)` → `withUsuarioId(/materias/usuario/{id})` + `page/per_page`, `getPromedio()` → `withUsuarioId`, `createCursada(body: CursadaCreate)` sin `usuario_id` → `POST /materias/usuario`, `updateCursada(id, CursadaUpdate)` → `PATCH /materias/cursada/{id}` sin `materia_id`, `deleteCursada` → `DELETE 204` sin body. 409/422 propagados vía `ApiError` |
+| **estadoLabel** | PASS | `cursando→En curso`, `nota_final→Aprobada`, `parcial→Regular`, else `Pendiente`; `estadoBadgeClasses` tokens `violet/green/lime/border` |
+| **MateriaCard** | PASS | Presentacional, props `cursada,onOpen,onEdit,onDelete`, usa `estadoLabel+Badge`, `subtitulo` notas, `stopPropagation` en botones, `hover:border-violet/40` |
+| **ByteWidget** | PASS | Props `{aprobadas,total}`, pct calc, 4 estados Dormido/Despierto/Entusiasta/Graduado, SVG Byte + barra `from-violet to-lime`, tokens `card/border/surface2` |
+| **materiaUsuarioSpec** | PASS | `fields: materia_id select lockOnEdit + cursando switch + 3 notas number 1-10`, `submit.create→createCursada`, `update→updateCursada` sin materia_id, `onError {409:toast,422:fields}`, `invalidates [['mis-materias'],['promedio']]` |
+| **MisMateriasScreen** | PASS | `useMisMaterias(page)` + `usePromedio()` + `useMateriasDeCarrera(carrera_id)`, `ByteWidget+PromedioCard` arriba, chips filtro cliente `Todas/En curso/Regular/Aprobada/Pendiente` via `estadoLabel`, `ListState` loading/error/empty, `MateriaCard` con onEdit/onDelete/onOpen, `Paginador page/total_pages`, FAB `+` → `FormModal` create vs edit spec, `ConfirmDialog` borrar, `onSuccess refetch` lista+promedio, `ApiError.detail` toast en delete |
+| **InicioScreen** | PASS | Panel: `useMisMaterias+usePromedio` → `ByteWidget+PromedioCard` reusados, `useRecordatorios({desde: hoyISO, per_page:3})` importado de `features/recordatorios/hooks` (no duplicado), solo lectura tap→materia, estados loading/skeleton/empty, accesos rápidos carrusel materias, `getMiUsuario()` header |
+| **Integración App** | PASS | `App.tsx` importa `InicioReal`/`MisMateriasReal`, `case inicio/materias` rutean a reales, `BottomTabs` intacto |
+| **No duplicación** | PASS | No se creó `FormModal/EntityForm/ListState/Paginador` (dueño Int.1), no `Recurso/Correlativa` (Int.3), `recordatorios/service` reusado solo via hook |
+| **Contrato** | PASS | `Paginated<T>` + `Paginador`, `detail→toast` via `useToast`, `errors[]→fields` via `FormModal/useApiForm`, nunca `usuario_id` en POST, wrapper único `apiClient` |
+
+### No validado / Limitaciones
+- Backend `localhost:8000` no levantado → validación en `DEMO_MODE=true` (demo.ts) no contra API real; 401/403/404/409 reales no ejercitados E2E.
+- Sin `vitest`/`msw`/`@testing-library` instalados → sin tests automatizados; validación manual + build + tsc.
+- TanStack Query no instalado (uso `useAsync` local per D009) — migración pendiente no bloquea.
+- `InicioScreen` agrupación por semana y navegación detalle no testeada E2E (requiere `react-router` real).
+
+### Veredicto
+**PASS con observaciones pre-existentes.** Int.2 cumple criterios SPRINT §7.3 1-7. Fallos `tsc` restantes son de Int.3/App mock, no regresión de Int.2. Recomendación: instalar `@tanstack/react-query` + `react-router-dom` y `vitest`/`msw` para suite futura, y alinear `src/api/types.ts` con `docs/openapi.json` generado (`Correlativa`, `Recurso`).
+
+### Próximo paso
+Planner → Architect: marcar `status.md` TESTING→COMPLETE para Int.2, o escalar gaps backend (`PATCH /auth/me`, `PATCH /recordatorios` per §1.7).

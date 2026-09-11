@@ -51,3 +51,57 @@ Backend down→MSW mock openapi.json; CORS port !=5173→pedir CORS_ORIGINS; 409
 
 ## 6. Done
 Fase OK cuando endpoints responden, paginación y errores verificados build+lint pasan.
+
+## 7. Plan Detallado — Integrante 2: MATERIAS + INICIO (para Planner → Developer)
+
+> Fuente: SPRINT2_FRONT.md / SPRINT3_FRONT.md § Integrante 2. Prioridad ALTA, 4 días. Depende de Int.1 `<FormModal>` (ya entregado en `src/components/FormModal.tsx`) y de Int.4 `features/recordatorios/` para Inicio (importar `useRecordatorios`, no duplicar).
+
+### 7.1 Estado actual (auditoría 2026-09-11)
+- `features/catalogo/service.ts` + `hooks.ts` + `demo.ts`: **DONE** provisional con `DEMO_MODE` y `getMateriasDeCarrera(carreraId, {page,per_page})` → `GET /materias/carrera/{id}` OK. No tocar interfaz, consumido por `materiaUsuarioSpec`.
+- `features/materias/service.ts` + `hooks.ts` + `demo.ts` + `estado.ts` + `materiaUsuarioSpec.ts` + `PromedioCard.tsx` + `MisMateriasScreen.tsx`: **DONE/PARCIAL** — CRUD cursadas (`GET /materias/usuario/{id}`, `GET /materias/promedio/{id}`, `POST /materias/usuario` sin usuario_id, `PATCH/DELETE /materias/cursada/{id}`) + `estadoLabel`/`estadoBadgeClasses` + `Paginador` + `409/422` vía `FormModal` OK. Falta extraer `MateriaCard`/`ByteWidget` y crear `InicioScreen`.
+- `src/App.tsx`: aún mock con `materiasInit` hardcodeado; no rutea a `MisMateriasScreen` real ni a `Inicio` real. Intake del Developer: integrar sin pisar `features/recordatorios/` ni `FormModal`.
+- Tokens Tailwind (`bg #111218`, `card #1A1B23`, etc.) y `apiClient`/`api/scope.ts` (`withUsuarioId`) ya listos.
+
+### 7.2 Tareas delegables al Developer (orden estricto, sin duplicar módulos ajenos)
+
+#### T2-CAT-01 · Verificación catálogo (0.5d) — NO RE-CREAR
+- Archivos: `src/features/catalogo/service.ts`, `hooks.ts`
+- Validar: `getMateriasDeCarrera` usa `per_page=100`, query correcta, tipado `Paginated<Materia>`, `hooks.useMateriasDeCarrera(carreraId)` sin TanStack (useAsync OK hasta migrar). Si output `docs/openapi.json` cambió, regenerar tipos pero mantener firma.
+- Entrega: sin cambios o patch mínimo; Planner marca DONE.
+
+#### T2-MAT-01 · Extraer `MateriaCard` + `ByteWidget` (1d)
+- Archivos nuevos: `src/features/materias/MateriaCard.tsx`, `src/features/materias/ByteWidget.tsx`
+- `MateriaCard({ cursada, onEdit, onDelete, onOpen })`: nombre (`cursada.materia.nombre ?? #id`), `<Chip>` con `estadoLabel`+`estadoBadgeClasses`, subtítulo notas (`nota_parcial_1/2/final` o "Sin notas"), botones Editar/Borrar (stopPropagation), click card → detalle. Solo presenta, sin fetch.
+- `ByteWidget({ aprobadas, total })`: 4 estados Dormido/Despierto/Entusiasta/Graduado según `aprobadas/total` (reusa SVG/logica de `App.tsx:ByteCard`), barra progreso `pct=aprobadas/total*100`, colores tokens. Props derivadas de `useMisMaterias` en padre, no fetch interno. Exportar en `features/materias/index.ts` para que Int.3 importe `estadoLabel`.
+- Restricción: NO crear `FormModal`, `ListState`, etc. (dueño Int.1).
+
+#### T2-MAT-02 · Refactor `MisMateriasScreen` para usar nuevos componentes (0.5d)
+- Archivo: `src/features/materias/MisMateriasScreen.tsx`
+- Reemplazar inline cards por `<MateriaCard>`, extraer cálculo `aprobadas = items.filter(c=>c.estado==='aprobada').length` para `<ByteWidget>` + `<PromedioCard>` arriba. Mantener chips filtro cliente (`Todas/En curso/Regular/Aprobada/Pendiente`), `Paginador`, FAB `+` → `FormModal spec={materiaUsuarioSpec}` con `409 toast` / `422 fields`, `ConfirmDialog` borrar. Invalidación `onSuccess` → `refetch` lista+promedio.
+- Test: `409` duplicado/carrera distinta, `422` nota 1-10.
+
+#### T2-INI-01 · Pantalla `/` Inicio (Panel) (1d)
+- Archivo nuevo: `src/features/materias/InicioScreen.tsx` (o `src/pages/Inicio/` re-export)
+- Composición: `useMisMaterias(1)` + `usePromedio()` → `<ByteWidget>` + `<PromedioCard>` reusados arriba. Sección "Próximos recordatorios": `import { useRecordatorios } from "../recordatorios/hooks"` con `{ desde: hoyISO }` (solo lectura, tap → `onOpenMateria(materia_id)`), dot por tipo, vacío → `EmptyState`. Sección "Accesos rápidos / Mis materias": carrusel horizontal de 3-4 `<MateriaCard>` compactas o chips. Header bienvenida `usuario.nombre` desde `api/scope:getMiUsuario()` / `useAuth`.
+- NO crear `features/recordatorios/service.ts` ni `RecordatorioCard` — importar de Int.4. Si Int.4 aún no entregó, usar `demo.ts` de recordatorios con TODO comment y fallback EmptyState.
+- Arquetipo Panel (§2.5 INTEGRACION), sin tabs propias (usa `AppShell` BottomTabs).
+
+#### T2-INT-01 · Integración Router/AppShell (0.5d)
+- Archivo: `src/App.tsx` (o `src/main.tsx` router)
+- Reemplazar `InicioScreen` mock y `MateriasScreen` mock por `features/materias/InicioScreen` y `MisMateriasScreen` reales. Mantener `BottomTabs` 5 destinos, `RutaProtegida` ya existente. Lazy si aplica. Verificar `DEMO_MODE=true` funciona sin backend; `VITE_API_URL` con `apiClient`.
+- NO tocar `features/convenios`, `features/recursos`, `features/recordatorios`.
+
+#### T2-OPT-01 · (Si sobra) ABM catálogo admin `/admin/catalogo` solo `usuario.rol==='admin'` — opcional, no bloquea DONE.
+
+### 7.3 Criterios de aceptación para Tester (validar contra SPRINT § Criterios)
+1. `getMateriasDeCarrera` + `useMateriasDeCarrera` responden `Paginated<Materia>` paginado, fuera rango `items:[]`.
+2. `getMisMaterias`/`getPromedio`/`create/update/deleteCursada` sin `usuario_id` en body, `409`/`422` mapeados, `estado` derivado OK.
+3. `MateriaCard`/`ByteWidget`/`PromedioCard` presentacionales con tokens Tailwind, `estadoLabel` exportado.
+4. `/materias` lista paginada + chips filtro cliente + FAB modal + editar/borrar con `ConfirmDialog`, promedio/Byte reactivos.
+5. `/` Inicio reusa mismos widgets + próximos recordatorios vía `useRecordatorios` importado, sin duplicar service.
+6. Contrato: `Paginated` + `Paginador`, `detail→toast`, `errors[]→fields`, nunca `usuario_id` en POST, wrapper único `apiClient`.
+7. `npm run build && npm run lint` verdes.
+
+### 7.4 Orden de ejecución Developer
+T2-CAT-01 → T2-MAT-01 → T2-MAT-02 → T2-INI-01 → T2-INT-01 → (T2-OPT-01)
+Dependencias: T2-MAT-02 bloquea T2-INI-01 (reuso widgets); T2-INI-01 depende de `useRecordatorios` de Int.4 (si no disponible, mock).
