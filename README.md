@@ -54,6 +54,18 @@ VITE_API_URL=http://localhost:8000
 Apunta a la URL base del backend. Cambiarla si el backend corre en otro
 puerto o hostname.
 
+## Ejecutar con Docker
+
+```bash
+docker compose up --build
+```
+
+Esto levanta el frontend en **http://localhost:4174** sirviéndolo con Nginx
+desde una build multi-stage de Vite. Por defecto, el contenedor apunta a
+`http://host.docker.internal:8000`, que es la forma más simple de hablar con
+un backend corriendo en la máquina host. Si el backend corre dentro del mismo
+`docker-compose`, cambiar `VITE_API_URL` por la URL interna del servicio.
+
 ## Estructura del proyecto
 
 ```
