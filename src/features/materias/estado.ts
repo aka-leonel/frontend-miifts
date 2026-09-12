@@ -1,17 +1,18 @@
-import type { Cursada } from "../../api/types";
+import type { Cursada, EstadoCursada } from "../../api/types";
 
-export type EstadoUI = "En curso" | "Aprobada" | "Regular" | "Pendiente";
+// El backend ya calcula la regla de negocio (cursando / promocionada / aprobada /
+// desaprobada / pendiente según cursando + notas) y la manda resuelta en
+// `cursada.estado`. Acá NO se reimplementa esa lógica: solo se lee.
+export type EstadoUI = EstadoCursada;
 
 export function estadoLabel(cursada: Cursada): EstadoUI {
-  if (cursada.cursando) return "En curso";
-  if (cursada.nota_final != null) return "Aprobada";
-  if (cursada.nota_parcial_1 != null || cursada.nota_parcial_2 != null) return "Regular";
-  return "Pendiente";
+  return cursada.estado;
 }
 
 export const estadoBadgeClasses: Record<EstadoUI, string> = {
-  "En curso": "bg-violet/15 text-violet",
-  Aprobada: "bg-green/15 text-green",
-  Regular: "bg-lime/15 text-lime",
-  Pendiente: "bg-border text-muted",
+  cursando: "bg-violet/15 text-violet",
+  promocionada: "bg-lime/15 text-lime",
+  aprobada: "bg-green/15 text-green",
+  desaprobada: "bg-red-500/15 text-red-300",
+  pendiente: "bg-border text-muted",
 };

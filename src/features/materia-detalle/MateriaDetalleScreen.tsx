@@ -110,7 +110,7 @@ export function MateriaDetalleScreen({ materiaId, onVolver }: Props) {
   }
 
   const m = materia.data;
-  const estado = cursadaActual ? estadoLabel(cursadaActual) : "Pendiente";
+  const estado = cursadaActual ? estadoLabel(cursadaActual) : "pendiente";
 
   return (
     <div className="flex-1 overflow-y-auto pb-24">
@@ -140,7 +140,7 @@ export function MateriaDetalleScreen({ materiaId, onVolver }: Props) {
           </div>
           {cursadaActual ? (
             <div className="flex flex-wrap items-center gap-2">
-              <span className={["rounded-full px-3 py-1 text-xs font-semibold", estadoBadgeClasses[estado]].join(" ")}>
+              <span className={["rounded-full px-3 py-1 text-xs font-semibold capitalize", estadoBadgeClasses[estado]].join(" ")}>
                 {estado}
               </span>
               {cursadaActual.nota_final != null ? (
@@ -245,7 +245,7 @@ export function MateriaDetalleScreen({ materiaId, onVolver }: Props) {
       <FormModal
         open={modalNotas}
         item={cursadaActual ?? undefined}
-        spec={materiaUsuarioSpec({ materias: materiasDeMiCarrera.data?.items ?? [] })}
+        spec={materiaUsuarioSpec({ materias: materiasDeMiCarrera.data?.items ?? [], cursadaActual })}
         initialValues={materiaUsuarioInitial(cursadaActual ?? { materia_id: materiaId })}
         onClose={() => setModalNotas(false)}
         onSuccess={() => {
