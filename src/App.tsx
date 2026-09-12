@@ -484,7 +484,6 @@ function CarreraScreen({ onGo }: { onGo: (s: Screen) => void }) {
     setLoadingCarreras(true);
     getCarreras()
       .then((res) => {
-        console.log('GET /materias/carreras ->', res);
         if (!active) return;
         const items = Array.isArray(res?.items) ? res.items : [];
         const mapped = items.map((c) => ({ id: c.id, nombre: c.nombre }));
