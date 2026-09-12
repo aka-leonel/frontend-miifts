@@ -20,9 +20,19 @@ export interface Usuario {
 export interface Carrera {
   id: number;
   nombre: string;
-  duracion_cuatrimestres?: number | null;
-  descripcion?: string | null;
+  duracion_cuatrimestres: number;
+  ifts_id: number;
 }
+
+// S4-10 (Admin catálogo): calcado de `CarreraCreate`/`CarreraUpdate` en
+// docs/openapi.json — el backend no acepta `descripcion` en este recurso.
+export type CarreraCreate = {
+  nombre: string;
+  duracion_cuatrimestres: number;
+  ifts_id: number;
+};
+
+export type CarreraUpdate = Partial<CarreraCreate>;
 
 export interface Materia {
   id: number;
@@ -31,8 +41,19 @@ export interface Materia {
   codigo: string;
   anio: number;
   cuatrimestre: number;
-  duracion_cuatrimestres?: number | null;
 }
+
+// S4-10 (Admin catálogo): calcado de `MateriaCreate`/`MateriaUpdate` en
+// docs/openapi.json — `carrera_id` no se puede editar por PUT (fijo al crear).
+export type MateriaCreate = {
+  carrera_id: number;
+  nombre: string;
+  codigo: string;
+  anio: number;
+  cuatrimestre: number;
+};
+
+export type MateriaUpdate = Partial<Omit<MateriaCreate, "carrera_id">>;
 
 export interface Correlativa {
   id: number;

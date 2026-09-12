@@ -1,5 +1,6 @@
 import { getMiUsuario } from "../../api/scope";
 import { useRecordatorios } from "../recordatorios/hooks";
+import { estadoLabel } from "./estado";
 import { useMisMaterias, usePromedio } from "./hooks";
 import ByteWidget from "./ByteWidget";
 import PromedioCard from "./PromedioCard";
@@ -22,8 +23,10 @@ export default function InicioScreen({ onOpenMateria }: { onOpenMateria?: (id: n
   const recordatorios = useRecordatorios({ desde: hoyISO(), per_page: 3 });
 
   const items = lista.data?.items ?? [];
-  const aprobadas = items.filter((c) => c.estado === "aprobada").length;
-  const total = 10;
+  // S4-08: `c.estado==="aprobada"` es el campo crudo del backend (sin
+  // umbral) — usar `estadoLabel` para que coincida con la badge "Reprobada".
+  const aprobadas = items.filter((c) => estadoLabel(c) === "Aprobada").length;
+  const total = lista.data?.total ?? 0;
 
   return (
     <div className="flex-1 overflow-y-auto pb-24">

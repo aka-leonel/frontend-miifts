@@ -8,6 +8,8 @@ import { RecordatoriosScreen as RecordatoriosFeatureScreen } from "./features/re
 import PerfilFeatureScreen from "./features/perfil/PerfilScreen";
 import { useLogin } from "./features/auth/hooks";
 import { haySesion } from "./features/auth/service";
+import AdminCatalogoScreen from "./features/catalogo-admin/AdminCatalogoScreen";
+import { getMiUsuario } from "./api/scope";
 import { ApiError } from "./lib/apiClient";
 import { useToast } from "./hooks/useToast";
 
@@ -21,7 +23,8 @@ type Screen =
   | "detalle"
   | "recordatorios"
   | "convenios"
-  | "perfil";
+  | "perfil"
+  | "admin-catalogo";
 
 type NavTab = "inicio" | "materias" | "recordatorios" | "convenios" | "perfil";
 
@@ -345,7 +348,12 @@ const navItems: { key: NavTab; label: string; icon: React.ReactNode }[] = [
 
 function BottomNav({ active, onNav }: { active: NavTab; onNav: (t: NavTab) => void }) {
   return (
-    <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, background: CARD, borderTop: `0.5px solid ${BORDER}`, display: "flex", justifyContent: "space-around", padding: "10px 0 20px", zIndex: 100 }}>
+    <div
+      // `display:flex` va acá como clase (no en `style`, donde ganaría por
+      // especificidad y anularía el `display:none` que aplica `md:hidden`).
+      className="flex md:hidden"
+      style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, background: CARD, borderTop: `0.5px solid ${BORDER}`, justifyContent: "space-around", padding: "10px 0 20px", zIndex: 100 }}
+    >
       {navItems.map((item) => {
         const isActive = active === item.key;
         return (
@@ -355,6 +363,42 @@ function BottomNav({ active, onNav }: { active: NavTab; onNav: (t: NavTab) => vo
           </button>
         );
       })}
+    </div>
+  );
+}
+
+// ─── Sidebar Nav (desktop, md+) ────────────────────────────────────────────────
+// S4-06: reemplaza al BottomNav desde `md:` para que el shell deje de forzar
+// el frame fijo de 430px también en pantallas grandes.
+function SidebarNav({ active, onNav }: { active: NavTab; onNav: (t: NavTab) => void }) {
+  return (
+    <div
+      className="hidden md:flex md:w-60 md:flex-shrink-0 md:flex-col md:border-r md:px-4 md:py-8"
+      style={{ borderColor: BORDER, background: CARD }}
+    >
+      <div className="mb-8 px-2 text-xl font-black" style={{ color: TEXT, letterSpacing: -0.4 }}>
+        mi<span style={{ color: VIOLET }}>IFTS</span>
+      </div>
+      <nav className="flex flex-col gap-1">
+        {navItems.map((item) => {
+          const isActive = active === item.key;
+          return (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => onNav(item.key)}
+              className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition"
+              style={{
+                background: isActive ? "rgba(140,125,255,0.12)" : "transparent",
+                color: isActive ? VIOLET : MUTED,
+              }}
+            >
+              {item.icon}
+              {item.label}
+            </button>
+          );
+        })}
+      </nav>
     </div>
   );
 }
@@ -626,6 +670,7 @@ const screenToNav: Partial<Record<Screen, NavTab>> = {
   recordatorios: "recordatorios",
   convenios: "convenios",
   perfil: "perfil",
+  "admin-catalogo": "materias",
 };
 
 export default function App() {
@@ -650,7 +695,13 @@ export default function App() {
       case "registro": return <RegistroScreen onGo={setScreen} />;
       case "carrera": return <CarreraScreen onGo={setScreen} />;
       case "inicio": return <InicioReal onOpenMateria={abrirDetalle} />;
-      case "materias": return <MisMateriasReal onOpenMateria={abrirDetalle} />;
+      case "materias":
+        return (
+          <MisMateriasReal
+            onOpenMateria={abrirDetalle}
+            onAbrirAdmin={() => setScreen("admin-catalogo")}
+          />
+        );
       case "detalle":
         return materiaIdSeleccionada != null ? (
           <MateriaDetalleFeatureScreen materiaId={materiaIdSeleccionada} onVolver={() => setScreen("materias")} />
@@ -660,16 +711,37 @@ export default function App() {
       case "recordatorios": return <RecordatoriosFeatureScreen />;
       case "convenios": return <ConveniosFeatureScreen />;
       case "perfil": return <PerfilFeatureScreen onCerrarSesion={() => setScreen("login")} />;
+      case "admin-catalogo":
+        // S4-10: guard de rol acá además del link condicional en
+        // MisMateriasScreen — nadie que no sea admin llega a esta pantalla
+        // aunque fuerce el estado.
+        return getMiUsuario().rol === "admin" ? (
+          <AdminCatalogoScreen onVolver={() => setScreen("materias")} />
+        ) : (
+          <MisMateriasReal onOpenMateria={abrirDetalle} />
+        );
     }
   };
 
+  // S4-06: el shell ya no fuerza un frame de 430px en toda resolución — solo
+  // el flujo de auth (sin nav, pensado como una tarjeta angosta) mantiene ese
+  // ancho; el resto de la app crece hasta un contenido fluido con sidebar
+  // desde `md:` en vez de BottomNav.
   return (
-    <div style={{ background: BG, minHeight: "100%", display: "flex", justifyContent: "center" }}>
-      <div style={{ width: "100%", maxWidth: 430, minHeight: "100vh", background: BG, position: "relative", display: "flex", flexDirection: "column", color: TEXT }}>
+    <div className="flex min-h-screen w-full" style={{ background: BG, color: TEXT }}>
+      {showNav && activeTab ? <SidebarNav active={activeTab} onNav={handleNav} /> : null}
+      <div
+        className={
+          showNav
+            ? "flex w-full flex-1 flex-col md:mx-auto md:max-w-3xl lg:max-w-5xl"
+            : "mx-auto flex w-full max-w-[430px] flex-1 flex-col"
+        }
+        style={{ position: "relative" }}
+      >
         {renderScreen()}
-        {showNav && activeTab && <BottomNav active={activeTab} onNav={handleNav} />}
-        <Toaster />
+        {showNav && activeTab ? <BottomNav active={activeTab} onNav={handleNav} /> : null}
       </div>
+      <Toaster />
     </div>
   );
 }

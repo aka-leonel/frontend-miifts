@@ -1,28 +1,32 @@
 # Status — miIFTS Frontend
 
-> Owner: Planner | Actualizado: 2026-09-11
+> Owner: Planner | Actualizado: 2026-09-12
 
 ## Estado
-**TESTING → COMPLETE** (parcial) — Integrante 2 (MATERIAS+INICIO) implementado y validado por Tester (2026-09-11). Fase 1 Auth: **T1.2 Login real completado y validado** este mismo día (ver implementation.md); T1.1 Registro y T1.3 rehidratación siguen pendientes. Contexto enriquecido con INTEGRACION_FRONT.md + REQUERIMIENTOS_FRONTEND_IA.md + openapi.json + SPRINT2/3_FRONT.md.
+**SPRINT 4 · Integrante 2 (Catálogo · Shell responsive) — COMPLETE**, tickets S4-06 → S4-10 implementados y validados (build+tsc+eslint+Playwright contra backend real, base `dev @ fbf69d6`). El resto del Sprint 4 (Integrantes 1/3/4) no se tocó en este pase.
 
-## Qué se agregó (este update)
-- `features/auth/` (service+hooks): `POST /auth/login` real, guarda sesión en `miifts_token`/`miifts_usuario`.
-- `App.tsx` `LoginScreen`: dejó de ser mock (antes "Ingresar" navegaba directo a "registro" sin llamar al backend); ahora autentica de verdad, 401→toast, sesión persiste al refrescar.
-- `api/scope.ts`: `DEMO_USUARIO` ahora exportado (reusado por `features/auth` en DEMO_MODE).
+## Qué se agregó (este update — Sprint 4, Integrante 2)
+- **S4-06** Shell responsive: `App.tsx` sacó el `maxWidth:430` fijo del shell raíz. Nuevo `SidebarNav` (desktop, `md:+`) reemplaza a `BottomNav` (que ahora solo se ve en mobile). Bug encontrado y corregido en el camino: `BottomNav` tenía `display:"flex"` en `style` inline, que anulaba el `display:none` de la clase `md:hidden` sin importar el viewport — se movió `display` a la clase (`className="flex md:hidden"`).
+- **S4-07** Responsive `/materias`: `MisMateriasScreen` pasa de lista a `grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3`. FAB reescrito de `right: calc(50% - 190px)` (asumía el frame fijo viejo) a `right-6` fijo al viewport.
+- **S4-08** Estado "Reprobada": `estado.ts` ahora deriva `"Reprobada"` cuando `nota_final < 4` (antes cualquier nota final marcaba "Aprobada"). Umbral confirmado con el usuario. Se corrigieron también los conteos de `aprobadas` en `InicioScreen`/`MisMateriasScreen`, que leían el campo crudo `cursada.estado==="aprobada"` del backend (sin umbral) en vez de `estadoLabel()`.
+- **S4-09** Fix "select de materia vacío": diagnosticado como **gap de datos del backend** (`backend-ifts/seed.py` solo carga materias para "Desarrollo de Software", no para "Análisis de Sistemas"), no un bug del front — confirmado con `useMateriasDeCarrera`/`materiaUsuarioSpec` funcionando correctamente. Se agregó un aviso visible en `MisMateriasScreen` cuando la carrera del usuario no tiene materias cargadas.
+- **S4-10** (opcional, confirmado en alcance de Integrante 2) `features/catalogo-admin/` nuevo: ABM real de carreras y materias (`POST/PUT/DELETE /materias/carreras`, `/materias/`), sin `DEMO_MODE` (pedido explícito del ticket). Pantalla `AdminCatalogoScreen`, accesible solo para `usuario.rol==="admin"` (guard en `App.tsx` + link condicional en `MisMateriasScreen`). `api/types.ts`: se corrigió `Carrera` (agregado `ifts_id`, quitado `descripcion` inexistente en el backend) y se agregaron `CarreraCreate/Update`, `MateriaCreate/Update`.
+
+## Regresión detectada (no de Sprint 4)
+Se encontró que el commit base `fbf69d6` **no incluye** el trabajo de Registro/CarreraScreen reales ni el fix del `total` hardcodeado de `ByteWidget` que se habían hecho y validado en una sesión anterior — `RegistroScreen`/`CarreraScreen` volvieron a aparecer como mock puro. El `total` hardcodeado se re-corrigió como parte de S4-08 (mismo archivo/línea); Registro/Carrera **no** se tocó en este pase porque en Sprint 4 esa tarea es de Integrante 1 (S4-03), no de Integrante 2. Vale la pena que el equipo revise por qué ese commit no incluyó esos cambios (¿reset parcial? ¿conflicto de merge resuelto con la versión vieja?).
 
 ## Progreso
-- [x] context/ + docs/context/ 6 docs creados
-- [x] Enriquecimiento con INTEGRACION+REQUERIMIENTOS
-- [x] Int.2 T2-CAT-01→T2-INT-01 implementado (MateriaCard, ByteWidget, InicioScreen, MisMateriasScreen refactor, App integración)
-- [x] Tester validó Int.2: build OK (vite 8 con Node 23.10), tsc 0 errores Int.2, criterios §7.3 PASS
-- [x] Dependencias instaladas (`npm install` Node 23.10, 45 packages)
-- [x] T1.2 Login real implementado y validado (build+tsc+eslint+Playwright contra backend real, incluyendo caso 401)
+- [x] S4-06 Shell responsive (sidebar desktop + bottom nav mobile)
+- [x] S4-07 Grid responsive `/materias`
+- [x] S4-08 Estado "Reprobada" (umbral ≥4)
+- [x] S4-09 Diagnóstico + aviso UX (causa real: dato de backend, no de front)
+- [x] S4-10 Admin catálogo real (carreras + materias, sin mocks)
 
 ## Próximo paso
-Int.2 COMPLETE. Pendiente real: T1.1 Registro (`RegistroScreen`/`CarreraScreen` siguen mock, no llaman a `POST /auth/registro`) y T1.3 rehidratación/guard automático. Nota aparte: `context/status.md` (mirror raíz, D012) quedó desactualizado desde 2026-09-08 — no se tocó en este cambio por no ser parte del pedido, pero conviene que el Architect decida si resincroniza el mirror o lo da de baja.
+Sprint 4 Integrante 2 completo. Pendiente (otros carriles): S4-01→S4-05 (Integrante 1), S4-11 (Integrante 3), S4-16+ (Integrante 4). Sugerido para el equipo: decidir si se seedea backend-ifts con materias para "Análisis de Sistemas" (resolvería la causa real de S4-09) y revisar la regresión de Registro/Carrera antes mencionada.
 
 ## Bloqueadores
-Ninguno para Int.2 ni para Login. Gap vigente: CORS si port !=5173. Pre-existentes tsc en Int.3 (`@tanstack/react-query`, `Correlativa`, `Card/Section`) no bloquean Int.2.
+Ninguno para los tickets de Integrante 2. Gap vigente: CORS si el front no corre en :5173 (puerto default del scaffold Figma Make es 8443).
 
 ## Métricas
-Build OK (50 módulos, 74kB gzip, Node 23.10); `features/catalogo` + `features/materias` DONE; `MateriaCard`/`ByteWidget`/`InicioScreen` entregados; tests 0 (vitest/msw no instalados, diferidos).
+Build OK (74 módulos, 78kB gzip); tsc 0 errores; eslint sin issues nuevos (2 preexistentes ajenos en `vite.config.ts`/`convenios/hooks.ts`); validado en vivo con Playwright contra backend real (login admin, registro nuevo, ABM catálogo, badges de estado, responsive desktop/mobile).
