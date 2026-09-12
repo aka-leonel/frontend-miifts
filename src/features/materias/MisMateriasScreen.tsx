@@ -141,8 +141,7 @@ export default function MisMateriasScreen({ onOpenMateria }: { onOpenMateria?: (
         type="button"
         aria-label="Agregar materia"
         onClick={() => setModal({ open: true, item: null })}
-        style={{ position: "fixed", bottom: 90, right: "calc(50% - 190px)" }}
-        className="z-40 flex h-13 w-13 items-center justify-center rounded-2xl bg-violet text-2xl text-white shadow-[0_4px_20px_rgba(140,125,255,0.4)]"
+        className="fixed bottom-[90px] right-6 z-40 flex h-13 w-13 items-center justify-center rounded-2xl bg-violet text-2xl text-white shadow-[0_4px_20px_rgba(140,125,255,0.4)]"
       >
         +
       </button>

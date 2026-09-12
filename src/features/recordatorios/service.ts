@@ -1,12 +1,13 @@
 // Tarea del Integrante 3 (SPRINT2_FRONT.md): agenda de recordatorios.
 // Identidad desde el token: NO se manda `usuario_id` ni en GET ni en POST/DELETE.
-import { apiClient } from "../../api/client";
+import { apiClient, ApiError } from "../../api/client";
 import { DEMO_MODE } from "../../api/demo";
 import type { Paginated, Recordatorio, RecordatorioCreate } from "../../api/types";
 import {
   demoCreateRecordatorio,
   demoDeleteRecordatorio,
   demoGetRecordatorios,
+  demoRecordatorios,
 } from "./demo";
 
 export type RecordatorioFiltros = {
@@ -37,10 +38,20 @@ export async function getRecordatorios(filtros: RecordatorioFiltros = {}): Promi
 }
 
 export async function createRecordatorio(body: RecordatorioCreate): Promise<Recordatorio> {
-  if (DEMO_MODE) {
-    return demoCreateRecordatorio(body);
-  }
+
   return apiClient<Recordatorio>("/recordatorios/", { method: "POST", body });
+}
+
+export async function updateRecordatorio(id: number, body: Partial<RecordatorioCreate>): Promise<Recordatorio> {
+  if (DEMO_MODE) {
+    const item = demoRecordatorios.find((r) => r.id === id);
+    if (!item) {
+      throw new ApiError(404, "No encontramos ese recordatorio.");
+    }
+    Object.assign(item, body);
+    return item;
+  }
+  return apiClient<Recordatorio>(`/recordatorios/${id}`, { method: "PATCH", body });
 }
 
 export async function deleteRecordatorio(id: number): Promise<void> {

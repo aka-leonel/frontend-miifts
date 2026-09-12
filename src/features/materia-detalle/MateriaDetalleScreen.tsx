@@ -164,7 +164,7 @@ export function MateriaDetalleScreen({ materiaId, onVolver }: Props) {
             emptyDescription="Se puede cursar libremente."
             onRetry={() => correlativas.refetch()}
           >
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
               {(correlativas.data ?? []).map((c) => (
                 <CorrelativaItem key={c.id} nombre={c.requiere?.nombre ?? `Materia #${c.requiere_id}`} codigo={c.requiere?.codigo ?? "?"} />
               ))}
@@ -191,7 +191,7 @@ export function MateriaDetalleScreen({ materiaId, onVolver }: Props) {
             emptyDescription="Tocá + Agregar para publicar el primero."
             onRetry={() => recursos.refetch()}
           >
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
               {(recursos.data ?? []).map((r) => {
                 const esDueno = r.usuario_id === usuario.id;
                 return (
@@ -227,7 +227,7 @@ export function MateriaDetalleScreen({ materiaId, onVolver }: Props) {
             emptyDescription="Tocá + Agregar para crear el primero."
             onRetry={() => recordatorios.refetch()}
           >
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
               {(recordatorios.data?.items ?? []).map((r) => (
                 <RecordatorioCard
                   key={r.id}

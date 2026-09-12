@@ -11,12 +11,13 @@ import { FormModal, ListState } from "../../components";
 import { useToast } from "../../hooks/useToast";
 import { RecordatorioCard } from "./RecordatorioCard";
 import { useBorrarRecordatorio, useRecordatorios } from "./hooks";
-import { recordatorioInitial, recordatorioSpec } from "./recordatorioSpec";
+import { recordatorioFormInitial, recordatorioInitial, recordatorioSpec } from "./recordatorioSpec";
 import type { Recordatorio } from "../../api/types";
 
 export default function RecordatoriosScreen() {
   const { pushToast } = useToast();
   const [modalOpen, setModalOpen] = useState(false);
+  const [editItem, setEditItem] = useState<Recordatorio | null>(null);
   const lista = useRecordatorios({ per_page: 100 });
 
   const borrar = useBorrarRecordatorio(() => {
@@ -68,6 +69,10 @@ export default function RecordatoriosScreen() {
                       key={r.id}
                       recordatorio={r}
                       disabled={borrar.loading}
+                      onEdit={() => {
+                        setEditItem(r);
+                        setModalOpen(true);
+                      }}
                       onDelete={() => borrar.run(r.id)}
                     />
                   ))}
@@ -83,6 +88,10 @@ export default function RecordatoriosScreen() {
                       key={r.id}
                       recordatorio={r}
                       disabled={borrar.loading}
+                      onEdit={() => {
+                        setEditItem(r);
+                        setModalOpen(true);
+                      }}
                       onDelete={() => borrar.run(r.id)}
                     />
                   ))}
@@ -95,8 +104,11 @@ export default function RecordatoriosScreen() {
 
       <button
         type="button"
-        onClick={() => setModalOpen(true)}
-        className="fixed bottom-[90px] right-[calc(50%-190px)] flex h-[52px] w-[52px] items-center justify-center rounded-2xl bg-violet text-2xl text-white shadow-[0_4px_20px_rgba(140,125,255,0.4)]"
+        onClick={() => {
+          setEditItem(null);
+          setModalOpen(true);
+        }}
+        className="fixed bottom-[90px] right-6 flex h-[52px] w-[52px] items-center justify-center rounded-2xl bg-violet text-2xl text-white shadow-[0_4px_20px_rgba(140,125,255,0.4)]"
         aria-label="Agregar recordatorio"
       >
         +
@@ -104,11 +116,16 @@ export default function RecordatoriosScreen() {
 
       <FormModal
         open={modalOpen}
+        item={editItem ?? undefined}
         spec={recordatorioSpec()}
-        initialValues={recordatorioInitial}
-        onClose={() => setModalOpen(false)}
+        initialValues={editItem ? recordatorioFormInitial(editItem) : recordatorioInitial}
+        onClose={() => {
+          setModalOpen(false);
+          setEditItem(null);
+        }}
         onSuccess={() => {
-          pushToast("Recordatorio agregado.", "success");
+          pushToast(editItem ? "Recordatorio actualizado." : "Recordatorio agregado.", "success");
+          setEditItem(null);
           lista.refetch();
         }}
       />

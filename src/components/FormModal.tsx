@@ -78,11 +78,11 @@ export default function FormModal<T extends Record<string, unknown>>({
   };
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[200] flex overflow-y-auto bg-black/70 p-4 pb-8" onClick={onClose}>
       <div
         role="dialog"
         aria-modal="true"
-        className="w-full max-w-md rounded-2xl border border-border bg-card p-5 shadow-2xl"
+        className="m-auto max-h-none w-full max-w-md rounded-2xl border border-border bg-card p-5 shadow-2xl"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between gap-3">
