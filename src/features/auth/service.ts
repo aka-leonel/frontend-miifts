@@ -7,8 +7,6 @@
 // `features/perfil` (`miifts_token` / `miifts_usuario`), así que cuando
 // Int. 1 entregue el AuthProvider definitivo el resto del código no cambia.
 import { apiClient } from "../../api/client";
-import { DEMO_MODE } from "../../api/demo";
-import { DEMO_USUARIO } from "../../api/scope";
 import type { Usuario } from "../../api/types";
 
 const TOKEN_KEY = "miifts_token";
@@ -35,9 +33,6 @@ export function haySesion(): boolean {
 }
 
 export async function login(body: LoginRequest): Promise<TokenResponse> {
-  if (DEMO_MODE) {
-    return Promise.resolve({ access_token: "demo-token", token_type: "bearer", usuario: DEMO_USUARIO });
-  }
-  // Pública: sin Bearer (todavía no hay token).
+  // Pública: sin token no hay auth.
   return apiClient<TokenResponse>("/auth/login", { method: "POST", body, auth: false });
 }

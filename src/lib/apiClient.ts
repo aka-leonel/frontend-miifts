@@ -23,6 +23,14 @@ export type ApiClientOptions = Omit<RequestInit, "body"> & {
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
 
+// Handler que se invoca cuando cualquier request devuelve 401. El AuthProvider
+// liga su logout aquí para que la limpieza de sesión sea centralizada.
+let unauthorizedHandler: (() => void) | null = null;
+
+export function setUnauthorizedHandler(fn: (() => void) | null): void {
+  unauthorizedHandler = fn;
+}
+
 export async function apiClient<T>(path: string, options: ApiClientOptions = {}): Promise<T> {
   const { method = "GET", body, headers, auth = true, ...rest } = options;
 
@@ -55,6 +63,17 @@ export async function apiClient<T>(path: string, options: ApiClientOptions = {})
   const payload = raw ? JSON.parse(raw) : null;
 
   if (!response.ok) {
+    // Si es 401, disparar el handler global antes de lanzar el error para que
+    // la app pueda limpiar sesión y redirigir en un único lugar.
+    if (response.status === 401) {
+      try {
+        unauthorizedHandler && unauthorizedHandler();
+      } catch {
+        // proteger la llamada del handler: no queremos que un fallo aquí oculte
+        // el error original.
+      }
+    }
+
     const detail = payload?.detail ?? payload?.message ?? "La solicitud falló.";
     // El backend manda `errors` como array `{ campo, msg }[]` (ver
     // INTEGRACION_FRONT.md §1.2/§1.8), no como Record<campo, mensaje>. Sin

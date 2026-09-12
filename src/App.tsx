@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Toaster } from "./components";
 import { ConveniosScreen as ConveniosFeatureScreen } from "./features/convenios";
 import InicioReal from "./features/materias/InicioScreen";
@@ -10,6 +10,7 @@ import { useLogin } from "./features/auth/hooks";
 import { haySesion } from "./features/auth/service";
 import { ApiError } from "./lib/apiClient";
 import { useToast } from "./hooks/useToast";
+import { useAuth } from "./auth/AuthContext";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Screen =
@@ -446,7 +447,17 @@ function RegistroScreen({ onGo }: { onGo: (s: Screen) => void }) {
           <Input placeholder="Email institucional" type="email" value={email} onChange={setEmail} />
           <Input placeholder="Contraseña" type="password" value={pass} onChange={setPass} />
         </div>
-        <div style={{ marginTop: 28 }}><PrimaryButton onClick={() => onGo("carrera")}>Continuar</PrimaryButton></div>
+        <div style={{ marginTop: 28 }}>
+          <PrimaryButton onClick={() => {
+            // Guardar temporalmente los datos del formulario para que la
+            // pantalla de carrera pueda completar el flujo y llamar al
+            // endpoint real de registro (ver S4-03).
+            sessionStorage.setItem("registro_temp", JSON.stringify({ nombre, email, password: pass }));
+            onGo("carrera");
+          }}>
+            Continuar
+          </PrimaryButton>
+        </div>
         <p style={{ color: MUTED, fontSize: 12, textAlign: "center", marginTop: 20, lineHeight: 1.5 }}>
           Al registrarte aceptás los <span style={{ color: VIOLET }}>términos y condiciones</span>
         </p>
@@ -457,7 +468,43 @@ function RegistroScreen({ onGo }: { onGo: (s: Screen) => void }) {
 
 // ─── Screen 3: Elegí tu carrera ───────────────────────────────────────────────
 function CarreraScreen({ onGo }: { onGo: (s: Screen) => void }) {
-  const [selected, setSelected] = useState("Desarrollo de Software");
+  const [carrerasList, setCarrerasList] = useState<{ id: number; nombre: string }[]>([]);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const { pushToast } = useToast();
+  const auth = useAuth();
+
+  useEffect(() => {
+    // Cargar las carreras reales desde el backend. Si falla, avisar al usuario.
+    import("./features/catalogo/service").then(({ getCarreras }) => {
+      getCarreras()
+        .then((res) => {
+          setCarrerasList(res.items.map((c: any) => ({ id: c.id, nombre: c.nombre })));
+          setSelectedId(res.items[0]?.id ?? null);
+        })
+        .catch(() => pushToast("No se pudieron cargar las carreras", "error"));
+    }).catch(() => pushToast("Error interno al cargar carreras", "error"));
+  }, [pushToast]);
+
+  const handleEmpezar = async () => {
+    const raw = sessionStorage.getItem("registro_temp");
+    if (!raw) {
+      pushToast("Faltan datos de registro. Volvé atrás e intentá de nuevo.", "error");
+      return;
+    }
+    if (!selectedId) {
+      pushToast("Seleccioná una carrera", "error");
+      return;
+    }
+    try {
+      const temp = JSON.parse(raw);
+      await auth.registro({ nombre: temp.nombre, email: temp.email, password: temp.password, carrera_id: selectedId });
+      sessionStorage.removeItem("registro_temp");
+      onGo("inicio");
+    } catch (err) {
+      pushToast("No se pudo completar el registro.", "error");
+    }
+  };
+
   return (
     <ScreenWrap>
       <div style={{ padding: "56px 24px 0" }}>
@@ -466,14 +513,14 @@ function CarreraScreen({ onGo }: { onGo: (s: Screen) => void }) {
           <div style={{ color: MUTED, fontSize: 14, marginTop: 6 }}>Seleccioná tu carrera en el IFTS</div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 32 }}>
-          {carreras.map((c) => (
-            <button key={c} onClick={() => setSelected(c)} style={{ background: selected === c ? "rgba(140,125,255,0.12)" : CARD, border: `0.5px solid ${selected === c ? VIOLET : BORDER}`, borderRadius: 14, padding: "16px 18px", textAlign: "left", cursor: "pointer", transition: "all 0.2s" }}>
-              <div style={{ color: TEXT, fontWeight: 600, fontSize: 14, marginBottom: 4 }}>{c}</div>
-              <div style={{ color: MUTED, fontSize: 12 }}>6 cuatrimestres · 32 materias</div>
+          {carrerasList.map((c) => (
+            <button key={c.id} onClick={() => setSelectedId(c.id)} style={{ background: selectedId === c.id ? "rgba(140,125,255,0.12)" : CARD, border: `0.5px solid ${selectedId === c.id ? VIOLET : BORDER}`, borderRadius: 14, padding: "16px 18px", textAlign: "left", cursor: "pointer", transition: "all 0.2s" }}>
+              <div style={{ color: TEXT, fontWeight: 600, fontSize: 14, marginBottom: 4 }}>{c.nombre}</div>
+              <div style={{ color: MUTED, fontSize: 12 }}>Seleccione esta carrera</div>
             </button>
           ))}
         </div>
-        <PrimaryButton onClick={() => onGo("inicio")}>Empezar</PrimaryButton>
+        <PrimaryButton onClick={handleEmpezar}>Empezar</PrimaryButton>
       </div>
     </ScreenWrap>
   );
