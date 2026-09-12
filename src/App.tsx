@@ -4,6 +4,8 @@ import { ConveniosScreen as ConveniosFeatureScreen } from "./features/convenios"
 import InicioReal from "./features/materias/InicioScreen";
 import MisMateriasReal from "./features/materias/MisMateriasScreen";
 import { MateriaDetalleScreen as MateriaDetalleFeatureScreen } from "./features/materia-detalle/MateriaDetalleScreen";
+import { RecordatoriosScreen as RecordatoriosFeatureScreen } from "./features/recordatorios";
+import PerfilFeatureScreen from "./features/perfil/PerfilScreen";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Screen =
@@ -353,15 +355,6 @@ function BottomNav({ active, onNav }: { active: NavTab; onNav: (t: NavTab) => vo
   );
 }
 
-// ─── FAB ──────────────────────────────────────────────────────────────────────
-function FAB({ onClick }: { onClick: () => void }) {
-  return (
-    <button onClick={onClick} style={{ position: "fixed", bottom: 90, right: "calc(50% - 210px + 20px)", width: 52, height: 52, borderRadius: 16, background: VIOLET, border: "none", color: "#fff", fontSize: 24, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 20px rgba(140,125,255,0.4)", zIndex: 99 }}>
-      +
-    </button>
-  );
-}
-
 // ─── Input ────────────────────────────────────────────────────────────────────
 function Input({ placeholder, type = "text", value, onChange }: { placeholder: string; type?: string; value: string; onChange: (v: string) => void }) {
   return (
@@ -590,170 +583,13 @@ function DetalleScreen({ onGo }: { onGo: (s: Screen) => void }) {
 }
 
 // ─── Screen 7: Recordatorios ──────────────────────────────────────────────────
-function RecordatoriosScreen() {
-  const [lista, setLista] = useState(recordatoriosInit);
-  const [showModal, setShowModal] = useState(false);
-  const [editando, setEditando] = useState<Recordatorio | null>(null);
-  const [swiping, setSwiping] = useState<number | null>(null);
-
-  const dotColor: Record<string, string> = { parcial: VIOLET, tp: LIME, final: GREEN, otro: "#C084FC" };
-  const tipoLabel: Record<string, string> = { parcial: "Parcial", tp: "TP", final: "Final", otro: "Otro" };
-
-  const handleDelete = (id: number) => {
-    setSwiping(id);
-    setTimeout(() => { setLista((prev) => prev.filter((r) => r.id !== id)); setSwiping(null); }, 300);
-  };
-
-  const semana1 = lista.filter((r) => r.id <= 3);
-  const semana2 = lista.filter((r) => r.id > 3);
-
-  const ReminderCard = ({ r }: { r: Recordatorio }) => (
-    <div style={{ background: CARD, border: `0.5px solid ${BORDER}`, borderRadius: 14, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, transition: "transform 0.3s ease, opacity 0.3s ease", transform: swiping === r.id ? "translateX(100%)" : "translateX(0)", opacity: swiping === r.id ? 0 : 1, overflow: "hidden" }}>
-      <div style={{ width: 10, height: 10, borderRadius: "50%", background: dotColor[r.tipo] ?? MUTED, flexShrink: 0 }} />
-      <div style={{ flex: 1 }}>
-        <div style={{ color: TEXT, fontSize: 13, fontWeight: 600 }}>{r.titulo}</div>
-        <div style={{ color: MUTED, fontSize: 12, marginTop: 3 }}>
-          <span style={{ background: `${dotColor[r.tipo] ?? MUTED}20`, color: dotColor[r.tipo] ?? MUTED, borderRadius: 20, padding: "2px 8px", fontSize: 11, marginRight: 6 }}>{tipoLabel[r.tipo] ?? r.tipo}</span>
-          {r.fecha} · {r.hora}
-        </div>
-      </div>
-      <button onClick={() => { setEditando(r); setShowModal(true); }} style={{ background: "none", border: `0.5px solid ${BORDER}`, borderRadius: 8, padding: "5px 10px", color: MUTED, fontSize: 12, cursor: "pointer" }}>Editar</button>
-      <button onClick={() => handleDelete(r.id)} style={{ background: "none", border: "none", color: "#FF6B6B", cursor: "pointer", padding: 4 }}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-      </button>
-    </div>
-  );
-
-  return (
-    <>
-      <ScreenWrap padBottom>
-        <div style={{ padding: "52px 24px 0" }}>
-          <div style={{ marginBottom: 24 }}>
-            <div style={{ color: TEXT, fontSize: 22, fontWeight: 800, letterSpacing: -0.4 }}>Recordatorios</div>
-            <div style={{ color: MUTED, fontSize: 13, marginTop: 4 }}>{lista.length} recordatorio{lista.length !== 1 ? "s" : ""} activo{lista.length !== 1 ? "s" : ""}</div>
-          </div>
-          {semana1.length > 0 && (
-            <div style={{ marginBottom: 24 }}>
-              <div style={{ color: MUTED, fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 12 }}>Esta semana</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>{semana1.map((r) => <ReminderCard key={r.id} r={r} />)}</div>
-            </div>
-          )}
-          {semana2.length > 0 && (
-            <div>
-              <div style={{ color: MUTED, fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 12 }}>Próxima semana</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>{semana2.map((r) => <ReminderCard key={r.id} r={r} />)}</div>
-            </div>
-          )}
-          {lista.length === 0 && (
-            <div style={{ textAlign: "center", paddingTop: 60, color: MUTED }}>
-              <div style={{ fontSize: 40, marginBottom: 12 }}>🔔</div>
-              <div style={{ fontSize: 15, fontWeight: 600, color: TEXT }}>Sin recordatorios</div>
-              <div style={{ fontSize: 13, marginTop: 4 }}>Tocá + para agregar uno</div>
-            </div>
-          )}
-        </div>
-      </ScreenWrap>
-      <FAB onClick={() => { setEditando(null); setShowModal(true); }} />
-      {showModal && (
-        <ModalRecordatorio
-          initial={editando ?? undefined}
-          onClose={() => { setShowModal(false); setEditando(null); }}
-          onSave={(d) => {
-            if (editando) {
-              setLista((prev) => prev.map((r) => r.id === editando.id ? { ...r, ...d } : r));
-            } else {
-              setLista((prev) => [...prev, { id: Date.now(), titulo: d.titulo ?? "", fecha: d.fecha ?? "", hora: d.hora ?? "", tipo: d.tipo ?? "otro" }]);
-            }
-          }}
-        />
-      )}
-    </>
-  );
-}
+// Reemplazada por RecordatoriosFeatureScreen (Integrante 4, ver imports arriba).
 
 // ─── Screen 8: Convenios ──────────────────────────────────────────────────────
 // Reemplazada por ConveniosFeatureScreen (Integrante 1, ver imports arriba).
 
 // ─── Screen 9: Mi Perfil ──────────────────────────────────────────────────────
-function PerfilScreen({ onGo }: { onGo: (s: Screen) => void }) {
-  const [nombre, setNombre] = useState("Martina Ríos");
-  const [carrera, setCarrera] = useState("Desarrollo de Software");
-  const [saved, setSaved] = useState(false);
-
-  const aprobadas = materiasInit.filter((m) => m.estado === "Aprobada").length;
-  const total = 10;
-  const pct = Math.round((aprobadas / total) * 100);
-
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-  };
-
-  return (
-    <ScreenWrap padBottom>
-      <div style={{ padding: "52px 24px 0" }}>
-        <div style={{ marginBottom: 28 }}>
-          <div style={{ color: TEXT, fontSize: 22, fontWeight: 800, letterSpacing: -0.4 }}>Mi Perfil</div>
-          <div style={{ color: MUTED, fontSize: 13, marginTop: 4 }}>Configurá tu cuenta</div>
-        </div>
-
-        {/* Avatar */}
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: 32 }}>
-          <div style={{ position: "relative" }}>
-            <div style={{ width: 88, height: 88, borderRadius: 28, background: `linear-gradient(135deg, ${VIOLET} 0%, #6B5CE7 100%)`, display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 30, fontWeight: 800 }}>
-              MR
-            </div>
-            <div style={{ position: "absolute", bottom: -4, right: -4, width: 28, height: 28, borderRadius: "50%", background: LIME, border: `2px solid ${BG}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="#111218" strokeWidth="2" strokeLinecap="round" /><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="#111218" strokeWidth="2" strokeLinecap="round" /></svg>
-            </div>
-          </div>
-        </div>
-
-        {/* Fields */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 24 }}>
-          <div>
-            <label style={{ color: MUTED, fontSize: 11, fontWeight: 600, display: "block", marginBottom: 6 }}>NOMBRE</label>
-            <input value={nombre} onChange={(e) => setNombre(e.target.value)}
-              style={{ width: "100%", background: CARD, border: `0.5px solid ${BORDER}`, borderRadius: 10, padding: "14px 16px", color: TEXT, fontSize: 15, outline: "none" }}
-              onFocus={(e) => (e.target.style.borderColor = VIOLET)}
-              onBlur={(e) => (e.target.style.borderColor = BORDER)} />
-          </div>
-          <div>
-            <label style={{ color: MUTED, fontSize: 11, fontWeight: 600, display: "block", marginBottom: 6 }}>EMAIL</label>
-            <input value="martina.rios@ifts.edu.ar" readOnly
-              style={{ width: "100%", background: CARD, border: `0.5px solid ${BORDER}`, borderRadius: 10, padding: "14px 16px", color: MUTED, fontSize: 15, outline: "none", cursor: "not-allowed" }} />
-          </div>
-          <div>
-            <label style={{ color: MUTED, fontSize: 11, fontWeight: 600, display: "block", marginBottom: 6 }}>CARRERA</label>
-            <select value={carrera} onChange={(e) => setCarrera(e.target.value)}
-              style={{ width: "100%", background: CARD, border: `0.5px solid ${BORDER}`, borderRadius: 10, padding: "14px 16px", color: TEXT, fontSize: 15, outline: "none", cursor: "pointer" }}>
-              {carreras.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-        </div>
-
-        <button onClick={handleSave} style={{ width: "100%", background: saved ? GREEN : VIOLET, border: "none", borderRadius: 10, padding: "15px 24px", color: "#fff", fontSize: 15, fontWeight: 600, cursor: "pointer", transition: "background 0.3s", marginBottom: 28 }}>
-          {saved ? "✓ Guardado" : "Guardar cambios"}
-        </button>
-
-        {/* Progreso Byte */}
-        <div style={{ background: CARD, border: `0.5px solid ${BORDER}`, borderRadius: 14, padding: "16px 18px", marginBottom: 24 }}>
-          <div style={{ color: TEXT, fontWeight: 600, fontSize: 14, marginBottom: 4 }}>Tu progreso con <span style={{ color: LIME }}>Byte</span></div>
-          <div style={{ color: MUTED, fontSize: 12, marginBottom: 10 }}>{aprobadas} de {total} materias aprobadas</div>
-          <div style={{ background: "#2A2B36", borderRadius: 20, height: 6, overflow: "hidden" }}>
-            <div style={{ width: `${pct}%`, height: "100%", background: `linear-gradient(90deg, ${VIOLET} 0%, ${LIME} 100%)`, borderRadius: 20 }} />
-          </div>
-          <div style={{ color: MUTED, fontSize: 11, marginTop: 4 }}>{pct}% del plan completado</div>
-        </div>
-
-        {/* Cerrar sesión */}
-        <button onClick={() => onGo("login")} style={{ width: "100%", background: "rgba(255,107,107,0.12)", border: "0.5px solid rgba(255,107,107,0.4)", borderRadius: 10, padding: "15px 24px", color: "#FF6B6B", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>
-          Cerrar sesión
-        </button>
-      </div>
-    </ScreenWrap>
-  );
-}
+// Reemplazada por PerfilFeatureScreen (Integrante 4, ver imports arriba).
 
 // ─── App root ─────────────────────────────────────────────────────────────────
 const navToScreen: Record<NavTab, Screen> = {
@@ -802,9 +638,9 @@ export default function App() {
         ) : (
           <DetalleScreen onGo={setScreen} />
         );
-      case "recordatorios": return <RecordatoriosScreen />;
+      case "recordatorios": return <RecordatoriosFeatureScreen />;
       case "convenios": return <ConveniosFeatureScreen />;
-      case "perfil": return <PerfilScreen onGo={setScreen} />;
+      case "perfil": return <PerfilFeatureScreen onCerrarSesion={() => setScreen("login")} />;
     }
   };
 
