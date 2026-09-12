@@ -8,7 +8,7 @@ import type { Usuario } from "./types";
 
 const SESSION_KEY = "miifts_usuario";
 
-const DEMO_USUARIO: Usuario = {
+export const DEMO_USUARIO: Usuario = {
   id: 1,
   nombre: "Martina Ríos",
   email: "martina.demo@ifts.edu.ar",

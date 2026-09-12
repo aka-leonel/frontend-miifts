@@ -6,6 +6,10 @@ import MisMateriasReal from "./features/materias/MisMateriasScreen";
 import { MateriaDetalleScreen as MateriaDetalleFeatureScreen } from "./features/materia-detalle/MateriaDetalleScreen";
 import { RecordatoriosScreen as RecordatoriosFeatureScreen } from "./features/recordatorios";
 import PerfilFeatureScreen from "./features/perfil/PerfilScreen";
+import { useLogin } from "./features/auth/hooks";
+import { haySesion } from "./features/auth/service";
+import { ApiError } from "./lib/apiClient";
+import { useToast } from "./hooks/useToast";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Screen =
@@ -382,6 +386,19 @@ function ScreenWrap({ children, padBottom = false }: { children: React.ReactNode
 function LoginScreen({ onGo }: { onGo: (s: Screen) => void }) {
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
+  const { pushToast } = useToast();
+  const login = useLogin();
+
+  const handleIngresar = async () => {
+    try {
+      await login.run({ email, password: pass });
+      onGo("inicio");
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.detail : "No se pudo iniciar sesión.";
+      pushToast(msg, "error");
+    }
+  };
+
   return (
     <ScreenWrap>
       <div style={{ padding: "60px 28px 0", display: "flex", flexDirection: "column" }}>
@@ -396,7 +413,9 @@ function LoginScreen({ onGo }: { onGo: (s: Screen) => void }) {
           <Input placeholder="Email institucional" type="email" value={email} onChange={setEmail} />
           <Input placeholder="Contraseña" type="password" value={pass} onChange={setPass} />
         </div>
-        <div style={{ marginTop: 24 }}><PrimaryButton onClick={() => onGo("registro")}>Ingresar</PrimaryButton></div>
+        <div style={{ marginTop: 24 }}>
+          <PrimaryButton onClick={handleIngresar}>{login.loading ? "Ingresando…" : "Ingresar"}</PrimaryButton>
+        </div>
         <p style={{ textAlign: "center", marginTop: 24, color: MUTED, fontSize: 14 }}>
           ¿No tenés cuenta?{" "}
           <button onClick={() => onGo("registro")} style={{ background: "none", border: "none", color: VIOLET, fontWeight: 600, cursor: "pointer", fontSize: 14 }}>Registrate</button>
@@ -610,7 +629,7 @@ const screenToNav: Partial<Record<Screen, NavTab>> = {
 };
 
 export default function App() {
-  const [screen, setScreen] = useState<Screen>("login");
+  const [screen, setScreen] = useState<Screen>(() => (haySesion() ? "inicio" : "login"));
   // No hay react-router en esta app todavía (el resto navega con este mismo
   // switch, no con URLs) — mientras tanto, la materia que se está viendo en
   // "detalle" se guarda acá y se pasa por prop.

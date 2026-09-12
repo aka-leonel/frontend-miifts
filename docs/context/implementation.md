@@ -14,9 +14,9 @@ Scaffold Vite+React+TS+PWA OK, App.tsx demo counter, pages/components/contexts/s
 - T0.4 components/Pagination<T>, Layout, ProtectedRoute, Toast
 
 ### Fase 1 Auth (bloquea resto)
-- T1.1 Register: select GET /materias/carreras, valid password≥8 letra+número, nombre2-100, POST /auth/registro→POST /auth/login auto
-- T1.2 Login: POST /auth/login guarda token+usuario, 401 toast
-- T1.3 Rehidratar GET /auth/me en mount
+- T1.1 Register: select GET /materias/carreras, valid password≥8 letra+número, nombre2-100, POST /auth/registro→POST /auth/login auto — **PENDIENTE** (`RegistroScreen`/`CarreraScreen` en App.tsx siguen mock, no pegan al backend).
+- T1.2 Login: POST /auth/login guarda token+usuario, 401 toast — **DONE (2026-09-11)**. `src/features/auth/service.ts`+`hooks.ts` (`useLogin`), `LoginScreen` en App.tsx llama al backend real, guarda `miifts_token`/`miifts_usuario` (mismas claves que ya leían `api/scope.ts` y `features/perfil`), 401→toast error, sesión persiste al refrescar (`haySesion()` decide screen inicial). Validado build+tsc+eslint+Playwright contra backend real.
+- T1.3 Rehidratar GET /auth/me en mount — **PENDIENTE** (no hay guard/rehidratación automática; si el token expira a mitad de sesión, no se limpia solo hasta el próximo 401 de una request).
 
 ### Fase 2 Plan Estudios (Pub, paralelo F3)
 - T2.1 Carreras GET /materias/carreras + detalle GET /materias/carreras/{id} 404
