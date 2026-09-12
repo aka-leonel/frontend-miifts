@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Toaster } from "./components";
 import { ConveniosScreen as ConveniosFeatureScreen } from "./features/convenios";
+import { getCarreras } from "./features/catalogo/service";
 import InicioReal from "./features/materias/InicioScreen";
 import MisMateriasReal from "./features/materias/MisMateriasScreen";
 import { MateriaDetalleScreen as MateriaDetalleFeatureScreen } from "./features/materia-detalle/MateriaDetalleScreen";
@@ -470,19 +471,38 @@ function RegistroScreen({ onGo }: { onGo: (s: Screen) => void }) {
 function CarreraScreen({ onGo }: { onGo: (s: Screen) => void }) {
   const [carrerasList, setCarrerasList] = useState<{ id: number; nombre: string }[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [loadingCarreras, setLoadingCarreras] = useState(true);
   const { pushToast } = useToast();
   const auth = useAuth();
+  const loadedRef = useRef(false);
 
   useEffect(() => {
-    // Cargar las carreras reales desde el backend. Si falla, avisar al usuario.
-    import("./features/catalogo/service").then(({ getCarreras }) => {
-      getCarreras()
-        .then((res) => {
-          setCarrerasList(res.items.map((c: any) => ({ id: c.id, nombre: c.nombre })));
-          setSelectedId(res.items[0]?.id ?? null);
-        })
-        .catch(() => pushToast("No se pudieron cargar las carreras", "error"));
-    }).catch(() => pushToast("Error interno al cargar carreras", "error"));
+    if (loadedRef.current) return;
+    loadedRef.current = true;
+
+    let active = true;
+    setLoadingCarreras(true);
+    getCarreras()
+      .then((res) => {
+        console.log('GET /materias/carreras ->', res);
+        if (!active) return;
+        const items = Array.isArray(res?.items) ? res.items : [];
+        const mapped = items.map((c) => ({ id: c.id, nombre: c.nombre }));
+        setCarrerasList(mapped);
+        setSelectedId(mapped[0]?.id ?? null);
+      })
+      .catch(() => {
+        if (active) {
+          pushToast("No se pudieron cargar las carreras", "error");
+        }
+      })
+      .finally(() => {
+        if (active) setLoadingCarreras(false);
+      });
+
+    return () => {
+      active = false;
+    };
   }, [pushToast]);
 
   const handleEmpezar = async () => {
@@ -513,14 +533,22 @@ function CarreraScreen({ onGo }: { onGo: (s: Screen) => void }) {
           <div style={{ color: MUTED, fontSize: 14, marginTop: 6 }}>Seleccioná tu carrera en el IFTS</div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 32 }}>
-          {carrerasList.map((c) => (
-            <button key={c.id} onClick={() => setSelectedId(c.id)} style={{ background: selectedId === c.id ? "rgba(140,125,255,0.12)" : CARD, border: `0.5px solid ${selectedId === c.id ? VIOLET : BORDER}`, borderRadius: 14, padding: "16px 18px", textAlign: "left", cursor: "pointer", transition: "all 0.2s" }}>
-              <div style={{ color: TEXT, fontWeight: 600, fontSize: 14, marginBottom: 4 }}>{c.nombre}</div>
-              <div style={{ color: MUTED, fontSize: 12 }}>Seleccione esta carrera</div>
-            </button>
-          ))}
+          {loadingCarreras ? (
+            <div style={{ color: MUTED, textAlign: "center", padding: "12px 0" }}>Cargando carreras…</div>
+          ) : carrerasList.length === 0 ? (
+            <div style={{ color: MUTED, textAlign: "center", padding: "12px 0" }}>No hay carreras disponibles.</div>
+          ) : (
+            carrerasList.map((c) => (
+              <button key={c.id} onClick={() => setSelectedId(c.id)} style={{ background: selectedId === c.id ? "rgba(140,125,255,0.12)" : CARD, border: `0.5px solid ${selectedId === c.id ? VIOLET : BORDER}`, borderRadius: 14, padding: "16px 18px", textAlign: "left", cursor: "pointer", transition: "all 0.2s" }}>
+                <div style={{ color: TEXT, fontWeight: 600, fontSize: 14, marginBottom: 4 }}>{c.nombre}</div>
+                <div style={{ color: MUTED, fontSize: 12 }}>Seleccione esta carrera</div>
+              </button>
+            ))
+          )}
         </div>
-        <PrimaryButton onClick={handleEmpezar}>Empezar</PrimaryButton>
+        <PrimaryButton onClick={handleEmpezar}>
+          {loadingCarreras ? "Cargando…" : "Empezar"}
+        </PrimaryButton>
       </div>
     </ScreenWrap>
   );
