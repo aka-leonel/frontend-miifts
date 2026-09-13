@@ -21,7 +21,21 @@ export type ApiClientOptions = Omit<RequestInit, "body"> & {
   body?: unknown;
 };
 
-const API_BASE_URL = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
+const API_BASE_URL = (() => {
+  const configured = import.meta.env.VITE_API_URL?.trim().replace(/^['"]+|['"]+$/g, "");
+  if (configured) {
+    return configured.replace(/\/$/, "");
+  }
+
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
+    if (host === "localhost" || host === "127.0.0.1") {
+      return "";
+    }
+  }
+
+  return "http://localhost:8000";
+})();
 
 // Handler que se invoca cuando cualquier request devuelve 401. El AuthProvider
 // liga su logout aquí para que la limpieza de sesión sea centralizada.

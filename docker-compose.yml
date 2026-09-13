@@ -4,11 +4,11 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: ${VITE_API_URL:-http://host.docker.internal:8000}
+        VITE_API_URL: ${VITE_API_URL:-}
     container_name: miifts-frontend
     ports:
       - "4174:80"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
-      VITE_API_URL: ${VITE_API_URL:-http://host.docker.internal:8000}
+      VITE_API_URL: ${VITE_API_URL:-}
