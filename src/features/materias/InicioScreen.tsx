@@ -27,7 +27,7 @@ export default function InicioScreen({ onOpenMateria }: { onOpenMateria?: (id: n
 
   return (
     <div className="flex-1 overflow-y-auto pb-24">
-      <div className="px-6 pt-14">
+      <div className="mx-auto w-full max-w-lg px-4 pt-14 sm:max-w-2xl sm:px-6 lg:max-w-5xl">
         <div className="mb-6 flex items-start justify-between gap-4">
           <div>
             <div className="text-sm text-muted">Bienvenida de vuelta</div>
@@ -38,11 +38,10 @@ export default function InicioScreen({ onOpenMateria }: { onOpenMateria?: (id: n
           </div>
         </div>
 
-        <div className="mb-6">
+        <div className="mb-6 grid gap-4 md:grid-cols-2">
           <ByteWidget aprobadas={aprobadas} total={total} />
+          <PromedioCard promedio={promedio.data} loading={promedio.loading} />
         </div>
-
-        <PromedioCard promedio={promedio.data} loading={promedio.loading} />
 
         <div className="mb-6">
           <div className="mb-3 flex items-center justify-between">
@@ -50,7 +49,7 @@ export default function InicioScreen({ onOpenMateria }: { onOpenMateria?: (id: n
             <span className="text-xs text-muted">{recordatorios.data?.total ?? 0} recordatorios</span>
           </div>
           {recordatorios.loading && !recordatorios.data ? (
-            <div className="space-y-2">
+            <div className="grid gap-2 sm:grid-cols-2">
               <div className="h-16 animate-pulse rounded-2xl border border-border bg-card" />
               <div className="h-16 animate-pulse rounded-2xl border border-border bg-card" />
             </div>
@@ -60,7 +59,7 @@ export default function InicioScreen({ onOpenMateria }: { onOpenMateria?: (id: n
               <div className="mt-1 text-xs text-muted">Cuando agregues uno, aparecerá acá.</div>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {recordatorios.data?.items.slice(0, 3).map((r) => (
                 <button
                   key={r.id}
@@ -86,13 +85,13 @@ export default function InicioScreen({ onOpenMateria }: { onOpenMateria?: (id: n
           ) : items.length === 0 ? (
             <div className="rounded-2xl border border-border bg-card p-6 text-center text-sm text-muted">Todavía no cargaste materias.</div>
           ) : (
-            <div className="flex gap-3 overflow-x-auto pb-2">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {items.slice(0, 6).map((c) => (
                 <button
                   key={c.id}
                   type="button"
                   onClick={() => onOpenMateria?.(c.materia_id)}
-                  className="min-w-[150px] max-w-[150px] flex-shrink-0 rounded-2xl border border-border bg-card p-4 text-left"
+                  className="rounded-2xl border border-border bg-card p-4 text-left"
                 >
                   <div className="truncate text-sm font-semibold text-text">{c.materia?.nombre ?? `Materia #${c.materia_id}`}</div>
                   <div className="mt-1 text-xs capitalize text-muted">{c.estado}</div>

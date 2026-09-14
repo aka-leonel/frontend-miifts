@@ -1,11 +1,3 @@
-// src/features/recordatorios/RecordatoriosScreen.tsx
-//
-// Integrante 4 (INTEGRACION_FRONT.md §2.14) — Agenda global de recordatorios.
-// Reemplaza al mock `RecordatoriosScreen` de App.tsx (queda como código
-// muerto, mismo criterio que se usó con Convenios): mismo layout / colores,
-// datos y alta/borrado reales. Usa el <RecordatorioCard> compartido (mismo
-// que importa Integrante 3 en el detalle de materia) en vez de duplicar una
-// tarjeta local.
 import { useMemo, useState } from "react";
 import { FormModal, ListState } from "../../components";
 import { useToast } from "../../hooks/useToast";
@@ -25,8 +17,6 @@ export default function RecordatoriosScreen() {
   });
 
   const items = useMemo(() => lista.data?.items ?? [], [lista.data]);
-  // Capturado una sola vez al montar: separar en "esta semana" / "más
-  // adelante" no necesita actualizarse mientras la pantalla sigue abierta.
   const [ahora] = useState(() => Date.now());
 
   const { estaSemana, masAdelante } = useMemo(() => {
@@ -42,7 +32,7 @@ export default function RecordatoriosScreen() {
 
   return (
     <div className="flex-1 overflow-y-auto pb-24">
-      <div className="px-6 pt-14">
+      <div className="mx-auto w-full max-w-lg px-4 pt-14 sm:max-w-2xl sm:px-6 lg:max-w-5xl">
         <div className="mb-6">
           <div className="text-2xl font-black tracking-[-0.04em] text-text">Recordatorios</div>
           <div className="mt-1 text-sm text-muted">
@@ -62,7 +52,7 @@ export default function RecordatoriosScreen() {
             {estaSemana.length > 0 && (
               <div>
                 <div className="mb-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted">Esta semana</div>
-                <div className="space-y-2.5">
+                <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
                   {estaSemana.map((r) => (
                     <RecordatorioCard
                       key={r.id}
@@ -77,7 +67,7 @@ export default function RecordatoriosScreen() {
             {masAdelante.length > 0 && (
               <div>
                 <div className="mb-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted">Más adelante</div>
-                <div className="space-y-2.5">
+                <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
                   {masAdelante.map((r) => (
                     <RecordatorioCard
                       key={r.id}
@@ -96,7 +86,7 @@ export default function RecordatoriosScreen() {
       <button
         type="button"
         onClick={() => setModalOpen(true)}
-        className="fixed bottom-[90px] right-[calc(50%-190px)] flex h-[52px] w-[52px] items-center justify-center rounded-2xl bg-violet text-2xl text-white shadow-[0_4px_20px_rgba(140,125,255,0.4)]"
+        className="fixed bottom-24 right-4 flex h-[52px] w-[52px] items-center justify-center rounded-2xl bg-violet text-2xl text-white shadow-[0_4px_20px_rgba(140,125,255,0.4)] sm:right-6 lg:right-8"
         aria-label="Agregar recordatorio"
       >
         +

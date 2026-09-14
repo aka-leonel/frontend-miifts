@@ -71,3 +71,30 @@ Archivos Int.2: `features/catalogo/service.ts|hooks.ts`, `features/materias/serv
 
 ### Próximo paso
 Planner → Architect: marcar `status.md` TESTING→COMPLETE para Int.2, o escalar gaps backend (`PATCH /auth/me`, `PATCH /recordatorios` per §1.7).
+
+## 6. Reporte — Integrante 4 PERFIL·CONVENIOS·UX (2026-09-14, Tester)
+
+### Alcance validado
+`implementation.md` §8 S4-16..S4-20. Archivos: `features/perfil/service.ts|hooks.ts|PerfilScreen.tsx`, `features/convenios/service.ts|hooks.ts|ConveniosScreen.tsx`, `features/recordatorios/service.ts|hooks.ts|RecordatoriosScreen.tsx`, `features/materias/InicioScreen.tsx`, `src/App.tsx`. Criterios §8.4.
+
+### Evidencia
+
+| Check | Resultado | Evidencia |
+|-------|-----------|-----------|
+| **Build** | PASS | `npm run build` vite 8 → `✓ built in 250ms`, 68 módulos, `tsc --noEmit` exit 0 |
+| **S4-16 Perfil bloqueado** | PASS | `PerfilScreen.tsx:100-122` 3 inputs `readOnly disabled cursor-not-allowed opacity-80`; 0× `setSaved`/`✓ Guardado`/`handleSave`; banner `amber-500/10` explica `PATCH /auth/me (§1.7)`; `Skeleton` y `ErrorState` con `me.refetch()`; `carreraNombre` derivado de `useCarreras` + fallback `Carrera #id`; `getAuthMe()` en `perfil/service.ts:5` solo `apiClient<Usuario>("/auth/me")` sin `DEMO_MODE` |
+| **S4-17 Convenios datos reales** | PASS | `convenios/service.ts:71,84` → `apiClient<Paginated<ConvenioApi>>("/convenios/…?page=")` y `apiClient<Paginated<TalentoTechApi>>("/talentotech/…?page=")` con `auth:false`; `ConveniosScreen.tsx:42-49` `ListState loading/error/items` con `emptyTitle`/`onRetry`; `Paginador page/totalPages` real; vacío `items:[]` no rellenado |
+| **S4-18 Sin hardcode** | PASS | `grep DEMO_MODE|universidades|talentoTech|demoPaginate|delay` en `convenios/service.ts` → 0 hits; archivo 86 líneas (antes 197), solo `mapConvenio/mapTalentoTech/toConvenioPage` + 2 fetchers; coord S4-04 ok |
+| **S4-19 Limpieza App.tsx** | PASS | `grep recursosInit|recordatoriosInit src/` → 0 hits; `DetalleScreen` ahora `useState<Recurso[]>([])`/`useState<Recordatorio[]>([])`; `materiasInit` retenido solo para `ModalMateria` local (no es deuda S4-19); tipos `Recurso/Recordatorio` locales aún usados solo por `DetalleScreen` muerto |
+| **Recordatorios real** | PASS | `recordatorios/service.ts:1-33` sin `DEMO_MODE`, `buildQuery` con `page/per_page/tipo/desde/hasta/materia_id`, `apiClient` con `auth:true` default, `POST /recordatorios/` sin `usuario_id`, `DELETE 204` sin parse |
+| **S4-20 Responsive** | PASS con observación | Inicio `mx-auto max-w-lg sm:max-w-2xl lg:max-w-5xl` + `grid md:grid-cols-2` para Byte/Promedio y `grid sm:2 lg:3` para cards/materias; Convenios `grid sm:2 lg:3` + container responsive; Recordatorios `grid sm:2 lg:3` + FAB `right-4 sm:6 lg:8`; Perfil `max-w-lg sm:6 md:max-w-2xl`; `App.tsx:653` shell `max-w-[430px] sm:max-w-2xl lg:max-w-5xl` (ya no frame fijo 430). Observación menor: `BottomNav` en `App.tsx:333` aún `maxWidth:430` fijo inline — no rompe layout pero debería migrar a `max-w-[430px] sm:max-w-2xl` para consistencia |
+| **Contrato global** | PASS | `apiClient` único, `Authorization: Bearer` en perfil/recordatorios, públicas sin auth en convenios, `Paginated<T>` + `Paginador`, `ApiError` handling, `VITE_API_URL` configurable |
+| **No duplicación** | PASS | No se creó `FormModal/EntityForm`; no se pisó `features/catalogo`/`materias` ajenos |
+
+### No validado / Limitaciones
+- Backend `localhost:8000` no levantado en CI → convenios/recordatorios validados por contrato (`Paginated`, `auth:false/true`) y `EmptyState`/`ErrorState`, no E2E con seed real; probar `page=999 → items:[]` y `GET /talentotech/categoria/{cat}` con datos seed en local.
+- Sin `vitest`/`msw` instalados → sin tests automatizados; validación manual + build + tsc + grep.
+- `BottomNav` fijo 430px restante (ver observación) — no bloquea pero conviene follow-up `T4-RESP-02`.
+
+### Veredicto
+**PASS.** Integrante 4 cumple `implementation.md` §8.4 1-6 sin mocks. 4/5 tareas completas 100%, 1 con observación menor no bloqueante. Recomendación Planner→Architect: marcar Int.4 TESTING→COMPLETE, abrir follow-up opcional para `BottomNav` responsive y E2E `msw` con backend seed.
