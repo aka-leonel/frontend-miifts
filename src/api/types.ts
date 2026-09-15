@@ -17,6 +17,24 @@ export interface Usuario {
   rol: Rol;
 }
 
+export interface RegistroRequest {
+  nombre: string;
+  email: string;
+  password: string;
+  carrera_id: number;
+}
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface TokenResponse {
+  access_token: string;
+  token_type: string;
+  usuario: Usuario;
+}
+
 export interface Carrera {
   id: number;
   nombre: string;

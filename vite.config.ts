@@ -34,10 +34,74 @@ export default defineConfig(({ mode }) => {
       port: parseInt(process.env.PORT || '5173'),
       strictPort: true,
       watch: { ignored: ['**/.figma/**'] },
+      proxy: {
+        '/auth': {
+          target: 'http://localhost:8000',
+          changeOrigin: true,
+          secure: false,
+        },
+        '/materias': {
+          target: 'http://localhost:8000',
+          changeOrigin: true,
+          secure: false,
+        },
+        '/recordatorios': {
+          target: 'http://localhost:8000',
+          changeOrigin: true,
+          secure: false,
+        },
+        '/convenios': {
+          target: 'http://localhost:8000',
+          changeOrigin: true,
+          secure: false,
+        },
+        '/talentotech': {
+          target: 'http://localhost:8000',
+          changeOrigin: true,
+          secure: false,
+        },
+        '/recursos': {
+          target: 'http://localhost:8000',
+          changeOrigin: true,
+          secure: false,
+        },
+      },
     },
     preview: {
       host: process.env.FIGMA_DEV_SERVER_HOST || '0.0.0.0',
-      port: parseInt(process.env.PORT || '5173'),
+      port: parseInt(process.env.PORT || '8443'),
+      proxy: {
+        '/auth': {
+          target: 'http://localhost:8000',
+          changeOrigin: true,
+          secure: false,
+        },
+        '/materias': {
+          target: 'http://localhost:8000',
+          changeOrigin: true,
+          secure: false,
+        },
+        '/recordatorios': {
+          target: 'http://localhost:8000',
+          changeOrigin: true,
+          secure: false,
+        },
+        '/convenios': {
+          target: 'http://localhost:8000',
+          changeOrigin: true,
+          secure: false,
+        },
+        '/talentotech': {
+          target: 'http://localhost:8000',
+          changeOrigin: true,
+          secure: false,
+        },
+        '/recursos': {
+          target: 'http://localhost:8000',
+          changeOrigin: true,
+          secure: false,
+        },
+      },
     },
   }
 })

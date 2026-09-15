@@ -66,6 +66,7 @@ function toConvenioPage<T>(res: Paginated<T>, map: (item: T) => ConvenioItem): C
 
 export async function getConvenios(params: { page?: number; carrera_id?: number } = {}): Promise<ConvenioPage> {
   const page = Math.max(1, params.page ?? 1);
+
   const path =
     params.carrera_id != null ? `/convenios/carrera/${params.carrera_id}` : "/convenios/";
   const res = await apiClient<Paginated<ConvenioApi>>(`${path}?page=${page}`, { auth: false });
@@ -76,6 +77,7 @@ export async function getTalentoTech(
   params: { page?: number; categoria?: string; carrera_id?: number } = {},
 ): Promise<ConvenioPage> {
   const page = Math.max(1, params.page ?? 1);
+
   const path = params.categoria
     ? `/talentotech/categoria/${encodeURIComponent(params.categoria)}`
     : params.carrera_id != null
