@@ -33,7 +33,7 @@ export default function MateriaCard({
           </div>
           <div className="mt-1 text-xs text-muted">{subtitulo(cursada)}</div>
         </div>
-        <span className={["flex-shrink-0 rounded-full px-3 py-1 text-xs font-semibold", estadoBadgeClasses[estado]].join(" ")}>
+        <span className={["flex-shrink-0 rounded-full px-3 py-1 text-xs font-semibold capitalize", estadoBadgeClasses[estado]].join(" ")}>
           {estado}
         </span>
       </div>

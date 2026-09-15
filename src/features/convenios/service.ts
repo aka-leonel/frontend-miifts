@@ -18,8 +18,6 @@ export type ConvenioPage = {
   totalPages: number;
 };
 
-// Shape real del backend (INTEGRACION_FRONT.md §1.6 "Convenios y TalentoTech").
-// Se mapean a ConvenioItem para no tocar ConveniosScreen.tsx.
 interface ConvenioApi {
   id: number;
   institucion: string;

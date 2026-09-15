@@ -52,27 +52,12 @@ interface Recordatorio {
   tipo: string;
 }
 
-// ─── Data ─────────────────────────────────────────────────────────────────────
 const materiasInit: Materia[] = [
   { id: 1, nombre: "Análisis Matemático I", estado: "Regular", nota: 7, requisito: "Álgebra" },
   { id: 2, nombre: "Programación I", estado: "Aprobada", nota: 9 },
   { id: 3, nombre: "Sistemas Operativos", estado: "En curso" },
   { id: 4, nombre: "Inglés Técnico", estado: "Pendiente" },
   { id: 5, nombre: "Base de Datos I", estado: "Aprobada", nota: 8 },
-];
-
-const recursosInit: Recurso[] = [
-  { id: 1, nombre: "Meet — Clase semanal", link: "meet.google.com/abc-def", tipo: "meet" },
-  { id: 2, nombre: "Drive — Carpeta TP", link: "drive.google.com/drive/xyz", tipo: "drive" },
-  { id: 3, nombre: "WhatsApp — Grupo 2024", link: "chat.whatsapp.com/group", tipo: "whatsapp" },
-  { id: 4, nombre: "Apunte Unidad 2.pdf", link: "drive.google.com/file/abc", tipo: "pdf" },
-];
-
-const recordatoriosInit: Recordatorio[] = [
-  { id: 1, titulo: "Parcial Análisis Matemático I", fecha: "Lun 9 Sep", hora: "10:00", tipo: "parcial" },
-  { id: 2, titulo: "Entrega TP Programación I", fecha: "Mié 11 Sep", hora: "23:59", tipo: "tp" },
-  { id: 3, titulo: "Clase Sistemas Operativos", fecha: "Vie 13 Sep", hora: "18:00", tipo: "otro" },
-  { id: 4, titulo: "Examen Base de Datos I", fecha: "Lun 16 Sep", hora: "09:00", tipo: "final" },
 ];
 
 const carreras = [
@@ -561,8 +546,8 @@ function CarreraScreen({ onGo }: { onGo: (s: Screen) => void }) {
 // ─── Screen 6: Detalle de materia ─────────────────────────────────────────────
 function DetalleScreen({ onGo }: { onGo: (s: Screen) => void }) {
   const materia = materiasInit[0];
-  const [recursos, setRecursos] = useState<Recurso[]>(recursosInit);
-  const [recordatorios, setRecordatorios] = useState<Recordatorio[]>(recordatoriosInit.slice(0, 2));
+  const [recursos, setRecursos] = useState<Recurso[]>([]);
+  const [recordatorios, setRecordatorios] = useState<Recordatorio[]>([]);
 
   const [modalEditNota, setModalEditNota] = useState(false);
   const [modalNewRecurso, setModalNewRecurso] = useState(false);
@@ -739,7 +724,7 @@ export default function App() {
 
   return (
     <div style={{ background: BG, minHeight: "100%", display: "flex", justifyContent: "center" }}>
-      <div style={{ width: "100%", maxWidth: 430, minHeight: "100vh", background: BG, position: "relative", display: "flex", flexDirection: "column", color: TEXT }}>
+      <div className="flex min-h-screen w-full max-w-[430px] flex-col bg-[#111218] text-[#E8E8F0] sm:max-w-2xl lg:max-w-5xl">
         {renderScreen()}
         {showNav && activeTab && <BottomNav active={activeTab} onNav={handleNav} />}
         <Toaster />

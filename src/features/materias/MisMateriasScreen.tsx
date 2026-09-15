@@ -12,7 +12,7 @@ import MateriaCard from "./MateriaCard";
 import PromedioCard from "./PromedioCard";
 import { materiaUsuarioInitial, materiaUsuarioSpec } from "./materiaUsuarioSpec";
 
-const chips: (EstadoUI | "Todas")[] = ["Todas", "En curso", "Regular", "Aprobada", "Pendiente"];
+const chips: (EstadoUI | "Todas")[] = ["Todas", "cursando", "promocionada", "aprobada", "desaprobada", "pendiente"];
 
 
 
@@ -51,6 +51,7 @@ export default function MisMateriasScreen({ onOpenMateria }: { onOpenMateria?: (
 
   const spec = materiaUsuarioSpec({
     materias: materiasDeMiCarrera.data?.items ?? [],
+    cursadaActual: modal.item,
   });
 
   const crearSpec = {
@@ -100,7 +101,7 @@ export default function MisMateriasScreen({ onOpenMateria }: { onOpenMateria?: (
               type="button"
               onClick={() => setChip(option)}
               className={[
-                "flex-shrink-0 rounded-full border px-4 py-1.5 text-sm transition",
+                "flex-shrink-0 rounded-full border px-4 py-1.5 text-sm capitalize transition",
                 chip === option
                   ? "border-violet bg-violet font-semibold text-white"
                   : "border-border bg-card text-muted",

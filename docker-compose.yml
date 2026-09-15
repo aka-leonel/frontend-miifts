@@ -1,0 +1,24 @@
+include:
+  - path: ../backend-ifts/docker-compose.yml
+
+services:
+  api:
+    environment:
+      CORS_ORIGINS: http://localhost
+    # El entrypoint corre alembic contra "db" apenas arranca, sin retry
+    # propio. En Docker Desktop (Windows/WSL2) el DNS embebido a veces
+    # no está listo en ese primer instante y el connect falla con
+    # "Temporary failure in name resolution" aunque `db` ya esté healthy
+    # (depends_on no alcanza a cubrir ese blip). Un par de reintentos de
+    # Compose lo absorbe sin tocar el entrypoint del backend.
+    restart: on-failure:5
+
+  front:
+    build:
+      context: .
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+    ports:
+      - "80:80"
+    depends_on:
+      - api

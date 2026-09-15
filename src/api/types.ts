@@ -59,7 +59,7 @@ export interface Correlativa {
   requiere: Materia | null;
 }
 
-export type EstadoCursada = "cursando" | "aprobada" | "pendiente";
+export type EstadoCursada = "cursando" | "promocionada" | "aprobada" | "desaprobada" | "pendiente";
 
 export interface Cursada {
   id: number;
@@ -69,6 +69,9 @@ export interface Cursada {
   estado: EstadoCursada;
   nota_parcial_1?: number | null;
   nota_parcial_2?: number | null;
+  examen_final?: number | null;
+  // Calculado por el backend: si ambos parciales cierran en 7+, es su promedio
+  // (promoción); si no, es `examen_final`. Nunca se manda en el body, solo se lee.
   nota_final?: number | null;
   materia?: Pick<Materia, "id" | "nombre" | "codigo">;
 }
@@ -78,7 +81,7 @@ export type CursadaCreate = {
   cursando?: boolean;
   nota_parcial_1?: number | null;
   nota_parcial_2?: number | null;
-  nota_final?: number | null;
+  examen_final?: number | null;
 };
 
 export type CursadaUpdate = Partial<Omit<CursadaCreate, "materia_id">>;

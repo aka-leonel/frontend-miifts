@@ -1,6 +1,31 @@
 import { ApiError } from "../../api/client";
-import type { Cursada, CursadaCreate, CursadaUpdate, Paginated, Promedio } from "../../api/types";
+import type { Cursada, CursadaCreate, CursadaUpdate, EstadoCursada, Paginated, Promedio } from "../../api/types";
 import { demoMaterias } from "../catalogo/demo";
+
+// Simula la regla de negocio del backend (§ ver mensaje del equipo de back):
+// ambos parciales >= 7 promociona con el promedio de esos parciales; si no,
+// el examen final decide aprobada/desaprobada. Solo existe acá porque este
+// archivo reemplaza al backend entero en DEMO_MODE — el resto del front NUNCA
+// debe reimplementar esto.
+function calcularNotaFinalYEstado(input: {
+  cursando: boolean;
+  nota_parcial_1?: number | null;
+  nota_parcial_2?: number | null;
+  examen_final?: number | null;
+}): { nota_final: number | null; estado: EstadoCursada } {
+  if (input.cursando) {
+    return { nota_final: null, estado: "cursando" };
+  }
+  const p1 = input.nota_parcial_1 ?? null;
+  const p2 = input.nota_parcial_2 ?? null;
+  if (p1 != null && p2 != null && p1 >= 7 && p2 >= 7) {
+    return { nota_final: Math.round(((p1 + p2) / 2) * 100) / 100, estado: "promocionada" };
+  }
+  if (input.examen_final != null) {
+    return { nota_final: input.examen_final, estado: input.examen_final >= 4 ? "aprobada" : "desaprobada" };
+  }
+  return { nota_final: null, estado: "pendiente" };
+}
 
 export const demoCursadas: Cursada[] = [
   {
@@ -99,15 +124,23 @@ export async function demoCreateCursada(body: CursadaCreate): Promise<Cursada> {
     throw new ApiError(409, "Ya tenés cargada esa materia.");
   }
   const materia = demoMaterias.find((item) => item.id === body.materia_id);
+  const cursando = body.cursando ?? false;
+  const { nota_final, estado } = calcularNotaFinalYEstado({
+    cursando,
+    nota_parcial_1: body.nota_parcial_1,
+    nota_parcial_2: body.nota_parcial_2,
+    examen_final: body.examen_final,
+  });
   const cursada: Cursada = {
     id: Date.now(),
     usuario_id: 1,
     materia_id: body.materia_id,
-    cursando: body.cursando ?? false,
-    estado: body.cursando ? "cursando" : "pendiente",
+    cursando,
+    estado,
     nota_parcial_1: body.nota_parcial_1 ?? null,
     nota_parcial_2: body.nota_parcial_2 ?? null,
-    nota_final: body.nota_final ?? null,
+    examen_final: body.examen_final ?? null,
+    nota_final,
     materia: materia ? { id: materia.id, nombre: materia.nombre, codigo: materia.codigo } : undefined,
   };
   demoCursadas.push(cursada);
@@ -120,11 +153,14 @@ export async function demoUpdateCursada(id: number, body: CursadaUpdate): Promis
   if (index === -1) {
     throw new ApiError(404, "No encontramos esa cursada.");
   }
-  demoCursadas[index] = {
-    ...demoCursadas[index],
-    ...body,
-    estado: body.cursando ? "cursando" : body.nota_final != null ? "aprobada" : "pendiente",
-  };
+  const merged = { ...demoCursadas[index], ...body };
+  const { nota_final, estado } = calcularNotaFinalYEstado({
+    cursando: merged.cursando,
+    nota_parcial_1: merged.nota_parcial_1,
+    nota_parcial_2: merged.nota_parcial_2,
+    examen_final: merged.examen_final,
+  });
+  demoCursadas[index] = { ...merged, nota_final, estado };
   return embedMateria(demoCursadas[index]);
 }
 

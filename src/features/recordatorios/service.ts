@@ -1,5 +1,3 @@
-// Tarea del Integrante 3 (SPRINT2_FRONT.md): agenda de recordatorios.
-// Identidad desde el token: NO se manda `usuario_id` ni en GET ni en POST/DELETE.
 import { apiClient } from "../../api/client";
 import type { Paginated, Recordatorio, RecordatorioCreate } from "../../api/types";
 
