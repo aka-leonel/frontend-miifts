@@ -1,10 +1,10 @@
 import type { Carrera, Materia, Paginated } from "../../api/types";
 
 const demoCarreras: Carrera[] = [
-  { id: 1, nombre: "Desarrollo de Software", duracion_cuatrimestres: 6 },
-  { id: 2, nombre: "Análisis de Sistemas", duracion_cuatrimestres: 6 },
-  { id: 3, nombre: "Redes y Comunicaciones", duracion_cuatrimestres: 6 },
-  { id: 4, nombre: "Ciberseguridad", duracion_cuatrimestres: 6 },
+  { id: 1, nombre: "Desarrollo de Software", duracion_cuatrimestres: 6, ifts_id: 1 },
+  { id: 2, nombre: "Análisis de Sistemas", duracion_cuatrimestres: 6, ifts_id: 1 },
+  { id: 3, nombre: "Redes y Comunicaciones", duracion_cuatrimestres: 6, ifts_id: 1 },
+  { id: 4, nombre: "Ciberseguridad", duracion_cuatrimestres: 6, ifts_id: 1 },
 ];
 
 export const demoMaterias: Materia[] = [

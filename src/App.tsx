@@ -9,6 +9,8 @@ import { RecordatoriosScreen as RecordatoriosFeatureScreen } from "./features/re
 import PerfilFeatureScreen from "./features/perfil/PerfilScreen";
 import { useLogin } from "./features/auth/hooks";
 import { haySesion } from "./features/auth/service";
+import AdminCatalogoScreen from "./features/catalogo-admin/AdminCatalogoScreen";
+import { getMiUsuario } from "./api/scope";
 import { ApiError } from "./lib/apiClient";
 import { useToast } from "./hooks/useToast";
 import { useAuth } from "./auth/AuthContext";
@@ -23,7 +25,8 @@ type Screen =
   | "detalle"
   | "recordatorios"
   | "convenios"
-  | "perfil";
+  | "perfil"
+  | "admin-catalogo";
 
 type NavTab = "inicio" | "materias" | "recordatorios" | "convenios" | "perfil";
 
@@ -117,6 +120,42 @@ function BottomNav({ active, onNav }: { active: NavTab; onNav: (t: NavTab) => vo
           </button>
         );
       })}
+    </div>
+  );
+}
+
+// ─── Sidebar Nav (desktop, md+) ────────────────────────────────────────────────
+// S4-06: reemplaza al BottomNav desde `md:` para que el shell deje de forzar
+// el frame fijo de 430px también en pantallas grandes.
+function SidebarNav({ active, onNav }: { active: NavTab; onNav: (t: NavTab) => void }) {
+  return (
+    <div
+      className="hidden md:flex md:w-60 md:flex-shrink-0 md:flex-col md:border-r md:px-4 md:py-8"
+      style={{ borderColor: BORDER, background: CARD }}
+    >
+      <div className="mb-8 px-2 text-xl font-black" style={{ color: TEXT, letterSpacing: -0.4 }}>
+        mi<span style={{ color: VIOLET }}>IFTS</span>
+      </div>
+      <nav className="flex flex-col gap-1">
+        {navItems.map((item) => {
+          const isActive = active === item.key;
+          return (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => onNav(item.key)}
+              className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition"
+              style={{
+                background: isActive ? "rgba(140,125,255,0.12)" : "transparent",
+                color: isActive ? VIOLET : MUTED,
+              }}
+            >
+              {item.icon}
+              {item.label}
+            </button>
+          );
+        })}
+      </nav>
     </div>
   );
 }
@@ -460,6 +499,7 @@ const screenToNav: Partial<Record<Screen, NavTab>> = {
   recordatorios: "recordatorios",
   convenios: "convenios",
   perfil: "perfil",
+  "admin-catalogo": "materias",
 };
 
 export default function App() {
@@ -485,7 +525,13 @@ export default function App() {
       case "registro": return <RegistroScreen onGo={setScreen} />;
       case "carrera": return <CarreraScreen onGo={setScreen} />;
       case "inicio": return <InicioReal onOpenMateria={abrirDetalle} />;
-      case "materias": return <MisMateriasReal onOpenMateria={abrirDetalle} />;
+      case "materias":
+        return (
+          <MisMateriasReal
+            onOpenMateria={abrirDetalle}
+            onAbrirAdmin={() => setScreen("admin-catalogo")}
+          />
+        );
       case "detalle":
         if (materiaIdSeleccionada == null) {
           return <MisMateriasReal onOpenMateria={abrirDetalle} />;
@@ -496,16 +542,29 @@ export default function App() {
       case "recordatorios": return <RecordatoriosFeatureScreen />;
       case "convenios": return <ConveniosFeatureScreen />;
       case "perfil": return <PerfilFeatureScreen onCerrarSesion={() => setScreen("login")} />;
+      case "admin-catalogo":
+        // S4-10: guard de rol acá además del link condicional en
+        // MisMateriasScreen — nadie que no sea admin llega a esta pantalla
+        // aunque fuerce el estado.
+        return getMiUsuario().rol === "admin" ? (
+          <AdminCatalogoScreen onVolver={() => setScreen("materias")} />
+        ) : (
+          <MisMateriasReal onOpenMateria={abrirDetalle} />
+        );
     }
   };
 
+  // S4-06: el shell ya no fuerza un frame de 430px en toda resolución — solo
+  // el flujo de auth (sin nav, pensado como una tarjeta angosta) mantiene ese
+  // ancho; el resto de la app crece hasta un contenido fluido con sidebar
+  // desde `md:` en vez de BottomNav.
   return (
     <div style={{ background: BG, minHeight: "100%", display: "flex", justifyContent: "center" }}>
       <div className="flex min-h-screen w-full max-w-[430px] flex-col bg-[#111218] text-[#E8E8F0] sm:max-w-2xl lg:max-w-5xl">
         {renderScreen()}
-        {showNav && activeTab && <BottomNav active={activeTab} onNav={handleNav} />}
-        <Toaster />
+        {showNav && activeTab ? <BottomNav active={activeTab} onNav={handleNav} /> : null}
       </div>
+      <Toaster />
     </div>
   );
 }

@@ -40,8 +40,8 @@ export function useAsync<T>(fetcher: () => Promise<T>, deps: unknown[]) {
   return { ...state, refetch };
 }
 
-export function useCarreras(params: { page?: number } = {}) {
-  return useAsync<Paginated<Carrera>>(() => getCarreras(params), [params.page]);
+export function useCarreras(params: { page?: number; per_page?: number } = {}) {
+  return useAsync<Paginated<Carrera>>(() => getCarreras(params), [params.page, params.per_page]);
 }
 
 export function useMateriasDeCarrera(carreraId: number) {

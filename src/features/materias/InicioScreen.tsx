@@ -1,5 +1,6 @@
 import { getMiUsuario } from "../../api/scope";
 import { useRecordatorios } from "../recordatorios/hooks";
+import { estadoLabel } from "./estado";
 import { useMisMaterias, usePromedio } from "./hooks";
 import ByteWidget from "./ByteWidget";
 import PromedioCard from "./PromedioCard";
@@ -22,8 +23,11 @@ export default function InicioScreen({ onOpenMateria }: { onOpenMateria?: (id: n
   const recordatorios = useRecordatorios({ desde: hoyISO(), per_page: 3 });
 
   const items = lista.data?.items ?? [];
-  const aprobadas = items.filter((c) => c.estado === "aprobada").length;
-  const total = 10;
+  // El backend ahora deriva 5 estados (cursando/promocionada/aprobada/
+  // desaprobada/pendiente, ver feature/estados-materia) — "promocionada"
+  // también es una materia aprobada (exime el final por parciales ≥7).
+  const aprobadas = items.filter((c) => ["aprobada", "promocionada"].includes(estadoLabel(c))).length;
+  const total = lista.data?.total ?? 0;
 
   return (
     <div className="flex-1 overflow-y-auto pb-24">
