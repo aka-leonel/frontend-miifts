@@ -1,12 +1,3 @@
-// src/features/perfil/PerfilScreen.tsx
-//
-// Integrante 4 — Mi perfil. Reemplaza al mock `PerfilScreen` de App.tsx
-// (mismo layout / colores; ese queda como código muerto, igual criterio que
-// Convenios). Nombre/email vienen de `GET /auth/me` real; "guardar cambios"
-// es solo visual hasta que exista `PATCH /auth/me` (gap §1.7 de
-// INTEGRACION_FRONT.md); "cerrar sesión" sí es real: limpia la sesión del
-// localStorage (mismas claves que usará el AuthProvider de Integrante 1).
-
 import { useEffect, useState } from "react";
 import { useCarreras } from "../catalogo/hooks";
 import { useMisMaterias } from "../materias/hooks";
@@ -24,41 +15,71 @@ export default function PerfilScreen({ onCerrarSesion }: { onCerrarSesion: () =>
   const me = useAuthMe();
   const carreras = useCarreras({ page: 1 });
   const misMaterias = useMisMaterias(1);
-
   const [nombre, setNombre] = useState("");
-  const [carreraId, setCarreraId] = useState<number | "">("");
-  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     if (!me.data) return;
-    // Semilla los campos editables con lo que llegó de /auth/me. Diferido a
-    // un microtask (en vez de setState suelto en el cuerpo del efecto) para
-    // no disparar un re-render síncrono en cascada.
     const usuario = me.data;
-    queueMicrotask(() => {
-      setNombre(usuario.nombre);
-      setCarreraId(usuario.carrera_id);
-    });
+    queueMicrotask(() => setNombre(usuario.nombre));
   }, [me.data]);
 
   const aprobadas = (misMaterias.data?.items ?? []).filter((c) => c.estado === "aprobada").length;
   const total = misMaterias.data?.total ?? 0;
   const pct = total > 0 ? Math.round((aprobadas / total) * 100) : 0;
-
-  function handleSave() {
-    // Solo visual: no hay PATCH /auth/me todavía (INTEGRACION_FRONT.md §1.7).
-    setSaved(true);
-    window.setTimeout(() => setSaved(false), 2000);
-  }
+  const carreraNombre =
+    (carreras.data?.items ?? []).find((c) => c.id === me.data?.carrera_id)?.nombre ??
+    (me.data ? `Carrera #${me.data.carrera_id}` : "");
 
   function handleLogout() {
     for (const key of SESSION_KEYS) window.localStorage.removeItem(key);
     onCerrarSesion();
   }
 
+  if (me.loading && !me.data) {
+    return (
+      <div className="flex-1 overflow-y-auto pb-24">
+        <div className="mx-auto w-full max-w-lg px-4 pt-14 sm:px-6 md:max-w-2xl">
+          <div className="h-8 w-32 animate-pulse rounded-lg bg-surface2" />
+          <div className="mt-8 flex justify-center">
+            <div className="h-[88px] w-[88px] animate-pulse rounded-[28px] bg-surface2" />
+          </div>
+          <div className="mt-6 space-y-3.5">
+            <div className="h-14 animate-pulse rounded-xl bg-surface2" />
+            <div className="h-14 animate-pulse rounded-xl bg-surface2" />
+            <div className="h-14 animate-pulse rounded-xl bg-surface2" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (me.error) {
+    return (
+      <div className="flex-1 overflow-y-auto pb-24">
+        <div className="mx-auto w-full max-w-lg px-4 pt-14 sm:px-6 md:max-w-2xl">
+          <div className="mb-7">
+            <div className="text-2xl font-black tracking-[-0.04em] text-text">Mi Perfil</div>
+            <div className="mt-1 text-sm text-muted">Configurá tu cuenta</div>
+          </div>
+          <div className="rounded-2xl border border-border bg-card p-6 text-center">
+            <div className="text-sm font-semibold text-text">No se pudo cargar tu perfil</div>
+            <div className="mt-1 text-xs text-muted">{String((me.error as Error)?.message ?? me.error)}</div>
+            <button
+              type="button"
+              onClick={() => me.refetch()}
+              className="mt-4 rounded-xl bg-violet px-4 py-2 text-sm font-semibold text-white"
+            >
+              Reintentar
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1 overflow-y-auto pb-24">
-      <div className="px-6 pt-14">
+      <div className="mx-auto w-full max-w-lg px-4 pt-14 sm:px-6 md:max-w-2xl">
         <div className="mb-7">
           <div className="text-2xl font-black tracking-[-0.04em] text-text">Mi Perfil</div>
           <div className="mt-1 text-sm text-muted">Configurá tu cuenta</div>
@@ -77,8 +98,9 @@ export default function PerfilScreen({ onCerrarSesion }: { onCerrarSesion: () =>
             <label className="mb-1.5 block text-[11px] font-semibold text-muted">NOMBRE</label>
             <input
               value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
-              className="w-full rounded-xl border border-border bg-card px-4 py-3.5 text-[15px] text-text outline-none transition focus:border-violet"
+              readOnly
+              disabled
+              className="w-full cursor-not-allowed rounded-xl border border-border bg-card px-4 py-3.5 text-[15px] text-muted opacity-80 outline-none"
             />
           </div>
           <div>
@@ -86,35 +108,27 @@ export default function PerfilScreen({ onCerrarSesion }: { onCerrarSesion: () =>
             <input
               value={me.data?.email ?? ""}
               readOnly
-              className="w-full cursor-not-allowed rounded-xl border border-border bg-card px-4 py-3.5 text-[15px] text-muted outline-none"
+              disabled
+              className="w-full cursor-not-allowed rounded-xl border border-border bg-card px-4 py-3.5 text-[15px] text-muted opacity-80 outline-none"
             />
           </div>
           <div>
             <label className="mb-1.5 block text-[11px] font-semibold text-muted">CARRERA</label>
-            <select
-              value={carreraId}
-              onChange={(e) => setCarreraId(Number(e.target.value))}
-              className="w-full cursor-pointer rounded-xl border border-border bg-card px-4 py-3.5 text-[15px] text-text outline-none"
-            >
-              {(carreras.data?.items ?? []).map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.nombre}
-                </option>
-              ))}
-            </select>
+            <input
+              value={carreras.loading ? "Cargando..." : carreraNombre}
+              readOnly
+              disabled
+              className="w-full cursor-not-allowed rounded-xl border border-border bg-card px-4 py-3.5 text-[15px] text-muted opacity-80 outline-none"
+            />
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={handleSave}
-          className={[
-            "mb-7 w-full rounded-xl px-6 py-[15px] text-[15px] font-semibold text-white transition-colors",
-            saved ? "bg-green" : "bg-violet",
-          ].join(" ")}
-        >
-          {saved ? "✓ Guardado" : "Guardar cambios"}
-        </button>
+        <div className="mb-7 rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3">
+          <p className="text-xs leading-relaxed text-amber-200/90">
+            La edición de nombre y carrera está deshabilitada hasta que esté disponible{" "}
+            <span className="font-semibold">PATCH /auth/me</span> (INTEGRACION_FRONT.md §1.7).
+          </p>
+        </div>
 
         <div className="mb-6 rounded-2xl border border-border bg-card p-4">
           <div className="mb-1 text-sm font-semibold text-text">
