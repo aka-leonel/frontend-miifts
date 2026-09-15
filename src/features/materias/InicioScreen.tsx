@@ -23,9 +23,10 @@ export default function InicioScreen({ onOpenMateria }: { onOpenMateria?: (id: n
   const recordatorios = useRecordatorios({ desde: hoyISO(), per_page: 3 });
 
   const items = lista.data?.items ?? [];
-  // S4-08: `c.estado==="aprobada"` es el campo crudo del backend (sin
-  // umbral) — usar `estadoLabel` para que coincida con la badge "Reprobada".
-  const aprobadas = items.filter((c) => estadoLabel(c) === "Aprobada").length;
+  // El backend ahora deriva 5 estados (cursando/promocionada/aprobada/
+  // desaprobada/pendiente, ver feature/estados-materia) — "promocionada"
+  // también es una materia aprobada (exime el final por parciales ≥7).
+  const aprobadas = items.filter((c) => ["aprobada", "promocionada"].includes(estadoLabel(c))).length;
   const total = lista.data?.total ?? 0;
 
   return (
