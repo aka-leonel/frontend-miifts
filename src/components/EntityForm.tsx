@@ -17,6 +17,8 @@ export type FormFieldSpec = {
   min?: number;
   max?: number;
   lockOnEdit?: boolean;
+  readOnly?: boolean;
+  hint?: string;
 };
 
 export type EntityFormProps<T extends Record<string, unknown>> = {
@@ -96,10 +98,12 @@ function renderField<T extends Record<string, unknown>>(
           min={field.min}
           max={field.max}
           value={String(value ?? "")}
+          disabled={field.readOnly}
           onChange={(event) => onChange(field.name as keyof T, event.target.value)}
-          className={[fieldClassName, hasError ? "border-red-500" : ""].join(" ")}
+          className={[fieldClassName, hasError ? "border-red-500" : "", field.readOnly ? "cursor-not-allowed opacity-70" : ""].join(" ")}
           placeholder={field.placeholder}
         />
+        {field.hint ? <span className="text-xs text-muted">{field.hint}</span> : null}
         {hasError ? <span className="text-xs text-red-300">{errors?.[field.name]}</span> : null}
       </div>
     );
