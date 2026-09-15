@@ -29,6 +29,11 @@ export async function createRecordatorio(body: RecordatorioCreate): Promise<Reco
   return apiClient<Recordatorio>("/recordatorios/", { method: "POST", body });
 }
 
+export async function updateRecordatorio(id: number, body: Partial<RecordatorioCreate>): Promise<Recordatorio> {
+  
+  return apiClient<Recordatorio>(`/recordatorios/${id}`, { method: "PATCH", body });
+}
+
 export async function deleteRecordatorio(id: number): Promise<void> {
   return apiClient<void>(`/recordatorios/${id}`, { method: "DELETE" });
 }

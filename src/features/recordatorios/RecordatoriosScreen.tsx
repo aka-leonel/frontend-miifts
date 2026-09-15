@@ -3,12 +3,13 @@ import { FormModal, ListState } from "../../components";
 import { useToast } from "../../hooks/useToast";
 import { RecordatorioCard } from "./RecordatorioCard";
 import { useBorrarRecordatorio, useRecordatorios } from "./hooks";
-import { recordatorioInitial, recordatorioSpec } from "./recordatorioSpec";
+import { recordatorioFormInitial, recordatorioInitial, recordatorioSpec } from "./recordatorioSpec";
 import type { Recordatorio } from "../../api/types";
 
 export default function RecordatoriosScreen() {
   const { pushToast } = useToast();
   const [modalOpen, setModalOpen] = useState(false);
+  const [editItem, setEditItem] = useState<Recordatorio | null>(null);
   const lista = useRecordatorios({ per_page: 100 });
 
   const borrar = useBorrarRecordatorio(() => {
@@ -58,6 +59,10 @@ export default function RecordatoriosScreen() {
                       key={r.id}
                       recordatorio={r}
                       disabled={borrar.loading}
+                      onEdit={() => {
+                        setEditItem(r);
+                        setModalOpen(true);
+                      }}
                       onDelete={() => borrar.run(r.id)}
                     />
                   ))}
@@ -73,6 +78,10 @@ export default function RecordatoriosScreen() {
                       key={r.id}
                       recordatorio={r}
                       disabled={borrar.loading}
+                      onEdit={() => {
+                        setEditItem(r);
+                        setModalOpen(true);
+                      }}
                       onDelete={() => borrar.run(r.id)}
                     />
                   ))}
@@ -94,11 +103,16 @@ export default function RecordatoriosScreen() {
 
       <FormModal
         open={modalOpen}
+        item={editItem ?? undefined}
         spec={recordatorioSpec()}
-        initialValues={recordatorioInitial}
-        onClose={() => setModalOpen(false)}
+        initialValues={editItem ? recordatorioFormInitial(editItem) : recordatorioInitial}
+        onClose={() => {
+          setModalOpen(false);
+          setEditItem(null);
+        }}
         onSuccess={() => {
-          pushToast("Recordatorio agregado.", "success");
+          pushToast(editItem ? "Recordatorio actualizado." : "Recordatorio agregado.", "success");
+          setEditItem(null);
           lista.refetch();
         }}
       />
