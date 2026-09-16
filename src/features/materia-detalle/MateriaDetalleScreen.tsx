@@ -9,7 +9,7 @@
 // `useRecordatorios`/`recordatorioSpec`/`<RecordatorioCard>` (Integrante 4).
 import { useMemo, useState } from "react";
 import { ApiError } from "../../api/client";
-import { getMiUsuario } from "../../api/scope";
+import { useAuth } from "../../auth/AuthContext";
 import type { Recordatorio, Recurso } from "../../api/types";
 import { ConfirmDialog, FormModal, ListState } from "../../components";
 import { useToast } from "../../hooks/useToast";
@@ -32,8 +32,12 @@ interface Props {
 }
 
 export function MateriaDetalleScreen({ materiaId, onVolver }: Props) {
-  const usuario = getMiUsuario();
+  const { usuario } = useAuth();
   const { pushToast } = useToast();
+
+  if (!usuario) {
+    return <div className="p-6 text-sm text-muted">Tu sesión ya no es válida.</div>;
+  }
 
   const materia = useMateria(materiaId);
   const correlativas = useCorrelativas(materiaId);

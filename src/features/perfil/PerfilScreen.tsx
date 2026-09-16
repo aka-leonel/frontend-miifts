@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
+import { useAuth } from "../../auth/AuthContext";
 import { useCarreras } from "../catalogo/hooks";
 import { useMisMaterias } from "../materias/hooks";
 import { useAuthMe } from "./hooks";
-
-const SESSION_KEYS = ["miifts_token", "miifts_usuario"] as const;
 
 function iniciales(nombre: string, apellido?: string): string {
   const inicialNombre = nombre.trim()[0];
@@ -13,6 +12,7 @@ function iniciales(nombre: string, apellido?: string): string {
 }
 
 export default function PerfilScreen({ onCerrarSesion }: { onCerrarSesion: () => void }) {
+  const { logout } = useAuth();
   const me = useAuthMe();
   const carreras = useCarreras({ page: 1 });
   const misMaterias = useMisMaterias(1);
@@ -32,7 +32,7 @@ export default function PerfilScreen({ onCerrarSesion }: { onCerrarSesion: () =>
     (me.data ? `Carrera #${me.data.carrera_id}` : "");
 
   function handleLogout() {
-    for (const key of SESSION_KEYS) window.localStorage.removeItem(key);
+    logout();
     onCerrarSesion();
   }
 
