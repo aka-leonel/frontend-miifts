@@ -29,6 +29,14 @@ export type EntityFormProps<T extends Record<string, unknown>> = {
   submitLabel?: string;
   showSubmitButton?: boolean;
   children?: ReactNode;
+  /**
+   * true si el form está editando un item existente. `lockOnEdit` en un
+   * field spec solo debe deshabilitarlo en ese caso — en alta (create) el
+   * campo tiene que quedar habilitado siempre (bug: antes se leía
+   * `field.lockOnEdit` a secas, así que quedaba deshabilitado también al
+   * crear, ej. el selector de materia en "Agregar materia").
+   */
+  isEditing?: boolean;
 };
 
 const fieldClassName =
@@ -39,6 +47,7 @@ function renderField<T extends Record<string, unknown>>(
   value: unknown,
   errors: Record<string, string> | undefined,
   onChange: (name: keyof T, value: unknown) => void,
+  isEditing: boolean,
 ) {
   const id = field.name;
   const hasError = Boolean(errors?.[field.name]);
@@ -73,7 +82,7 @@ function renderField<T extends Record<string, unknown>>(
         <label className="block text-xs font-semibold uppercase tracking-[0.08em] text-muted">{field.label}</label>
         <select
           value={String(value ?? "")}
-          disabled={field.lockOnEdit}
+          disabled={field.lockOnEdit && isEditing}
           onChange={(event: ChangeEvent<HTMLSelectElement>) => onChange(field.name as keyof T, event.target.value)}
           className={[fieldClassName, hasError ? "border-red-500" : ""].join(" ")}
         >
@@ -132,10 +141,11 @@ export default function EntityForm<T extends Record<string, unknown>>({
   submitLabel = "Guardar",
   showSubmitButton = true,
   children,
+  isEditing = false,
 }: EntityFormProps<T>) {
   const renderedFields = useMemo(
-    () => fields.map((field) => renderField(field, values[field.name], errors, onChange)),
-    [fields, values, errors, onChange],
+    () => fields.map((field) => renderField(field, values[field.name], errors, onChange, isEditing)),
+    [fields, values, errors, onChange, isEditing],
   );
 
   return (

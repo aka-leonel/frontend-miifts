@@ -5,10 +5,11 @@ import { useAuthMe } from "./hooks";
 
 const SESSION_KEYS = ["miifts_token", "miifts_usuario"] as const;
 
-function iniciales(nombre: string): string {
-  const partes = nombre.trim().split(/\s+/).filter(Boolean);
-  if (partes.length === 0) return "?";
-  return (partes[0][0] + (partes[1]?.[0] ?? "")).toUpperCase();
+function iniciales(nombre: string, apellido?: string): string {
+  const inicialNombre = nombre.trim()[0];
+  const inicialApellido = apellido?.trim()[0];
+  if (!inicialNombre) return "?";
+  return (inicialNombre + (inicialApellido ?? "")).toUpperCase();
 }
 
 export default function PerfilScreen({ onCerrarSesion }: { onCerrarSesion: () => void }) {
@@ -88,7 +89,7 @@ export default function PerfilScreen({ onCerrarSesion }: { onCerrarSesion: () =>
         <div className="mb-8 flex justify-center">
           <div className="relative">
             <div className="flex h-[88px] w-[88px] items-center justify-center rounded-[28px] bg-gradient-to-br from-violet to-[#6B5CE7] text-3xl font-extrabold text-white">
-              {iniciales(nombre || me.data?.nombre || "?")}
+              {iniciales(nombre || me.data?.nombre || "?", me.data?.apellido)}
             </div>
           </div>
         </div>
@@ -98,6 +99,15 @@ export default function PerfilScreen({ onCerrarSesion }: { onCerrarSesion: () =>
             <label className="mb-1.5 block text-[11px] font-semibold text-muted">NOMBRE</label>
             <input
               value={nombre}
+              readOnly
+              disabled
+              className="w-full cursor-not-allowed rounded-xl border border-border bg-card px-4 py-3.5 text-[15px] text-muted opacity-80 outline-none"
+            />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-[11px] font-semibold text-muted">APELLIDO</label>
+            <input
+              value={me.data?.apellido ?? ""}
               readOnly
               disabled
               className="w-full cursor-not-allowed rounded-xl border border-border bg-card px-4 py-3.5 text-[15px] text-muted opacity-80 outline-none"

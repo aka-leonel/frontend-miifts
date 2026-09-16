@@ -10,7 +10,8 @@ const SESSION_KEY = "miifts_usuario";
 
 export const DEMO_USUARIO: Usuario = {
   id: 1,
-  nombre: "Martina Ríos",
+  nombre: "Martina",
+  apellido: "Ríos",
   email: "martina.demo@ifts.edu.ar",
   carrera_id: 1,
   fecha_registro: "2026-09-01T00:00:00",

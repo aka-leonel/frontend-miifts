@@ -99,6 +99,7 @@ export default function FormModal<T extends Record<string, unknown>>({
           onChange={onFieldChange}
           submitLabel={waiting ? "Guardando..." : "Guardar"}
           showSubmitButton={false}
+          isEditing={Boolean(item?.id)}
         >
           <div className="flex gap-3 pt-2">
             <button

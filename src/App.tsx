@@ -30,54 +30,11 @@ type Screen =
 
 type NavTab = "inicio" | "materias" | "recordatorios" | "convenios" | "perfil";
 
-type BadgeStatus = "Pendiente" | "En curso" | "Regular" | "Aprobada";
-
-interface Materia {
-  id: number;
-  nombre: string;
-  estado: BadgeStatus;
-  nota?: number;
-  requisito?: string;
-}
-
-interface Recurso {
-  id: number;
-  nombre: string;
-  link: string;
-  tipo: "meet" | "drive" | "whatsapp" | "pdf";
-}
-
-interface Recordatorio {
-  id: number;
-  titulo: string;
-  fecha: string;
-  hora: string;
-  tipo: string;
-}
-
-const materiasInit: Materia[] = [
-  { id: 1, nombre: "Análisis Matemático I", estado: "Regular", nota: 7, requisito: "Álgebra" },
-  { id: 2, nombre: "Programación I", estado: "Aprobada", nota: 9 },
-  { id: 3, nombre: "Sistemas Operativos", estado: "En curso" },
-  { id: 4, nombre: "Inglés Técnico", estado: "Pendiente" },
-  { id: 5, nombre: "Base de Datos I", estado: "Aprobada", nota: 8 },
-];
-
-const carreras = [
-  "Desarrollo de Software",
-  "Análisis de Sistemas",
-  "Redes y Comunicaciones",
-  "Ciberseguridad",
-  "Ciencia de Datos",
-];
-
 // ─── Design tokens ─────────────────────────────────────────────────────────────
 const BG = "#111218";
 const CARD = "#1A1B23";
 const BORDER = "#2A2B36";
 const VIOLET = "#8C7DFF";
-const LIME = "#CFFF5E";
-const GREEN = "#3FB950";
 const TEXT = "#E8E8F0";
 const MUTED = "#9A9AB0";
 
@@ -161,19 +118,51 @@ function SidebarNav({ active, onNav }: { active: NavTab; onNav: (t: NavTab) => v
 }
 
 // ─── Input ────────────────────────────────────────────────────────────────────
-function Input({ placeholder, type = "text", value, onChange }: { placeholder: string; type?: string; value: string; onChange: (v: string) => void }) {
-  return (
-    <input type={type} placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)}
-      style={{ width: "100%", background: CARD, border: `0.5px solid ${BORDER}`, borderRadius: 10, padding: "14px 16px", color: TEXT, fontSize: 15, outline: "none" }}
-      onFocus={(e) => (e.target.style.borderColor = VIOLET)}
-      onBlur={(e) => (e.target.style.borderColor = BORDER)}
-    />
+// Los campos type="password" muestran un ícono de ojo para alternar entre
+// texto oculto/visible mientras se escribe.
+function EyeIcon({ off }: { off?: boolean }) {
+  return off ? (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <path d="M3 3l18 18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M10.6 5.08A11 11 0 0112 5c7 0 11 7 11 7a13.2 13.2 0 01-3.24 3.94M6.6 6.6A13.2 13.2 0 001 12s4 7 11 7a10.9 10.9 0 004.4-.9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M9.9 9.9a3 3 0 104.2 4.2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ) : (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.5" />
+    </svg>
   );
 }
 
-function PrimaryButton({ children, onClick, fullWidth = true }: { children: React.ReactNode; onClick: () => void; fullWidth?: boolean }) {
+function Input({ placeholder, type = "text", value, onChange }: { placeholder: string; type?: string; value: string; onChange: (v: string) => void }) {
+  const [visible, setVisible] = useState(false);
+  const isPassword = type === "password";
+  const resolvedType = isPassword && visible ? "text" : type;
   return (
-    <button onClick={onClick} style={{ width: fullWidth ? "100%" : "auto", background: VIOLET, border: "none", borderRadius: 10, padding: "15px 24px", color: "#fff", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>
+    <div style={{ position: "relative" }}>
+      <input type={resolvedType} placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)}
+        style={{ width: "100%", background: CARD, border: `0.5px solid ${BORDER}`, borderRadius: 10, padding: isPassword ? "14px 44px 14px 16px" : "14px 16px", color: TEXT, fontSize: 15, outline: "none" }}
+        onFocus={(e) => (e.target.style.borderColor = VIOLET)}
+        onBlur={(e) => (e.target.style.borderColor = BORDER)}
+      />
+      {isPassword ? (
+        <button
+          type="button"
+          onClick={() => setVisible((v) => !v)}
+          aria-label={visible ? "Ocultar contraseña" : "Mostrar contraseña"}
+          style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", padding: 0, cursor: "pointer", color: MUTED, display: "flex", alignItems: "center" }}
+        >
+          <EyeIcon off={visible} />
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function PrimaryButton({ children, onClick, fullWidth = true, disabled = false }: { children: React.ReactNode; onClick: () => void; fullWidth?: boolean; disabled?: boolean }) {
+  return (
+    <button onClick={onClick} disabled={disabled} style={{ width: fullWidth ? "100%" : "auto", background: VIOLET, border: "none", borderRadius: 10, padding: "15px 24px", color: "#fff", fontSize: 15, fontWeight: 600, cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.55 : 1 }}>
       {children}
     </button>
   );
@@ -229,8 +218,38 @@ function LoginScreen({ onGo }: { onGo: (s: Screen) => void }) {
 // ─── Screen 2: Registro ───────────────────────────────────────────────────────
 function RegistroScreen({ onGo }: { onGo: (s: Screen) => void }) {
   const [nombre, setNombre] = useState("");
+  const [apellido, setApellido] = useState("");
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
+  const [pass2, setPass2] = useState("");
+  const { pushToast } = useToast();
+
+  // El backend exige mínimo 8 caracteres (ver UsuarioCreate); acá solo
+  // validamos longitud y coincidencia, el resto lo valida el server (422).
+  const passwordsNoCoinciden = pass.length > 0 && pass2.length > 0 && pass !== pass2;
+  const puedeContinuar =
+    nombre.trim().length > 0 &&
+    apellido.trim().length > 0 &&
+    email.trim().length > 0 &&
+    pass.length >= 8 &&
+    pass === pass2;
+
+  const handleContinuar = () => {
+    if (pass !== pass2) {
+      pushToast("Las contraseñas no coinciden.", "error");
+      return;
+    }
+    if (pass.length < 8) {
+      pushToast("La contraseña tiene que tener al menos 8 caracteres.", "error");
+      return;
+    }
+    // Guardar temporalmente los datos del formulario para que la
+    // pantalla de carrera pueda completar el flujo y llamar al
+    // endpoint real de registro (ver S4-03).
+    sessionStorage.setItem("registro_temp", JSON.stringify({ nombre, apellido, email, password: pass }));
+    onGo("carrera");
+  };
+
   return (
     <ScreenWrap>
       <div style={{ padding: "56px 28px 0" }}>
@@ -243,18 +262,19 @@ function RegistroScreen({ onGo }: { onGo: (s: Screen) => void }) {
           <div style={{ color: MUTED, fontSize: 14 }}>Completá tus datos para empezar</div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <Input placeholder="Nombre y apellido" value={nombre} onChange={setNombre} />
+          <Input placeholder="Nombre" value={nombre} onChange={setNombre} />
+          <Input placeholder="Apellido" value={apellido} onChange={setApellido} />
           <Input placeholder="Email institucional" type="email" value={email} onChange={setEmail} />
           <Input placeholder="Contraseña" type="password" value={pass} onChange={setPass} />
+          <div>
+            <Input placeholder="Repetí tu contraseña" type="password" value={pass2} onChange={setPass2} />
+            {passwordsNoCoinciden ? (
+              <div style={{ color: "#F87171", fontSize: 12, marginTop: 6 }}>Las contraseñas no coinciden.</div>
+            ) : null}
+          </div>
         </div>
         <div style={{ marginTop: 28 }}>
-          <PrimaryButton onClick={() => {
-            // Guardar temporalmente los datos del formulario para que la
-            // pantalla de carrera pueda completar el flujo y llamar al
-            // endpoint real de registro (ver S4-03).
-            sessionStorage.setItem("registro_temp", JSON.stringify({ nombre, email, password: pass }));
-            onGo("carrera");
-          }}>
+          <PrimaryButton onClick={handleContinuar} disabled={!puedeContinuar}>
             Continuar
           </PrimaryButton>
         </div>
@@ -315,7 +335,13 @@ function CarreraScreen({ onGo }: { onGo: (s: Screen) => void }) {
     }
     try {
       const temp = JSON.parse(raw);
-      await auth.registro({ nombre: temp.nombre, email: temp.email, password: temp.password, carrera_id: selectedId });
+      await auth.registro({
+        nombre: temp.nombre,
+        apellido: temp.apellido,
+        email: temp.email,
+        password: temp.password,
+        carrera_id: selectedId,
+      });
       sessionStorage.removeItem("registro_temp");
       onGo("inicio");
     } catch (err) {
@@ -358,121 +384,10 @@ function CarreraScreen({ onGo }: { onGo: (s: Screen) => void }) {
 // InicioReal, MisMateriasReal.
 
 // ─── Screen 6: Detalle de materia ─────────────────────────────────────────────
-function DetalleScreen({ onGo }: { onGo: (s: Screen) => void }) {
-  const materia = materiasInit[0];
-  const [recursos, setRecursos] = useState<Recurso[]>([]);
-  const [recordatorios, setRecordatorios] = useState<Recordatorio[]>([]);
-
-  const [modalEditNota, setModalEditNota] = useState(false);
-  const [modalNewRecurso, setModalNewRecurso] = useState(false);
-  const [modalEditRecurso, setModalEditRecurso] = useState<Recurso | null>(null);
-  const [modalNewRec, setModalNewRec] = useState(false);
-  const [modalEditRec, setModalEditRec] = useState<Recordatorio | null>(null);
-
-  const dotColor: Record<string, string> = { parcial: VIOLET, tp: LIME, final: GREEN, otro: "#C084FC" };
-  const tipoLabel: Record<string, string> = { parcial: "Parcial", tp: "TP", final: "Final", otro: "Otro" };
-
-  return (
-    <>
-      <ScreenWrap padBottom>
-        <div style={{ padding: "52px 24px 0" }}>
-          {/* Header row */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-            <button onClick={() => onGo("materias")} style={{ background: "none", border: "none", color: MUTED, cursor: "pointer", padding: 0, display: "flex", alignItems: "center", gap: 6 }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M5 12l7 7M5 12l7-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-              Materias
-            </button>
-            <button onClick={() => setModalEditNota(true)} style={{ background: "rgba(140,125,255,0.12)", border: `0.5px solid ${VIOLET}`, borderRadius: 10, padding: "7px 14px", color: VIOLET, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-              Editar notas
-            </button>
-          </div>
-
-          <div style={{ marginBottom: 24 }}>
-            <div style={{ color: TEXT, fontSize: 20, fontWeight: 800, letterSpacing: -0.3, marginBottom: 10 }}>{materia.nombre}</div>
-            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-              <Badge status={materia.estado} />
-              <span style={{ background: "rgba(140,125,255,0.12)", borderRadius: 10, padding: "3px 10px", color: VIOLET, fontSize: 13, fontWeight: 700 }}>Nota: {materia.nota}</span>
-            </div>
-          </div>
-
-          {/* Info */}
-          <div style={{ background: CARD, border: `0.5px solid ${BORDER}`, borderRadius: 14, padding: "16px 18px", marginBottom: 24, display: "flex", flexDirection: "column", gap: 12 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke={MUTED} strokeWidth="1.5" strokeLinejoin="round" /></svg>
-              <div>
-                <div style={{ color: MUTED, fontSize: 11 }}>Correlativa</div>
-                <div style={{ color: TEXT, fontSize: 13, fontWeight: 500 }}>Requiere: {materia.requisito}</div>
-              </div>
-            </div>
-            <div style={{ borderTop: `0.5px solid ${BORDER}` }} />
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke={MUTED} strokeWidth="1.5" /><path d="M12 6v6l4 2" stroke={MUTED} strokeWidth="1.5" strokeLinecap="round" /></svg>
-              <div>
-                <div style={{ color: MUTED, fontSize: 11 }}>Cuatrimestre</div>
-                <div style={{ color: TEXT, fontSize: 13, fontWeight: 500 }}>1er cuatrimestre 2024</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Recursos */}
-          <div style={{ marginBottom: 24 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-              <div style={{ color: TEXT, fontWeight: 700, fontSize: 15 }}>Recursos</div>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {recursos.map((r) => (
-                <div key={r.id} style={{ background: CARD, border: `0.5px solid ${BORDER}`, borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12 }}>
-                  <RecursoIcon tipo={r.tipo} size={32} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ color: TEXT, fontSize: 13, fontWeight: 500 }}>{r.nombre}</div>
-                    <div style={{ color: MUTED, fontSize: 11, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.link}</div>
-                  </div>
-                  <button onClick={() => setModalEditRecurso(r)} style={{ background: "none", border: `0.5px solid ${BORDER}`, borderRadius: 8, padding: "5px 10px", color: MUTED, fontSize: 12, cursor: "pointer", flexShrink: 0 }}>
-                    Editar
-                  </button>
-                </div>
-              ))}
-              <button onClick={() => setModalNewRecurso(true)} style={{ background: "none", border: `0.5px dashed ${BORDER}`, borderRadius: 12, padding: "12px", color: VIOLET, fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                <span style={{ fontSize: 18, lineHeight: 1 }}>+</span> Agregar recurso
-              </button>
-            </div>
-          </div>
-
-          {/* Recordatorios de esta materia */}
-          <div style={{ marginBottom: 24 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-              <div style={{ color: TEXT, fontWeight: 700, fontSize: 15 }}>Recordatorios</div>
-              <button onClick={() => setModalNewRec(true)} style={{ background: "none", border: "none", color: VIOLET, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>+ Agregar</button>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {recordatorios.map((r) => (
-                <div key={r.id} style={{ background: CARD, border: `0.5px solid ${BORDER}`, borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: dotColor[r.tipo] ?? MUTED, flexShrink: 0 }} />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ color: TEXT, fontSize: 13, fontWeight: 500 }}>{r.titulo}</div>
-                    <div style={{ color: MUTED, fontSize: 11, marginTop: 2 }}>
-                      <span style={{ background: `${dotColor[r.tipo] ?? MUTED}20`, color: dotColor[r.tipo] ?? MUTED, borderRadius: 20, padding: "1px 7px", fontSize: 10, marginRight: 5 }}>{tipoLabel[r.tipo] ?? r.tipo}</span>
-                      {r.fecha} · {r.hora}
-                    </div>
-                  </div>
-                  <button onClick={() => setModalEditRec(r)} style={{ background: "none", border: `0.5px solid ${BORDER}`, borderRadius: 8, padding: "5px 10px", color: MUTED, fontSize: 12, cursor: "pointer", flexShrink: 0 }}>
-                    Editar
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </ScreenWrap>
-
-      {modalEditNota && <ModalMateria initial={materia} onClose={() => setModalEditNota(false)} onSave={() => {}} />}
-      {modalNewRecurso && <ModalRecurso onClose={() => setModalNewRecurso(false)} onSave={(d) => { setRecursos((prev) => [...prev, { id: Date.now(), nombre: d.nombre ?? "", link: d.link ?? "", tipo: d.tipo ?? "meet" }]); }} />}
-      {modalEditRecurso && <ModalRecurso initial={modalEditRecurso} onClose={() => setModalEditRecurso(null)} onSave={(d) => { setRecursos((prev) => prev.map((r) => r.id === modalEditRecurso.id ? { ...r, ...d } : r)); }} />}
-      {modalNewRec && <ModalRecordatorio onClose={() => setModalNewRec(false)} onSave={(d) => { setRecordatorios((prev) => [...prev, { id: Date.now(), titulo: d.titulo ?? "", fecha: d.fecha ?? "", hora: d.hora ?? "", tipo: d.tipo ?? "otro" }]); }} />}
-      {modalEditRec && <ModalRecordatorio initial={modalEditRec} onClose={() => setModalEditRec(null)} onSave={(d) => { setRecordatorios((prev) => prev.map((r) => r.id === modalEditRec.id ? { ...r, ...d } : r)); }} />}
-    </>
-  );
-}
+// Reemplazada por MateriaDetalleFeatureScreen (ver imports arriba). La mock
+// original quedaba referenciando componentes (Badge, RecursoIcon, ModalMateria,
+// ModalRecurso, ModalRecordatorio) borrados en el merge y nunca se llamaba —
+// se eliminó por completo en vez de dejar código muerto que no compila.
 
 // ─── Screen 7: Recordatorios ──────────────────────────────────────────────────
 // Reemplazada por RecordatoriosFeatureScreen (Integrante 4, ver imports arriba).
@@ -503,7 +418,6 @@ const screenToNav: Partial<Record<Screen, NavTab>> = {
 };
 
 export default function App() {
-  console.log('VITE_API_URL:', import.meta.env.VITE_API_URL);
   const [screen, setScreen] = useState<Screen>(() => (haySesion() ? "inicio" : "login"));
   // No hay react-router en esta app todavía (el resto navega con este mismo
   // switch, no con URLs) — mientras tanto, la materia que se está viendo en

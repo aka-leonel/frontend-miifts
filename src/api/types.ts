@@ -11,6 +11,7 @@ export type Rol = "estudiante" | "admin";
 export interface Usuario {
   id: number;
   nombre: string;
+  apellido: string;
   email: string;
   carrera_id: number;
   fecha_registro: string;
@@ -19,6 +20,7 @@ export interface Usuario {
 
 export interface RegistroRequest {
   nombre: string;
+  apellido: string;
   email: string;
   password: string;
   carrera_id: number;
