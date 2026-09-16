@@ -169,3 +169,118 @@ Dependencias: T2-MAT-02 bloquea T2-INI-01 (reuso widgets); T2-INI-01 depende de 
 ### 8.5 Orden de ejecución Developer
 T4-PERFIL-01 → T4-CONV-01 → T4-CONV-02 → T4-CLEAN-01 → T4-RESP-01 (+ T4-SERVICE-01 en paralelo a T4-CONV-02)
 Dependencias: T4-CONV-02 bloqueado por T4-CONV-01 (validar datos reales antes de borrar fallback); T4-CLEAN-01 independiente pero antes de T4-RESP-01 (evitar responsive sobre código muerto); T4-PERFIL-01 independiente al inicio.
+
+## 9. Plan Detallado — Sprint 5 Integrante 2: Perfil editable (S5-05 → S5-08)
+
+> Fuente: `docs/SPRINT5_FRONT.md` § Integrante 2 + `docs/context/requirements.md` FR7 + `decisions.md` D014. **Stack real sin mocks:** Vite+React+TS+Tailwind+`apiClient` (`VITE_API_URL=http://localhost:8000`, `Authorization: Bearer`, `ApiError {detail,errors[]}`, `401→logout`, `useAuth()` fuente única). Prioridad Alta/Media, ≈3.5d. **Depende de S5-03** (identidad unificada en `useAuth()`).
+
+### 9.1 Estado actual (auditoría 2026-09-15)
+- `src/api/types.ts`: **OK** — `Usuario {id,nombre,apellido,email,carrera_id,fecha_registro,rol}`; falta `UsuarioUpdate = Partial<Pick<Usuario,"nombre"|"apellido"|"email">>` para PATCH.
+- `src/api/client.ts` → `src/lib/apiClient.ts`: wrapper único con `auth:true` agrega `Bearer`, parser `errors[]`→`Record`, `401→setUnauthorizedHandler(logout)`, `204` sin parse. Listo.
+- `src/auth/AuthContext.tsx`: **PARCIAL** — `usuario/token/cargando/verificandoSesion/login/registro/logout` OK, persiste `miifts_token`/`miifts_usuario` via `auth/storage.ts`, `setUnauthorizedHandler(logout)` y timers expiración. **Falta** método `actualizarPerfil(patch)` o `setUsuario` expuesto para S5-07; hoy solo `meRequest()` en mount actualiza al arrancar.
+- `src/auth/api.ts`: `loginRequest`, `registroRequest`, `meRequest() → GET /auth/me` OK. **Falta** `updateMeRequest(patch) → PATCH /auth/me`.
+- `src/features/perfil/service.ts`: solo `getAuthMe() → apiClient<Usuario>("/auth/me")` sin rama demo. **Falta** `updateAuthMe(patch: UsuarioUpdate) → apiClient<Usuario>("/auth/me", {method:"PATCH", body:patch})`.
+- `src/features/perfil/hooks.ts`: `useAuthMe()` con `useAsync(() => getAuthMe())` expone `data/loading/error/refetch`. No usa `useAuth()` aún.
+- `src/features/perfil/PerfilScreen.tsx`: **BLOQUEADO S4-16** — 3 inputs `readOnly disabled opacity-80`, `useState nombre` sync con `me.data`, carrera `readOnly` vía `useCarreras + carreraNombre` OK, banner `amber-500/10 "PATCH /auth/me (§1.7)"`, `Skeleton`/`ErrorState` con `me.refetch()` OK, `handleLogout` limpia `localStorage` + `onCerrarSesion()`. **No hay edición**: falta modo edición, validación, `PATCH`, `useApiForm`/`useToast`, sincronización. 0× `password` (S5-08 ya cumplido en este commit).
+- `src/hooks/useApiForm.ts` + `src/hooks/useToast.ts` + `src/components/EntityForm.tsx`: kit existente, patrón `409 toast / 422 fields` ya usado en `materiaUsuarioSpec`/`recursoSpec` — reusar.
+- Tokens Tailwind `bg #111218, card #1A1B23, violet #8C7DFF, lime #CFFF5E` + `Skeleton/ErrorState` existentes.
+
+### 9.2 Principios para el Developer (no mocks, no scope-creep)
+1. `PATCH /auth/me` con `auth:true`, body **solo** `nombre/apellido/email` parciales; nunca `carrera_id` ni `password`. Si backend responde `openapi.json` sin PATCH, igual implementar (SPRINT5 confirma que ya existe).
+2. Componentes usan **hooks/service** (`updateAuthMe`), nunca `fetch` directo. `PerfilScreen` consume `useAuth().usuario` como fallback/inicial, pero `GET /auth/me` sigue siendo fetch de verdad (S5-03).
+3. Sin `DEMO_MODE`/`demo.ts`; datos reales. Validación cliente mínima (trim, required, email regex) + servidor `422` mapea a field.
+4. No tocar `features/recordatorios`, `features/convenios`, `SidebarNav` (dueños Int.3/5). No agregar ruta nueva.
+
+### 9.3 Tareas delegables al Developer (orden estricto)
+
+#### T5-PERFIL-01 · S5-05 Editar nombre/apellido/email en Perfil (2d) — Alta — depende S5-03
+- Archivos: `src/api/types.ts`, `src/auth/api.ts`, `src/auth/AuthContext.tsx`, `src/auth/storage.ts`, `src/features/perfil/service.ts`, `src/features/perfil/hooks.ts`, `src/features/perfil/PerfilScreen.tsx`
+- `api/types.ts`: agregar `export type UsuarioUpdate = Partial<Pick<Usuario,"nombre"|"apellido"|"email">>;` (no incluir `carrera_id`/`rol`/`password`).
+- `auth/api.ts`: agregar `export function updateMeRequest(patch: UsuarioUpdate): Promise<Usuario> { return apiClient<Usuario>("/auth/me", {method:"PATCH", body: patch, auth:true}); }`
+- `features/perfil/service.ts`: agregar `export async function updateAuthMe(patch: UsuarioUpdate): Promise<Usuario> { return apiClient<Usuario>("/auth/me", {method:"PATCH", body: patch}); }` (o reexportar `updateMeRequest`). Mantener `getAuthMe`.
+- `auth/AuthContext.tsx`: exponer actualización sin recarga para S5-07: agregar `actualizarUsuario: (u: Usuario) => void` o `actualizarPerfil: (patch: UsuarioUpdate) => Promise<Usuario>` que llame `updateMeRequest`, luego `setUsuarioGuardado(u)` + `setUsuarioState(u)` + `pushToast` opcional. Alternativa mínima: exponer `setUsuarioState` via `setUsuarioGuardado` + helper `refreshAuthMe()` que hace `meRequest().then(set...)`. Elegir una y documentar en context value. No romper `login/registro/logout` existentes.
+- `features/perfil/PerfilScreen.tsx`: transformar de readOnly a editable:
+  - Estado: `form {nombre, apellido, email}` controlado, `isEditing` boolean (o siempre editable con `Guardar` disabled si no cambió), `saving` boolean, `fieldErrors` via `useApiForm()`, `pushToast` via `useToast()`.
+  - Inicialización: `useEffect` cuando `me.data` cambia → `setForm({nombre: me.data.nombre, apellido: me.data.apellido ?? "", email: me.data.email})`; también `queueMicrotask` OK pero preferir `useEffect` directo.
+  - Carrera: mantener `<input value={carreraNombre} readOnly disabled cursor-not-allowed opacity-60>` — nunca editable, no enviar en PATCH.
+  - Validación cliente: `nombre.trim().length>=2 && <=100`, `apellido` igual, `email` regex simple; si falla, set `fieldErrors` local y no fetch.
+  - Guardar: `onClick Guardar` → `clearErrors()` → `await updateAuthMe({nombre: form.nombre.trim(), apellido: form.apellido.trim(), email: form.email.trim()})` solo con campos cambiados (diff vs `me.data`); `setSaving(true/false)`. Éxito → `pushToast("Perfil actualizado","success")` + sincronizar (ver T5-PERFIL-03) + `me.refetch()` o `actualizarUsuario`.
+  - UI estados: `me.loading&&!me.data → Skeleton` (ya existe); `me.error → ErrorState retry` (ya existe); form habilitado cuando `!saving`; botón `Guardar` muestra `Guardando...` + `disabled` si `saving` o `!hasChanges`; carrera `disabled` siempre; inputs editables con `border-violet` en foco, `border-red` si `fieldErrors[campo]`.
+  - No agregar `<input type="password">` ni botón "Cambiar contraseña" (S5-08).
+- No tocar: `FormModal` (dueño Int.1) no aplica acá — Perfil es inline, no modal. Pero reusar `useApiForm` pattern.
+
+#### T5-PERFIL-02 · S5-06 Manejo de errores del guardado (0.5d) — Alta — depende T5-PERFIL-01
+- Archivo principal: `src/features/perfil/PerfilScreen.tsx` (lógica catch)
+- En `catch (e)`:
+  - Si `e instanceof ApiError && e.status===422` → `applyApiError(e)` mapea `errors` → `fieldErrors` por campo (`nombre`/`apellido`/`email`). No toast genérico si hay fields.
+  - Si `status===409` → `pushToast(e.detail || "Email ya registrado","error")` (email duplicado). Limpiar `fieldErrors`.
+  - Otros `401` ya dispara `logout` vía `apiClient`; no duplicar. `403/500` → `pushToast(detail,"error")`.
+  - Mantener `fieldErrors` visibles bajo cada input (`<span className="text-xs text-red-500">{fieldErrors.email}</span>`).
+- Reusar mismo patrón que `src/components/FormModal.tsx:73 applyApiError` y `materiaUsuarioSpec onError:{409:toast,422:fields}`.
+- Test manual: enviar `email` existente → 409 toast; `nombre="a"` → 422 field; vacío → cliente no fetch.
+
+#### T5-PERFIL-03 · S5-07 Sincronizar usuario actualizado (0.5d) — Media — depende T5-PERFIL-01
+- Archivos: `src/auth/AuthContext.tsx`, `src/auth/storage.ts`, `src/features/perfil/PerfilScreen.tsx`
+- Tras `PATCH 200` que devuelve `Usuario` actualizado:
+  - `AuthContext`: `setUsuarioGuardado(nuevoUsuario)` (`localStorage.setItem("miifts_usuario", JSON.stringify(u))`) + `setUsuarioState(nuevoUsuario)` para que `useAuth().usuario` cambie al instante.
+  - Si se expuso `actualizarPerfil`, que lo haga internamente; si no, `PerfilScreen` llama `setUsuarioGuardado` + `me.refetch()` y además notifica a `AuthContext` vía prop o context (preferir método en context para no duplicar `localStorage` keys).
+  - Verificar en `InicioScreen` (bienvenida `usuario.nombre`), avatar `iniciales()`, `MisMateriasScreen` no usan `getMiUsuario()` legacy (S5-03 ya migrado; si no, documentar que dependerán de `useAuth()` tras este ticket).
+  - No requerir `window.location.reload()`. Probar: cambiar nombre → navegar a Inicio sin reload → nombre nuevo visible.
+- Keys: si `useAuthMe` usa TanStack Query futura, invalidar `['auth-me']`; hoy con `useAsync`, basta `me.refetch()` + context update.
+
+#### T5-PERFIL-04 · S5-08 Confirmar que no hay forma de tocar contraseña desde Perfil (0.5d) — Baja — depende T5-PERFIL-01
+- Archivos: `src/features/perfil/PerfilScreen.tsx`, `src/features/perfil/service.ts`, `src/auth/api.ts`
+- Verificación negativa: `grep -r "password" src/features/perfil/` y `grep -r "contrase" src/features/perfil/` deben dar 0 hits. No debe existir `<input type="password">`, `Button "Cambiar contraseña"`, ni `apiClient(..., {body:{password}})`.
+- Si revisión encuentra campo agregado "para completar CRUD", eliminarlo y dejar comentario `// S5-08: password va por flujo Olvidé mi contraseña (Int.4), no en Perfil`.
+- `service.ts`/`auth/api.ts` nunca envían `password` en `updateAuthMe`.
+- Entrega: archivo `PerfilScreen.tsx` <300 líneas, 3 campos editables + carrera readOnly + logout, 0 referencias a password.
+
+### 9.4 Criterios de aceptación para Tester (validar contra backend real, sin mocks)
+1. **S5-05 Edición:** `GET /auth/me` pobla form; editar `nombre/apellido/email` + `Guardar` → `PATCH /auth/me` con body parcial, `200` devuelve `Usuario` y persiste (recargar → datos nuevos). Carrera `input disabled cursor-not-allowed opacity-60`, no se envía. Sin campo password.
+2. **S5-06 Errores:** `422` (nombre<2, email inválido) → `fieldErrors` bajo input (no toast); `409` email duplicado → toast `detail`; `saving` deshabilita botón. Mismo canal que `useApiForm` (ver `src/hooks/useApiForm.ts:11`).
+3. **S5-07 Sync:** Tras 200, `useAuth().usuario.nombre` + `localStorage miifts_usuario` actualizados sin reload; `InicioScreen` bienvenida/avatar reflejan cambio inmediato. `me.refetch()` o context update invocado.
+4. **S5-08 No-contraseña:** `grep password src/features/perfil` vacío; `service.ts` no importa ni envía `password`; UI sin botón/input password. Veredicto binario pass/fail.
+5. **Contrato global:** `apiClient` único `Authorization: Bearer`, `Paginated` no aplica acá pero `ApiError` parser OK, `401→logout`, `useToast`/`useApiForm` reusados, `npm run build && npx tsc --noEmit -p tsconfig.app.json --ignoreDeprecations 6.0` 0 errores, `VITE_API_URL` configurable.
+6. **No regresión S4-16:** `Skeleton`/`ErrorState` + `carreraNombre` fallback `Carrera #id` siguen OK; `Cerrar sesión` limpia `miifts_token`/`miifts_usuario` → `onCerrarSesion()`.
+
+### 9.5 Orden de ejecución Developer
+T5-PERFIL-01 → T5-PERFIL-02 → T5-PERFIL-03 → T5-PERFIL-04
+Dependencias: T5-PERFIL-01 bloquea 02/03/04; 02 y 03 pueden ir en paralelo tras 01; 04 es verificación final tras 01. **Bloqueante externo:** S5-03 (Integrante 1) debe entregar `useAuth().usuario` unificado antes de T5-PERFIL-03, si no Perfil quedará con `getMiUsuario()` legacy y la sync no se verá en Inicio.
+
+## 10. Plan Detallado — Extensión: Cambio de contraseña desde Perfil (FR8, integración lista)
+
+> Fuente: solicitud usuario 2026-09-16 + `requirements.md` FR8 + `decisions.md` D015. **Objetivo:** dejar todo el front listo para que, cuando el backend exponga la ruta, solo haya que cambiar `CHANGE_PASSWORD_PATH` en `src/auth/api.ts`. Modal limpio sin aviso de "endpoint no disponible".
+
+### 10.1 Estado actual (auditoría 2026-09-16)
+- `src/auth/api.ts`: **PARCIAL** — `loginRequest`, `registroRequest`, `meRequest`, `updateMeRequest` OK. Existe `CHANGE_PASSWORD_PATH = "/auth/change-password"` + `changePasswordRequest(payload: ChangePasswordRequest): Promise<void>` → `apiClient<void>(CHANGE_PASSWORD_PATH, {method:"POST", body:payload, auth:true})` (agregado, integración lista).
+- `src/api/types.ts`: **OK** — `ChangePasswordRequest {current_password, new_password}` agregado.
+- `src/features/perfil/PerfilScreen.tsx`: **LISTO LIMPIO** — botón "Cambiar contraseña" + modal con 3 inputs `type=password` (`current`, `next`, `confirm`) + `pwdSaving` + `pwdErrors`, sin banner ámbar de endpoint faltante. Handler valida cliente y llama `changePasswordRequest`. Seguridad: `autoComplete="current-password"/"new-password"`, no hash frontend, no guarda en storage.
+- `live openapi.json`: **PENDIENTE BACKEND** — no expone `POST /auth/change-password` (solo `GET/PATCH /auth/me`, `POST /auth/login|registro|verify`). Cuando lo exponga, solo hay que confirmar el path.
+- `src/auth/AuthContext.tsx` y `useToast/useApiForm` sin cambios necesarios.
+
+### 10.2 Principios para el Developer (esta extensión ya está implementada, solo documentar para futuro)
+1. **Único punto de integración:** `export const CHANGE_PASSWORD_PATH = "/auth/change-password"` en `src/auth/api.ts` línea 38. Si backend usa otro path (ej. `POST /auth/password`, `PATCH /auth/me/password`, `PUT /auth/change-password`), cambiar **solo ese string** — el resto no se toca.
+2. **Seguridad obligatoria:** texto plano por TLS, backend hashea con bcrypt. **Prohibido** hashear en frontend (`crypto.subtle.digest`, `bcryptjs` en cliente) — daría falsa seguridad y rompería el flujo. No loguear `current_password`/`new_password` ni en `console` ni en `ApiError.detail` más allá del toast.
+3. **Validación:** cliente: `current` requerido, `next` ≥8 + letra+número, `confirm===next`. Servidor: 422 `errors[]` mapeado a campo (`new_password`→`next`, `current_password`→`current`) vía `pwdErrors`; 401/403 current incorrecto → toast `detail`.
+4. **UI limpia:** modal sin aviso ámbar, 3 campos, botón `Guardar` con `disabled pwdSaving`, `Cancel` cierra y limpia `pwdForm/pwdErrors`. No tocar `PATCH /auth/me` ni `carrera`.
+
+### 10.3 Tareas delegables al Developer (checklist de cierre, 0.5d)
+
+#### T5-PWD-01 · Integrar string de ruta cuando el back esté listo (0.1d) — Baja
+- Archivo: `src/auth/api.ts`
+- Acción: confirmar con backend el path y método exacto en `openapi.json`. Editar **solo** `CHANGE_PASSWORD_PATH` y si el método no es `POST` ajustar `method`. No tocar `ChangePasswordRequest` salvo que backend use `password`/`newPassword` en snake/camel distinto — mapear en `changePasswordRequest` wrapper.
+- Verificación: `curl -s http://localhost:8000/openapi.json | grep -A2 change-password` debe mostrar el endpoint; `npx openapi-typescript` regenerar si se tipó distinto.
+
+#### T5-PWD-02 · Validación E2E contra backend real (0.2d)
+- Archivos: `src/features/perfil/PerfilScreen.tsx` (ya listo)
+- Casos: login → abrir modal → `current` vacío → fieldError; `next` sin número → fieldError; `confirm !== next` → fieldError; `current` incorrecto → `POST` 401 → toast; `next` corta → 422 → fieldError `next`; éxito → 200 → toast "Contraseña actualizada" + modal cierra + siguiente login con nueva contraseña funciona.
+- No permitir reuse de `current===next` si backend lo valida (422).
+
+#### T5-PWD-03 · Criterios de aceptación para Tester (validar cuando exista endpoint)
+- `grep -n CHANGE_PASSWORD_PATH src/auth/api.ts` → 1 definición única.
+- Modal sin texto "Endpoint aún no disponible" (`grep -i "no disponible" src/features/perfil` → 0).
+- `POST` real con `auth:true`, inputs `type=password`, sin hash frontend (`grep -i "hash\|bcrypt\|crypto" src/features/perfil` → 0).
+- `npm run build && npx tsc --noEmit -p tsconfig.app.json` verdes.
+
+### 10.4 Orden de ejecución Developer
+T5-PWD-01 → T5-PWD-02 → T5-PWD-03 (cuando backend ready). Hoy ya están implementados; Planner marca **IMPLEMENTATION READY** y deja T5-PWD-01 como único TODO futuro.

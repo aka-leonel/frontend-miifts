@@ -40,3 +40,9 @@ AGENTS.md define context/ raíz; agents/*.md referencian docs/architecture.md; u
 
 ## D013 Sprint2 gaps (INTEGRACION §6)
 Resueltos: identidad token cursadas/recordatorios, escritura convenios/TT admin, detalles carrera/materia. Vigente: CORS si front !=5173 pedir CORS_ORIGINS.
+
+## D014 Perfil editable Sprint5 (SPRINT5_FRONT S5-05→S5-08)
+`PATCH /auth/me` ya existe (cierra gap §1.7). Payload solo `{nombre?,apellido?,email?}` parcial; `carrera_id` bloqueado negocio (backend 422/409 si se envía) y `password` excluido de PATCH a propósito — va por endpoint dedicado. 422→`useApiForm` fieldErrors, 409 email duplicado→toast (mismo canal que `materiaUsuarioSpec`). Tras 200, `AuthContext.usuario` + `localStorage` son fuente única (S5-03), no `getMiUsuario()` legacy.
+
+## D015 Cambio de contraseña desde Perfil (2026-09-16, extensión usuario)
+Modal dedicado en `PerfilScreen` con 3 campos `current/new/confirm`, validación cliente (actual requerido, nueva ≥8 letra+número). **Seguridad:** contraseña se transmite en claro por TLS (HTTPS), **nunca hasheada en frontend**; backend hashea con bcrypt y no loguea. Endpoint dedicado `POST /auth/change-password {current_password, new_password}` (o el que defina backend) con único punto de integración `CHANGE_PASSWORD_PATH` en `src/auth/api.ts` — solo hay que cambiar ese string cuando el back esté listo. No se toca `PATCH /auth/me`. 422→fields mapeado, 401→toast. Modal limpio sin aviso de "endpoint no disponible".

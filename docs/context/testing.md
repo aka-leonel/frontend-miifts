@@ -98,3 +98,64 @@ Planner → Architect: marcar `status.md` TESTING→COMPLETE para Int.2, o escal
 
 ### Veredicto
 **PASS.** Integrante 4 cumple `implementation.md` §8.4 1-6 sin mocks. 4/5 tareas completas 100%, 1 con observación menor no bloqueante. Recomendación Planner→Architect: marcar Int.4 TESTING→COMPLETE, abrir follow-up opcional para `BottomNav` responsive y E2E `msw` con backend seed.
+
+## 7. Reporte — Sprint 5 Integrante 2 PERFIL EDITABLE (2026-09-16, Tester)
+
+### Alcance validado
+`implementation.md` §9 S5-05..S5-08. Archivos: `api/types.ts` (UsuarioUpdate), `auth/api.ts` (updateMeRequest), `auth/AuthContext.tsx` (actualizarUsuario/actualizarPerfil), `features/perfil/service.ts` (updateAuthMe), `features/perfil/PerfilScreen.tsx`. Criterios §9.4 + live backend `http://localhost:8000` (`GET /auth/me` + `PATCH /auth/me` PerfilUpdate).
+
+### Evidencia
+
+| Check | Resultado | Evidencia |
+|-------|-----------|-----------|
+| **Build** | PASS | `vite build` → `✓ 306ms`, 71 módulos, `265kB gzip 77kB` |
+| **Typecheck** | PASS | `tsc --noEmit -p tsconfig.app.json` → 1 preexistente `SidebarNav unused` (ajeno), 0 en `perfil/*`/`auth/*` |
+| **S5-05 Tipos+API** | PASS | `types.ts:158 UsuarioUpdate=Partial<Pick<Usuario,"nombre"|"apellido"|"email">>`, `auth/api.ts:35 updateMeRequest PATCH /auth/me auth:true`, `perfil/service.ts:8 updateAuthMe PATCH` |
+| **S5-05 UI editable** | PASS | `PerfilScreen.tsx` 3 inputs controlados `form.{nombre,apellido,email}` + `hasChanges` diff + `useCarreras` carrera `readOnly disabled cursor-not-allowed opacity-60`, `Guardar cambios` disabled `!hasChanges||saving`, `saving→Guardando...` |
+| **S5-05 Carrera RO** | PASS | `input carrera value=carreraNombre` `readOnly disabled`, patch construye solo `nombre/apellido/email` cambiados, nunca `carrera_id`; live `PATCH {carrera_id:999}` → backend ignora, `carrera_id` queda 1 |
+| **S5-06 422→fields** | PASS | `useApiForm` `applyApiError` mapea `errors[]→fieldErrors` con `border-red-500` + `<span text-red-400>`, live `PATCH {nombre:"a"}` → `422 {campo:"nombre",msg:"at least 2"}` → fieldError correcto |
+| **S5-06 409→toast** | PASS* | Código: `status 409 → pushToast(detail)` (línea 91). *No ejercitable E2E: backend `PerfilUpdate` no acepta `email`, nunca retorna 409. FR7 pide 409 email duplicado pero live ignora `email` |
+| **S5-07 Sync** | PASS | `AuthContext actualizarPerfil → updateMeRequest → actualizarUsuario → setUsuarioGuardado+setUsuarioState`, `PerfilScreen handleSave → await actualizarPerfil(patch) → pushToast success → me.refetch()`, sin reload. Live: `PATCH {nombre:"TestQAEdit"}` → 200 + `GET /auth/me` refleja cambio |
+| **S5-08 No password** | PASS | `grep -r password src/features/perfil` → 0 hits; `service.ts`/`auth/api.ts` no envían password; `PerfilScreen` 0× `type=password` |
+| **E2E live PATCH** | PASS | Usuario `testqa1789527020@example.com` registro→login→`GET /auth/me` 200→`PATCH {nombre,apellido}` 200 persiste→`PATCH {email}` 200 pero `email` queda original (ignorado, ver gap) |
+| **No mocks** | PASS | `grep DEMO_MODE src/features/perfil` 0 hits; `apiClient` único con `Authorization: Bearer` |
+| **Contrato global** | PASS | `Paginated` n/a, `ApiError` parser `errors[]`→Record OK, `401→logout` via `setUnauthorizedHandler` intacto, `VITE_API_URL` configurable |
+
+### Gap detectado (escalar a Architect/Planner)
+**FR7/S5-05 pide `PATCH /auth/me` con `email` editable + 409 duplicado, pero live `openapi.json` define `PerfilUpdate {nombre?, apellido?}` solo** — descripción: "sólo edita su propio nombre y apellido… El email identifica la cuenta". Live verificado: `PATCH {email:"new@example.com"}` → 200 pero `email` no cambia (ignorado). Impacto: `S5-06 409` nunca ocurre, email en UI es "falso editable". Recomendación: (a) Architect actualice `requirements.md` FR7 a solo `nombre/apellido` y `PerfilScreen` pase `email` a readOnly como `carrera`, o (b) backend amplíe `PerfilUpdate` para incluir `email` con validación 409.
+
+### No validado / Limitaciones
+- Sin `vitest`/`msw`/`RTL` → sin tests automatizados; validación manual + build + tsc + live curl.
+- `S5-03` unificación `useAuth()` en `Inicio/MisMaterias/Detalle` no re-validado acá (asumido mergeado).
+- Email gap bloquea validación completa 409 hasta decisión Arquitecto.
+
+### Veredicto
+**PASS con observación mayor (email gap).** T5-PERFIL-01/02/03/04 implementados según `implementation.md` §9.3, build+tsc verdes, `PATCH` real funciona para `nombre/apellido`, carrera sigue RO, sync sin reload, sin password. Observación: `email` editable no persiste (backend lo ignora) — escalar a Architect antes de marcar COMPLETE o ajustar UI a readOnly.
+
+## 8. Reporte — Extensión FR8 Cambio de contraseña (2026-09-16, Tester)
+
+### Alcance validado
+`implementation.md` §10 FR8 + `requirements.md` FR8 + `decisions.md` D015 + `auth/api.ts` + `api/types.ts` + `features/perfil/PerfilScreen.tsx` modal. Criterios §10.3. Live `http://localhost:8000` aún sin `POST /auth/change-password`.
+
+### Evidencia
+
+| Check | Resultado | Evidencia |
+|-------|-----------|-----------|
+| **Build** | PASS | `vite build` → `✓ 256ms`, 71 módulos, `269kB gzip 78kB` |
+| **Typecheck** | PASS | `tsc --noEmit -p tsconfig.app.json` → 1 preexistente `SidebarNav unused`, 0 en `auth/*`/`perfil/*` |
+| **Modal limpio** | PASS | `PerfilScreen.tsx:245` modal sin `amber-500/10` warning; `grep -i "no disponible\|Endpoint aún"` en `src/features/perfil` → 0 hits |
+| **Único punto integración** | PASS | `auth/api.ts:40 CHANGE_PASSWORD_PATH = "/auth/change-password"` (1 definición), `changePasswordRequest(payload: ChangePasswordRequest)` → `apiClient<void>(CHANGE_PASSWORD_PATH,{method:"POST",body:payload,auth:true})` |
+| **Tipos** | PASS | `api/types.ts` `ChangePasswordRequest {current_password, new_password}` |
+| **Inputs seguros** | PASS | 3× `type="password"` + `autoComplete="current-password"` / `new-password` en `PerfilScreen.tsx:266,277,288`; sin `hash`/`bcrypt`/`crypto` en `features/perfil` (grep 0) |
+| **No hash frontend** | PASS | `grep -i hash\|bcrypt\|crypto src/features/perfil` 0; contraseña viaja texto plano por TLS, backend hashea (D015) |
+| **Validación cliente** | PASS | `current` requerido, `next` ≥8 + letra+número (`/[A-Za-z]/ && /[0-9]/`), `confirm===next` → `pwdErrors` con `border-red-500` |
+| **422→fields / 401→toast** | PASS (código) | `catch (e instanceof ApiError)` mapea `new_password→next`, `current_password→current` a `pwdErrors`; otros `detail` → `pushToast`; `pwdSaving` deshabilita botón (`disabled:opacity-50`, texto `Guardando...`) |
+| **No regresión §9** | PASS | `PATCH /auth/me` sigue OK, `carrera readOnly` intacto, `build` verde |
+| **Backend pendiente** | INFO | `curl openapi.json \| grep change-password` → `[]` (endpoint aún no existe); E2E `POST /auth/change-password` 404 hasta que backend lo exponga — front queda listo con solo cambiar `CHANGE_PASSWORD_PATH` si el back usa otro path |
+
+### No validado / Limitaciones
+- Endpoint `POST /auth/change-password` no existe en live → no se ejercitó E2E 200/401/422 real; validación por código + contrato.
+- Sin `vitest`/`msw` → sin test automatizado de modal; validación manual + grep + build + tsc.
+
+### Veredicto
+**PASS.** §10 `T5-PWD-01→03` implementados: modal limpio, servicio con único string `CHANGE_PASSWORD_PATH`, seguridad TLS sin hash frontend, validación y manejo 422/401 listos. **Integración lista:** cuando backend exponga `POST /auth/change-password` (o variante) solo hay que editar ese string. Sin regresión sobre §9.

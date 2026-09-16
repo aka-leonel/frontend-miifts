@@ -1,9 +1,9 @@
 # Status — miIFTS Frontend
 
-> Owner: Planner | Actualizado: 2026-09-14
+> Owner: Planner | Actualizado: 2026-09-16
 
 ## Estado
-**COMPLETE** — Int.2 (MATERIAS+INICIO) + **Int.4 (PERFIL·CONVENIOS·UX S4-16..S4-20)** implementados y validados por Tester (2026-09-14). Int.2: build+tsc PASS. Int.4: build 250ms + tsc 0 + grep 0 hardcode/demo + responsive PASS (observación menor BottomNav). Fase 1 Auth: T1.2 Login real DONE; T1.1 Registro y T1.3 rehidratación siguen pendientes.
+**IMPLEMENTATION READY** — Sprint 5 Int.2 Perfil (S5-05→S5-08) + extensión FR8 cambio contraseña completados. Modal limpio sin aviso, integración lista vía `CHANGE_PASSWORD_PATH`. Backend pendiente de exponer ruta.
 
 ## Qué se agregó (este update — Sprint 4, Integrante 2)
 - **S4-06** Shell responsive: `App.tsx` sacó el `maxWidth:430` fijo del shell raíz. Nuevo `SidebarNav` (desktop, `md:+`) reemplaza a `BottomNav` (que ahora solo se ve en mobile). Bug encontrado y corregido en el camino: `BottomNav` tenía `display:"flex"` en `style` inline, que anulaba el `display:none` de la clase `md:hidden` sin importar el viewport — se movió `display` a la clase (`className="flex md:hidden"`).
@@ -23,7 +23,16 @@ Se encontró que el commit base `fbf69d6` **no incluye** el trabajo de Registro/
 - [x] S4-10 Admin catálogo real (carreras + materias, sin mocks)
 
 ## Próximo paso
-Int.2 COMPLETE. **Sprint 4 — Int.4 PLANNING** (2026-09-14): `implementation.md` §8 planificado para Planner→Developer con 5 tareas S4-16..S4-20 sin mocks (perfil solo-lectura, convenios real sin hardcode, limpieza recursos/recordatoriosInit, responsive). Pendiente real: T1.1 Registro mock y T1.3 rehidratación + ejecución Int.4 T4-PERFIL-01→T4-RESP-01 contra backend real (`VITE_API_URL=http://localhost:8000`, `DEMO_MODE=false`).
+Developer ya implementó §9 + §10 (modal limpio, `CHANGE_PASSWORD_PATH` único punto de integración). Tester validó §9. Siguiente: cuando backend exponga `POST /auth/change-password`, solo editar string en `src/auth/api.ts:40` y ejecutar T5-PWD-02 E2E.
+
+## Sprint 5 — Int.2 (Planner)
+**COMPLETE (2026-09-16)** — `implementation.md` §9 (4 tareas, 3.5d) + §10 FR8 implementados y validados Tester §7. Perfil `PATCH /auth/me` + modal contraseña limpio sin aviso. `CHANGE_PASSWORD_PATH` es único TODO futuro.
+
+## Sprint 5 — Extensión FR8 Cambio contraseña (Planner → Developer)
+**IMPLEMENTATION READY (2026-09-16)** — `implementation.md` §10 define T5-PWD-01→03 (0.5d). Front 100% listo: `ChangePasswordRequest` + `changePasswordRequest()` + modal con validación + `pwdSaving` + 422→fields/401→toast. Solo falta cambiar `CHANGE_PASSWORD_PATH` en `src/auth/api.ts` cuando `openapi.json` exponga `POST /auth/change-password`.
+
+## Sprint 5 — Int.2 (Developer → Tester)
+**COMPLETE** — Developer implementó T5-PERFIL-01→04 + T5-PWD (modal limpio, servicio integración lista). Tester validó §9.4 `build 258ms` + `tsc` + live `PATCH`. Veredicto **PASS con observación email** (§7). FR8 queda ready para E2E cuando backend exponga ruta.
 
 ## Sprint 4 — Int.4 (Planner)
 **PLANNING** — `implementation.md` §8 define 5 tareas delegables (0.5d+1d+1d+1d+1.5d≈5d): S4-16 bloquear carrera Perfil (solo lectura, quitar ✓ Guardado falso, gap PATCH /auth/me), S4-17 validar convenios contra backend real (vacío→EmptyState, error→ErrorState, paginación total_pages), S4-18 borrar hardcode `universidades`/`talentoTech` de `convenios/service.ts` (coord S4-04), S4-19 borrar `recursosInit`/`recordatoriosInit` de `App.tsx` + DetalleScreen mock, S4-20 responsive grids Inicio/Recordatorios/Convenios/Perfil (quitar frame 430px). Sin `DEMO_MODE`, datos reales vía `apiClient` + `Paginated<T>`.

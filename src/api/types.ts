@@ -155,6 +155,13 @@ export interface Token {
   usuario: Usuario;
 }
 
+export type UsuarioUpdate = Partial<Pick<Usuario, "nombre" | "apellido" | "email">>;
+
+export interface ChangePasswordRequest {
+  current_password: string;
+  new_password: string;
+}
+
 export interface Paginated<T> {
   items: T[];
   total: number;

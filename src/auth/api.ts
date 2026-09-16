@@ -5,10 +5,12 @@
 
 import { apiClient } from "../api/client";
 import type {
+  ChangePasswordRequest,
   LoginRequest,
   RegistroRequest,
   TokenResponse,
   Usuario,
+  UsuarioUpdate,
 } from "../api/types";
 
 export function loginRequest(payload: LoginRequest): Promise<TokenResponse> {
@@ -29,4 +31,14 @@ export function registroRequest(payload: RegistroRequest): Promise<Usuario> {
 
 export function meRequest(): Promise<Usuario> {
   return apiClient<Usuario>("/auth/me", { auth: true });
+}
+
+export function updateMeRequest(patch: UsuarioUpdate): Promise<Usuario> {
+  return apiClient<Usuario>("/auth/me", { method: "PATCH", body: patch, auth: true });
+}
+
+export const CHANGE_PASSWORD_PATH = "/auth/change-password";
+
+export function changePasswordRequest(payload: ChangePasswordRequest): Promise<void> {
+  return apiClient<void>(CHANGE_PASSWORD_PATH, { method: "POST", body: payload, auth: true });
 }
