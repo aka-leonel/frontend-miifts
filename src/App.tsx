@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Toaster } from "./components";
 import { ConveniosScreen as ConveniosFeatureScreen } from "./features/convenios";
 import { getCarreras } from "./features/catalogo/service";
@@ -293,12 +293,8 @@ function CarreraScreen({ onGo }: { onGo: (s: Screen) => void }) {
   const [loadingCarreras, setLoadingCarreras] = useState(true);
   const { pushToast } = useToast();
   const auth = useAuth();
-  const loadedRef = useRef(false);
 
   useEffect(() => {
-    if (loadedRef.current) return;
-    loadedRef.current = true;
-
     let active = true;
     setLoadingCarreras(true);
     getCarreras()
@@ -321,7 +317,17 @@ function CarreraScreen({ onGo }: { onGo: (s: Screen) => void }) {
     return () => {
       active = false;
     };
-  }, [pushToast]);
+    // Solo al montar. `pushToast` NO es estable entre renders (useToast crea
+    // una función nueva en cada llamada, ver hooks/useToast.ts) — incluirla acá
+    // como antes hacía que el efecto se re-disparara en cada render y quedara
+    // reintentando en loop. El `active` de arriba ya cubre el doble mount de
+    // StrictMode en dev (antes había también un `loadedRef` para "evitar" ese
+    // doble mount, pero bloqueaba TAMBIÉN al montaje real: la única corrida que
+    // llegaba a pegarle a la API terminaba con `active = false` en su cleanup
+    // antes de que el fetch resolviera, así que `loadingCarreras` nunca bajaba
+    // y la pantalla quedaba en "Cargando carreras..." para siempre).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleEmpezar = async () => {
     const raw = sessionStorage.getItem("registro_temp");
