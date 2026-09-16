@@ -232,13 +232,18 @@ function RegistroScreen({ onGo }: { onGo: (s: Screen) => void }) {
   // contraseña — el usuario terminaba clickeando "Empezar" en loop).
   const passwordDebil = pass.length > 0 && !(/[A-Za-z]/.test(pass) && /[0-9]/.test(pass));
   const passwordsNoCoinciden = pass.length > 0 && pass2.length > 0 && pass !== pass2;
+  // OJO: acá solo se chequea que los campos tengan ALGO cargado, a propósito.
+  // Si además se exige acá `!passwordDebil` / `pass === pass2`, el botón
+  // queda disabled y el click nunca llega a handleContinuar — los toasts de
+  // ahí abajo ("tiene que tener una letra y un número", "no coinciden")
+  // quedan como código muerto y el único aviso es el textito gris bajo el
+  // campo, fácil de no ver. Dejamos que sea el click el que valide y avise.
   const puedeContinuar =
     nombre.trim().length > 0 &&
     apellido.trim().length > 0 &&
     email.trim().length > 0 &&
-    pass.length >= 8 &&
-    !passwordDebil &&
-    pass === pass2;
+    pass.length > 0 &&
+    pass2.length > 0;
 
   const handleContinuar = () => {
     if (pass.length < 8) {
