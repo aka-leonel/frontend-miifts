@@ -224,23 +224,33 @@ function RegistroScreen({ onGo }: { onGo: (s: Screen) => void }) {
   const [pass2, setPass2] = useState("");
   const { pushToast } = useToast();
 
-  // El backend exige mínimo 8 caracteres (ver UsuarioCreate); acá solo
-  // validamos longitud y coincidencia, el resto lo valida el server (422).
+  // El backend (UsuarioCreate) exige mínimo 8 caracteres Y al menos una
+  // letra y un número — replicamos la misma regla acá para no dejar pasar
+  // a la pantalla de carrera una contraseña que el server va a rechazar
+  // igual (antes eso volvía como un 422 genérico recién al tocar
+  // "Empezar" en CarreraScreen, sin decir que el problema era la
+  // contraseña — el usuario terminaba clickeando "Empezar" en loop).
+  const passwordDebil = pass.length > 0 && !(/[A-Za-z]/.test(pass) && /[0-9]/.test(pass));
   const passwordsNoCoinciden = pass.length > 0 && pass2.length > 0 && pass !== pass2;
   const puedeContinuar =
     nombre.trim().length > 0 &&
     apellido.trim().length > 0 &&
     email.trim().length > 0 &&
     pass.length >= 8 &&
+    !passwordDebil &&
     pass === pass2;
 
   const handleContinuar = () => {
-    if (pass !== pass2) {
-      pushToast("Las contraseñas no coinciden.", "error");
-      return;
-    }
     if (pass.length < 8) {
       pushToast("La contraseña tiene que tener al menos 8 caracteres.", "error");
+      return;
+    }
+    if (passwordDebil) {
+      pushToast("La contraseña tiene que tener al menos una letra y un número.", "error");
+      return;
+    }
+    if (pass !== pass2) {
+      pushToast("Las contraseñas no coinciden.", "error");
       return;
     }
     // Guardar temporalmente los datos del formulario para que la
@@ -265,7 +275,12 @@ function RegistroScreen({ onGo }: { onGo: (s: Screen) => void }) {
           <Input placeholder="Nombre" value={nombre} onChange={setNombre} />
           <Input placeholder="Apellido" value={apellido} onChange={setApellido} />
           <Input placeholder="Email institucional" type="email" value={email} onChange={setEmail} />
-          <Input placeholder="Contraseña" type="password" value={pass} onChange={setPass} />
+          <div>
+            <Input placeholder="Contraseña" type="password" value={pass} onChange={setPass} />
+            <div style={{ color: passwordDebil ? "#F87171" : MUTED, fontSize: 12, marginTop: 6 }}>
+              Mínimo 8 caracteres, con al menos una letra y un número.
+            </div>
+          </div>
           <div>
             <Input placeholder="Repetí tu contraseña" type="password" value={pass2} onChange={setPass2} />
             {passwordsNoCoinciden ? (
@@ -339,6 +354,7 @@ function CarreraScreen({ onGo }: { onGo: (s: Screen) => void }) {
       pushToast("Seleccioná una carrera", "error");
       return;
     }
+    if (auth.cargando) return; // evita disparar varios registros si clickean repetido
     try {
       const temp = JSON.parse(raw);
       await auth.registro({
@@ -351,7 +367,11 @@ function CarreraScreen({ onGo }: { onGo: (s: Screen) => void }) {
       sessionStorage.removeItem("registro_temp");
       onGo("inicio");
     } catch (err) {
-      pushToast("No se pudo completar el registro.", "error");
+      // Mostrar el detail real (ej. "La contraseña debe incluir al menos una
+      // letra y un número") en vez de un genérico: antes esto quedaba mudo y
+      // el único síntoma era que "Empezar" no llevaba a ningún lado.
+      const msg = err instanceof ApiError ? err.detail : "No se pudo completar el registro.";
+      pushToast(msg, "error");
     }
   };
 
@@ -376,8 +396,8 @@ function CarreraScreen({ onGo }: { onGo: (s: Screen) => void }) {
             ))
           )}
         </div>
-        <PrimaryButton onClick={handleEmpezar}>
-          {loadingCarreras ? "Cargando…" : "Empezar"}
+        <PrimaryButton onClick={handleEmpezar} disabled={loadingCarreras || auth.cargando}>
+          {auth.cargando ? "Creando cuenta…" : loadingCarreras ? "Cargando…" : "Empezar"}
         </PrimaryButton>
       </div>
     </ScreenWrap>
