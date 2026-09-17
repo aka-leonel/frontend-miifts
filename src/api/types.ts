@@ -176,6 +176,12 @@ export interface Token {
   usuario: Usuario;
 }
 
+// PATCH /auth/me (`PerfilUpdate` en backend auth/schema.py) solo acepta
+// nombre/apellido — "el email identifica la cuenta... cualquier otro campo
+// del body se ignora". No agregar `email` acá: mandarlo no lo cambia, solo
+// finge un guardado exitoso que nunca pasó.
+export type UsuarioUpdate = Partial<Pick<Usuario, "nombre" | "apellido">>;
+
 export interface Paginated<T> {
   items: T[];
   total: number;

@@ -13,6 +13,7 @@ import type {
   ResetPasswordRequest,
   TokenResponse,
   Usuario,
+  UsuarioUpdate,
 } from "../api/types";
 
 export function loginRequest(payload: LoginRequest): Promise<TokenResponse> {
@@ -67,4 +68,8 @@ export function registroRequest(payload: RegistroRequest): Promise<Usuario> {
 
 export function meRequest(): Promise<Usuario> {
   return apiClient<Usuario>("/auth/me", { auth: true });
+}
+
+export function updateMeRequest(patch: UsuarioUpdate): Promise<Usuario> {
+  return apiClient<Usuario>("/auth/me", { method: "PATCH", body: patch, auth: true });
 }
