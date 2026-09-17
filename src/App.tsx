@@ -9,6 +9,7 @@ import { RecordatoriosScreen as RecordatoriosFeatureScreen } from "./features/re
 import PerfilFeatureScreen from "./features/perfil/PerfilScreen";
 import { useLogin } from "./features/auth/hooks";
 import { haySesion } from "./features/auth/service";
+import { forgotPasswordRequest, resetPasswordRequest } from "./auth/api";
 import AdminCatalogoScreen from "./features/catalogo-admin/AdminCatalogoScreen";
 import { getMiUsuario } from "./api/scope";
 import { ApiError } from "./lib/apiClient";
@@ -19,6 +20,8 @@ import { useAuth } from "./auth/AuthContext";
 type Screen =
   | "login"
   | "registro"
+  | "olvide-password"
+  | "reset-password"
   | "carrera"
   | "inicio"
   | "materias"
@@ -206,7 +209,10 @@ function LoginScreen({ onGo }: { onGo: (s: Screen) => void }) {
         <div style={{ marginTop: 24 }}>
           <PrimaryButton onClick={handleIngresar}>{login.loading ? "Ingresando…" : "Ingresar"}</PrimaryButton>
         </div>
-        <p style={{ textAlign: "center", marginTop: 24, color: MUTED, fontSize: 14 }}>
+        <p style={{ textAlign: "center", marginTop: 16 }}>
+          <button onClick={() => onGo("olvide-password")} style={{ background: "none", border: "none", color: MUTED, cursor: "pointer", fontSize: 13 }}>¿Olvidaste tu contraseña?</button>
+        </p>
+        <p style={{ textAlign: "center", marginTop: 8, color: MUTED, fontSize: 14 }}>
           ¿No tenés cuenta?{" "}
           <button onClick={() => onGo("registro")} style={{ background: "none", border: "none", color: VIOLET, fontWeight: 600, cursor: "pointer", fontSize: 14 }}>Registrate</button>
         </p>
@@ -301,6 +307,139 @@ function RegistroScreen({ onGo }: { onGo: (s: Screen) => void }) {
         <p style={{ color: MUTED, fontSize: 12, textAlign: "center", marginTop: 20, lineHeight: 1.5 }}>
           Al registrarte aceptás los <span style={{ color: VIOLET }}>términos y condiciones</span>
         </p>
+      </div>
+    </ScreenWrap>
+  );
+}
+
+// ─── Screen 2bis: Olvidé mi contraseña ────────────────────────────────────────
+// S5-13 (INTEGRACION §2.4bis): el backend responde SIEMPRE 200 con el mismo
+// mensaje genérico, exista o no el email — no hay nada que distinguir acá,
+// mostramos el estado de éxito directo tras el 200.
+function OlvidePasswordScreen({ onGo }: { onGo: (s: Screen) => void }) {
+  const [email, setEmail] = useState("");
+  const [enviado, setEnviado] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const { pushToast } = useToast();
+
+  const handleEnviar = async () => {
+    if (!email.trim()) return;
+    setLoading(true);
+    try {
+      await forgotPasswordRequest({ email: email.trim() });
+      setEnviado(true);
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.detail : "No se pudo procesar la solicitud.";
+      pushToast(msg, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <ScreenWrap>
+      <div style={{ padding: "56px 28px 0" }}>
+        <button onClick={() => onGo("login")} style={{ background: "none", border: "none", color: MUTED, cursor: "pointer", marginBottom: 24, padding: 0, display: "flex", alignItems: "center", gap: 6 }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M5 12l7 7M5 12l7-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          Volver
+        </button>
+        <div style={{ marginBottom: 32 }}>
+          <div style={{ fontSize: 24, fontWeight: 800, color: TEXT, letterSpacing: -0.4, marginBottom: 4 }}>¿Olvidaste tu contraseña?</div>
+          <div style={{ color: MUTED, fontSize: 14 }}>Ingresá tu email y te mandamos instrucciones para restablecerla.</div>
+        </div>
+        {enviado ? (
+          <div style={{ background: CARD, border: `0.5px solid ${BORDER}`, borderRadius: 12, padding: 20, color: TEXT, fontSize: 14, lineHeight: 1.5 }}>
+            Si el email está registrado, vas a recibir un correo con instrucciones para restablecer tu contraseña. Revisá tu bandeja de entrada (y spam).
+          </div>
+        ) : (
+          <>
+            <Input placeholder="Email institucional" type="email" value={email} onChange={setEmail} />
+            <div style={{ marginTop: 24 }}>
+              <PrimaryButton onClick={handleEnviar} disabled={loading || !email.trim()}>
+                {loading ? "Enviando…" : "Enviar instrucciones"}
+              </PrimaryButton>
+            </div>
+          </>
+        )}
+      </div>
+    </ScreenWrap>
+  );
+}
+
+// ─── Screen 2ter: Nueva contraseña ─────────────────────────────────────────────
+// S5-14/15 (INTEGRACION §2.4bis): token viaja por query param (`?token=...`) en
+// el link del mail; sin router en esta app (App.tsx App(), D014 en
+// docs/context/decisions.md), el token se lee una vez en App() y se pasa por prop.
+function ResetPasswordScreen({ token, onGo }: { token: string; onGo: (s: Screen) => void }) {
+  const [pass, setPass] = useState("");
+  const [pass2, setPass2] = useState("");
+  const [loading, setLoading] = useState(false);
+  const { pushToast } = useToast();
+
+  // Mismo criterio que RegistroScreen: ≥8 caracteres, letra y número.
+  const passwordDebil = pass.length > 0 && !(/[A-Za-z]/.test(pass) && /[0-9]/.test(pass));
+  const passwordsNoCoinciden = pass.length > 0 && pass2.length > 0 && pass !== pass2;
+  const puedeContinuar = pass.length > 0 && pass2.length > 0 && !loading;
+
+  const handleRestablecer = async () => {
+    if (pass.length < 8) {
+      pushToast("La contraseña tiene que tener al menos 8 caracteres.", "error");
+      return;
+    }
+    if (passwordDebil) {
+      pushToast("La contraseña tiene que tener al menos una letra y un número.", "error");
+      return;
+    }
+    if (pass !== pass2) {
+      pushToast("Las contraseñas no coinciden.", "error");
+      return;
+    }
+    setLoading(true);
+    try {
+      await resetPasswordRequest({ token, password: pass });
+      pushToast("Contraseña actualizada. Ya podés iniciar sesión.", "success");
+      onGo("login");
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 400) {
+        // Token vencido/inexistente/ya usado: volver a "olvidé mi contraseña"
+        // en vez de mostrar un error genérico acá (S5-15).
+        pushToast(err.detail, "error");
+        onGo("olvide-password");
+        return;
+      }
+      const msg = err instanceof ApiError ? err.detail : "No se pudo restablecer la contraseña.";
+      pushToast(msg, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <ScreenWrap>
+      <div style={{ padding: "56px 28px 0" }}>
+        <div style={{ marginBottom: 32 }}>
+          <div style={{ fontSize: 24, fontWeight: 800, color: TEXT, letterSpacing: -0.4, marginBottom: 4 }}>Elegí tu nueva contraseña</div>
+          <div style={{ color: MUTED, fontSize: 14 }}>Completá y confirmá tu nueva contraseña.</div>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div>
+            <Input placeholder="Contraseña nueva" type="password" value={pass} onChange={setPass} />
+            <div style={{ color: passwordDebil ? "#F87171" : MUTED, fontSize: 12, marginTop: 6 }}>
+              Mínimo 8 caracteres, con al menos una letra y un número.
+            </div>
+          </div>
+          <div>
+            <Input placeholder="Repetí tu contraseña" type="password" value={pass2} onChange={setPass2} />
+            {passwordsNoCoinciden ? (
+              <div style={{ color: "#F87171", fontSize: 12, marginTop: 6 }}>Las contraseñas no coinciden.</div>
+            ) : null}
+          </div>
+        </div>
+        <div style={{ marginTop: 28 }}>
+          <PrimaryButton onClick={handleRestablecer} disabled={!puedeContinuar}>
+            {loading ? "Restableciendo…" : "Restablecer contraseña"}
+          </PrimaryButton>
+        </div>
       </div>
     </ScreenWrap>
   );
@@ -448,15 +587,43 @@ const screenToNav: Partial<Record<Screen, NavTab>> = {
   "admin-catalogo": "materias",
 };
 
+// Pantallas que no requieren sesión (no deben forzar redirect a login).
+const PUBLIC_SCREENS: Screen[] = ["login", "registro", "olvide-password", "reset-password", "carrera"];
+
 export default function App() {
-  const [screen, setScreen] = useState<Screen>(() => (haySesion() ? "inicio" : "login"));
+  const auth = useAuth();
+  // S5-14 (INTEGRACION §2.4bis, D014): el link del mail llega como
+  // `?token=...`. Sin react-router, se lee una única vez al montar — si hay
+  // token, arranca directo en "reset-password" (tiene prioridad sobre la
+  // sesión guardada: un link de reset no debería mandar al usuario a "inicio").
+  const [resetToken] = useState<string | null>(() =>
+    new URLSearchParams(window.location.search).get("token")
+  );
+  const [screen, setScreen] = useState<Screen>(() => {
+    if (resetToken) return "reset-password";
+    return haySesion() ? "inicio" : "login";
+  });
   // No hay react-router en esta app todavía (el resto navega con este mismo
   // switch, no con URLs) — mientras tanto, la materia que se está viendo en
   // "detalle" se guarda acá y se pasa por prop.
   const [materiaIdSeleccionada, setMateriaIdSeleccionada] = useState<number | null>(null);
 
+  // Bug reportado: si el token guardado queda inválido (vencido, o 401 de
+  // cualquier request) AuthContext limpia `usuario`/`token` (ver
+  // `setUnauthorizedHandler` en AuthContext.tsx), pero nada movía `screen` de
+  // vuelta a "login" — el usuario quedaba atrapado en una pantalla protegida
+  // (ej. Perfil mostrando "No se pudo cargar tu perfil / Not authenticated"
+  // sin ningún botón para salir de ahí). Este efecto es el único lugar que
+  // reacciona a esa transición, sea por logout explícito, 401, o expiración.
+  useEffect(() => {
+    if (auth.verificandoSesion) return;
+    if (!auth.usuario && !PUBLIC_SCREENS.includes(screen)) {
+      setScreen("login");
+    }
+  }, [auth.usuario, auth.verificandoSesion, screen]);
+
   const handleNav = (tab: NavTab) => setScreen(navToScreen[tab]);
-  const showNav = !["login", "registro", "carrera"].includes(screen);
+  const showNav = !PUBLIC_SCREENS.includes(screen);
   const activeTab = screenToNav[screen];
 
   function abrirDetalle(materiaId: number) {
@@ -468,6 +635,8 @@ export default function App() {
     switch (screen) {
       case "login": return <LoginScreen onGo={setScreen} />;
       case "registro": return <RegistroScreen onGo={setScreen} />;
+      case "olvide-password": return <OlvidePasswordScreen onGo={setScreen} />;
+      case "reset-password": return <ResetPasswordScreen token={resetToken ?? ""} onGo={setScreen} />;
       case "carrera": return <CarreraScreen onGo={setScreen} />;
       case "inicio": return <InicioReal onOpenMateria={abrirDetalle} />;
       case "materias":
@@ -486,7 +655,7 @@ export default function App() {
         );
       case "recordatorios": return <RecordatoriosFeatureScreen />;
       case "convenios": return <ConveniosFeatureScreen />;
-      case "perfil": return <PerfilFeatureScreen onCerrarSesion={() => setScreen("login")} />;
+      case "perfil": return <PerfilFeatureScreen onCerrarSesion={() => setScreen("login")} />;;
       case "admin-catalogo":
         // S4-10: guard de rol acá además del link condicional en
         // MisMateriasScreen — nadie que no sea admin llega a esta pantalla

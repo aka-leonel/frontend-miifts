@@ -169,3 +169,54 @@ Dependencias: T2-MAT-02 bloquea T2-INI-01 (reuso widgets); T2-INI-01 depende de 
 ### 8.5 Orden de ejecución Developer
 T4-PERFIL-01 → T4-CONV-01 → T4-CONV-02 → T4-CLEAN-01 → T4-RESP-01 (+ T4-SERVICE-01 en paralelo a T4-CONV-02)
 Dependencias: T4-CONV-02 bloqueado por T4-CONV-01 (validar datos reales antes de borrar fallback); T4-CLEAN-01 independiente pero antes de T4-RESP-01 (evitar responsive sobre código muerto); T4-PERFIL-01 independiente al inicio.
+
+## 9. Plan Detallado — Integrante 4: OLVIDÉ MI CONTRASEÑA (Sprint 5, S5-12 a S5-15)
+
+> Fuente: `SPRINT5_FRONT.md` (líneas 86-95) + `INTEGRACION_FRONT.md` §2.4bis (backend, contrato cerrado 2026-09-16, ver `requirements.md` FR7 / `decisions.md` D014). S5-12 (coordinar contrato) ya está resuelto — este plan cubre S5-13/14/15.
+
+### 9.1 Estado actual (auditoría 2026-09-16)
+- `LoginScreen` (`App.tsx`) no tiene link "¿Olvidaste tu contraseña?".
+- No existen pantallas de forgot/reset password ni tipos/servicios asociados.
+- `Screen` (`App.tsx:19`) no incluye los nuevos estados; no hay lectura de query param en ningún lado (D014 aplica acá por primera vez).
+- Convención a reusar: `Input`/`PrimaryButton`/`ScreenWrap`/`EyeIcon` (`App.tsx`), `useToast`, `ApiError.detail` (mismo patrón que `LoginScreen`/`RegistroScreen`).
+
+### 9.2 Tareas delegables al Developer
+
+#### T5-FORGOT-01 · S5-13 Tipos + servicio + pantalla "Olvidé mi contraseña" (1d) — Alta
+- Archivos: `src/api/types.ts`, `src/auth/api.ts`, `src/App.tsx`
+- `api/types.ts`: agregar `ForgotPasswordRequest {email}`, `ResetPasswordRequest {token,password}`, `MensajeResponse {detail}` (calcados de INTEGRACION §2.4bis, mismo criterio que el resto del archivo — "SEAM" hasta que se regeneren con openapi).
+- `auth/api.ts`: agregar `forgotPasswordRequest(payload): Promise<MensajeResponse>` → `POST /auth/forgot-password` `auth:false`.
+- `App.tsx`: `Screen` += `"olvide-password"`; nueva `OlvidePasswordScreen({onGo})` (mismo layout que `LoginScreen`): input email, botón "Enviar instrucciones", SIEMPRE éxito tras el 200 (no chequear nada distinto, FR7) → mostrar mensaje "Revisá tu email" en la misma pantalla (no auto-navegar, el usuario decide volver a Login). Link nuevo en `LoginScreen` bajo el botón "Ingresar": `¿Olvidaste tu contraseña?` → `onGo("olvide-password")`.
+
+#### T5-RESET-01 · S5-14 Pantalla contraseña nueva + token por query param (1.5d) — Alta — depende T5-FORGOT-01
+- Archivos: `src/auth/api.ts`, `src/App.tsx`
+- `auth/api.ts`: agregar `resetPasswordRequest(payload): Promise<MensajeResponse>` → `POST /auth/reset-password` `auth:false`.
+- `App.tsx`: `Screen` += `"reset-password"`. En `App()` (mount), leer `new URLSearchParams(window.location.search).get("token")`; si hay token, `screen` inicial = `"reset-password"` guardando el token en `useState` (D014 — no agregar router). `ResetPasswordScreen({token, onGo})`: password + repetir con `Input type="password"` (ojo ya incluido), MISMA validación que `RegistroScreen` (≥8, letra+número, coinciden) antes de pegarle al backend. Éxito (200) → toast + `onGo("login")`.
+- No tocar `AuthContext`: este flujo es público, no toca `usuario`/`token` de sesión.
+
+#### T5-RESET-02 · S5-15 Estados de error token inválido/vencido (0.5d) — Media — depende T5-RESET-01
+- Archivo: `src/App.tsx` (`ResetPasswordScreen`)
+- Catch de `resetPasswordRequest`: si `err instanceof ApiError && err.status === 400` → toast con `err.detail` ("Token inválido o expirado") + `onGo("olvide-password")` (NO error genérico, NO quedarse en la pantalla de reset). Si `422` → mismo patrón que `RegistroScreen` (toast con el mensaje de password, se puede reintentar con el mismo token — el backend no lo consume en 422 per INTEGRACION §2.4bis).
+
+### 9.3 Criterios de aceptación para Tester
+1. Link "¿Olvidaste tu contraseña?" visible en `LoginScreen`, navega a `olvide-password`.
+2. `POST /auth/forgot-password` siempre resuelve en estado de éxito visible, sin importar si el backend devuelve "existe" o no (no se puede distinguir, y no debe intentarse).
+3. `/reset-password?token=...` (sin sesión) carga directo `ResetPasswordScreen` con el token de la URL, no pide login.
+4. Validación de password en reset idéntica a Registro (≥8, letra+número, confirmación) antes de llamar al backend.
+5. `400` con "Token inválido o expirado" → vuelve a `olvide-password`, no error genérico ni pantalla en blanco.
+6. `422` de password → toast con el detail real, el usuario puede reintentar sin perder el token.
+7. `showNav`/`screenToNav` (`App.tsx`) excluyen `olvide-password`/`reset-password` de la bottom nav (mismo criterio que `login`/`registro`).
+8. `npm run build && tsc --noEmit` verdes.
+
+### 9.4 Limitación conocida (no bloquea DONE)
+Sin SMTP en dev, no hay forma de disparar el flujo 100% end-to-end sin pedirle a quien tenga el backend levantado el token logueado en consola (INTEGRACION §2.4bis). El Tester debe documentar esto como limitación, no como fallo.
+
+### 9.5 Orden de ejecución Developer
+T5-FORGOT-01 → T5-RESET-01 → T5-RESET-02
+
+### 9.6 T5-CAMBIO-01 · Cambiar contraseña logueado (INTEGRACION §2.4ter, agregado 2026-09-16) — DONE
+> Reemplaza la idea original (S5-08 desactualizado) de reusar `forgot-password` desde Perfil — el backend entregó un endpoint dedicado.
+- Archivos: `src/api/types.ts` (`CambiarPasswordRequest`), `src/auth/api.ts` (`cambiarPasswordRequest`), `src/lib/apiClient.ts` (`suppressUnauthorizedRedirect`, ver D015), `src/features/perfil/CambiarPasswordModal.tsx` (nuevo), `src/features/perfil/PerfilScreen.tsx` (botón + wiring).
+- `PATCH /auth/password` Bearer, `suppressUnauthorizedRedirect:true` (el 401 de este endpoint es "actual no coincide", no debe desloguear — D015).
+- Modal propio en vez de `FormModal` (dueño Int.1): no hay id ni create/update, es una única acción.
+- Validado en vivo contra backend real (Chrome/Playwright): actual incorrecta → toast, sesión intacta (no desloguea); actual correcta → éxito, modal cierra, sesión sigue viva; logout + login con la password nueva confirma que quedó persistida.

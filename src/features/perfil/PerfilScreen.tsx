@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
+import { useAuth } from "../../auth/AuthContext";
 import { useCarreras } from "../catalogo/hooks";
 import { useMisMaterias } from "../materias/hooks";
+import CambiarPasswordModal from "./CambiarPasswordModal";
 import { useAuthMe } from "./hooks";
-
-const SESSION_KEYS = ["miifts_token", "miifts_usuario"] as const;
 
 function iniciales(nombre: string, apellido?: string): string {
   const inicialNombre = nombre.trim()[0];
@@ -13,10 +13,12 @@ function iniciales(nombre: string, apellido?: string): string {
 }
 
 export default function PerfilScreen({ onCerrarSesion }: { onCerrarSesion: () => void }) {
+  const auth = useAuth();
   const me = useAuthMe();
   const carreras = useCarreras({ page: 1 });
   const misMaterias = useMisMaterias(1);
   const [nombre, setNombre] = useState("");
+  const [cambiarPasswordOpen, setCambiarPasswordOpen] = useState(false);
 
   useEffect(() => {
     if (!me.data) return;
@@ -32,7 +34,11 @@ export default function PerfilScreen({ onCerrarSesion }: { onCerrarSesion: () =>
     (me.data ? `Carrera #${me.data.carrera_id}` : "");
 
   function handleLogout() {
-    for (const key of SESSION_KEYS) window.localStorage.removeItem(key);
+    // AuthContext es la única fuente de verdad de la sesión (ver
+    // src/auth/AuthContext.tsx) — antes esto borraba localStorage a mano acá
+    // y dejaba el estado en memoria de useAuth() (usuario/token, timers de
+    // expiración) sin limpiar.
+    auth.logout();
     onCerrarSesion();
   }
 
@@ -65,13 +71,22 @@ export default function PerfilScreen({ onCerrarSesion }: { onCerrarSesion: () =>
           <div className="rounded-2xl border border-border bg-card p-6 text-center">
             <div className="text-sm font-semibold text-text">No se pudo cargar tu perfil</div>
             <div className="mt-1 text-xs text-muted">{String((me.error as Error)?.message ?? me.error)}</div>
-            <button
-              type="button"
-              onClick={() => me.refetch()}
-              className="mt-4 rounded-xl bg-violet px-4 py-2 text-sm font-semibold text-white"
-            >
-              Reintentar
-            </button>
+            <div className="mt-4 flex justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => me.refetch()}
+                className="rounded-xl bg-violet px-4 py-2 text-sm font-semibold text-white"
+              >
+                Reintentar
+              </button>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="rounded-xl border border-[#FF6B6B]/40 bg-[#FF6B6B]/10 px-4 py-2 text-sm font-semibold text-[#FF6B6B]"
+              >
+                Cerrar sesión
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -158,12 +173,22 @@ export default function PerfilScreen({ onCerrarSesion }: { onCerrarSesion: () =>
 
         <button
           type="button"
+          onClick={() => setCambiarPasswordOpen(true)}
+          className="mb-3 w-full rounded-xl border border-border bg-card px-6 py-[15px] text-[15px] font-semibold text-text"
+        >
+          Cambiar contraseña
+        </button>
+
+        <button
+          type="button"
           onClick={handleLogout}
           className="w-full rounded-xl border border-[#FF6B6B]/40 bg-[#FF6B6B]/10 px-6 py-[15px] text-[15px] font-semibold text-[#FF6B6B]"
         >
           Cerrar sesión
         </button>
       </div>
+
+      <CambiarPasswordModal open={cambiarPasswordOpen} onClose={() => setCambiarPasswordOpen(false)} />
     </div>
   );
 }

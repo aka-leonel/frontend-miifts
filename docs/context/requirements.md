@@ -46,6 +46,16 @@ Paginated<T>, ApiError, Rol, Usuario, RegistroRequest, LoginRequest, TokenRespon
 - Recursos: lista filtrada, detalle, crear, editar/borrar dueño, convenios/TT lectura
 - Recordatorios: agenda filtrada, crear, borrar
 
+### FR7 Olvidé mi contraseña (Sprint5 S5-12..S5-15, INTEGRACION §2.4bis)
+- `POST /auth/forgot-password` Pub {email} → 200 SIEMPRE `{detail:"Si el email está registrado..."}` exista o no el email — front muestra éxito directo, no distingue casos (no revela registro).
+- `POST /auth/reset-password` Pub {token,password} → 200 `{detail:"Contraseña actualizada correctamente."}`; 400 `{detail:"Token inválido o expirado"}` si vencido(30min)/inexistente/ya usado → volver a pantalla "olvidé mi contraseña", no error genérico; 422 password ≥8 letra+número (misma regla Registro).
+- Token viaja como query param en el link del mail: `<FRONTEND_RESET_PASSWORD_URL>?token=...`. Un solo uso (se consume recién en el 200; un 422 no lo gasta, se puede reintentar).
+- Gap conocido: sin SMTP en dev, el link se loguea en consola del backend en vez de mandarse — QA manual requiere pedir el token de ahí.
+### FR8 Cambiar contraseña logueado (INTEGRACION §2.4ter, resuelto 2026-09-16)
+- `PATCH /auth/password` Bearer {password_actual,password_nueva} → 200 `MensajeResponse`; 401 si `password_actual` no coincide (reautenticación, NO es "sesión inválida" — el JWT sigue vigente); 400 si `password_nueva===password_actual`; 422 misma regla que Registro (≥8, letra+número).
+- Reemplaza la idea de reusar `forgot-password` desde Perfil (revertida 2026-09-16) — endpoint dedicado, un solo request, sin email ni token.
+- Implementado en Perfil vía `CambiarPasswordModal`. Requirió ajustar `apiClient` (`suppressUnauthorizedRedirect`) para que el 401 de este endpoint no dispare el logout global (ver `decisions.md` D015).
+
 ## 6. NFR y Reglas IA (REQUERIMIENTOS §8)
 Wrapper único baseURL+Authorization+parser ApiError+401 side-effect; TanStack Query keys endpoint+params invalidar mutations; forms 422→errors[]; ownership `usuario_id===usuario.id`; Pagination reutilizable; Auth guard redirect; env VITE_API_URL; No inventar endpoints; Qué NO hacer: no mandar usuario_id en 3 POSTs, no mandar rol registro, no parsear 204, no refresh.
 
@@ -54,6 +64,7 @@ Wrapper único baseURL+Authorization+parser ApiError+401 side-effect; TanStack Q
 - 5 pantallas navegables con guards y paginación reutilizable
 - Ownership y 403/404/409/422 manejados (toast + field errors)
 - Wrapper único + fecha futura 422 + DELETE 204
+- Olvidé mi contraseña: link visible en Login → pantalla email → siempre estado de éxito (S5-13); pantalla nueva password (token por query param, mismo criterio de validación que Registro, confirmación, ojo mostrar/ocultar) (S5-14); token inválido/vencido vuelve a "olvidé mi contraseña" con mensaje claro, no error genérico (S5-15)
 
 ## 8. Fuera Alcance
 Refresh, logout servidor, edición recordatorio, escritura convenios/TT para estudiante.

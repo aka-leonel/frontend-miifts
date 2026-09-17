@@ -40,3 +40,9 @@ AGENTS.md define context/ raíz; agents/*.md referencian docs/architecture.md; u
 
 ## D013 Sprint2 gaps (INTEGRACION §6)
 Resueltos: identidad token cursadas/recordatorios, escritura convenios/TT admin, detalles carrera/materia. Vigente: CORS si front !=5173 pedir CORS_ORIGINS.
+
+## D015 `apiClient`: 401 "opt-out" del logout global (`suppressUnauthorizedRedirect`)
+`PATCH /auth/password` (INTEGRACION §2.4ter, D004 wrapper único) reusa el código 401 con un significado distinto al resto de la API: "la contraseña actual no coincide", no "el JWT es inválido" — el token sigue perfectamente vigente. El interceptor global de `apiClient.ts` (`unauthorizedHandler` → `AuthContext.logout()`) no distinguía esto y desconectaba al usuario por escribir mal la contraseña actual una vez. Se agregó `suppressUnauthorizedRedirect?: boolean` a `ApiClientOptions`: default `false` (comportamiento actual intacto para todo lo demás), `true` solo en `cambiarPasswordRequest` (`src/auth/api.ts`). Alternativa descartada: duplicar un fetch manual fuera de `apiClient` para este único caso — rompe D004.
+
+## D014 Reset-password sin router: leer token de `window.location`
+La app real diverge de D006 (nunca se instaló react-router — navega con un `switch(screen)` en `App.tsx`, ver comentario `App.tsx:453`). El link del mail (`INTEGRACION §2.4bis`) llega como `<url>?token=...`. En vez de agregar router solo para esta pantalla, `App()` lee `token` de `URLSearchParams(window.location.search)` una vez al montar (mismo patrón que `haySesion()` decide screen inicial) y si existe arranca en `"reset-password"` con el token en estado. Vite dev server (`appType` default `"spa"`) sirve `index.html` para cualquier path no-asset, así que `/reset-password?token=...` carga la SPA igual. Alternativa descartada: instalar react-router solo para esto — sobredimensionado para una sola pantalla, y ya está diferido (D009 style).

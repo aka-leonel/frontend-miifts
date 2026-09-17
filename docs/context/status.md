@@ -1,9 +1,24 @@
 # Status — miIFTS Frontend
 
-> Owner: Planner | Actualizado: 2026-09-14
+> Owner: Planner | Actualizado: 2026-09-16
 
 ## Estado
-**COMPLETE** — Int.2 (MATERIAS+INICIO) + **Int.4 (PERFIL·CONVENIOS·UX S4-16..S4-20)** implementados y validados por Tester (2026-09-14). Int.2: build+tsc PASS. Int.4: build 250ms + tsc 0 + grep 0 hardcode/demo + responsive PASS (observación menor BottomNav). Fase 1 Auth: T1.2 Login real DONE; T1.1 Registro y T1.3 rehidratación siguen pendientes.
+**COMPLETE** — Sprint 5 Int.4: OLVIDÉ MI CONTRASEÑA (S5-13/14/15) + Cambiar contraseña logueado (FR8, INTEGRACION §2.4ter) implementados y validados EN VIVO contra backend real (Chrome/Playwright), no solo build/tsc — ver `testing.md` §7. De paso se corrigió una regresión real de logout (ver más abajo). Previo: Int.2 (MATERIAS+INICIO) + Int.4 (PERFIL·CONVENIOS·UX S4-16..S4-20) COMPLETE (2026-09-14). Fase 1 Auth: T1.2 Login real DONE; T1.1 Registro y T1.3 rehidratación siguen pendientes.
+
+## Qué se agregó (este update — Sprint 5, Integrante 4: Olvidé mi contraseña)
+- **S5-12** Contrato cerrado con backend, documentado en `INTEGRACION_FRONT.md` §2.4bis (backend) y reflejado en `requirements.md` FR7. Sin cambios de código.
+- **S5-13** `OlvidePasswordScreen` nueva + link en `LoginScreen`; `forgotPasswordRequest` (`src/auth/api.ts`) → `POST /auth/forgot-password`, siempre muestra éxito (no distingue si el email existe).
+- **S5-14** `ResetPasswordScreen` nueva con misma validación de password que Registro; `resetPasswordRequest` → `POST /auth/reset-password`. Token leído de `?token=` en la URL sin agregar router (decisión D014 — esta app navega con `switch(screen)`, nunca se instaló react-router pese a D006).
+- **S5-15** `400` (token inválido/vencido/usado) vuelve a `olvide-password` con el mensaje real del backend, no error genérico.
+
+## Bloqueadores (Sprint 5)
+QA manual end-to-end requiere el token de reset, que en dev solo se loguea en la consola del backend (sin SMTP configurado) — no es bloqueante para marcar DONE del front, pero falta antes de poder decir "probado contra backend real".
+
+## Bug encontrado y corregido en QA manual (2026-09-16)
+Durante la prueba E2E de S5-13/14/15 el usuario reportó "no me deja desloguearme". Diagnóstico: la sesión guardada había quedado inválida (token vencido/401 real de `/auth/me`) y `App.tsx` no tenía ningún mecanismo que reaccionara a eso — `AuthContext` limpiaba `usuario`/`token` correctamente vía `unauthorizedHandler`, pero el estado `screen` (que no está ligado a la sesión) se quedaba en la pantalla protegida donde estuviera, típicamente Perfil, que en su estado de error solo ofrecía "Reintentar" (sin salida). Corregido: (1) nuevo `useEffect` en `App()` que fuerza `screen→"login"` apenas `useAuth().usuario` es `null` fuera de las pantallas públicas; (2) `PerfilScreen.handleLogout` ahora llama `useAuth().logout()` en vez de borrar `localStorage` a mano (evita estado stale en `AuthContext`); (3) el estado de error de Perfil ahora también ofrece "Cerrar sesión", no solo "Reintentar". Validado en vivo con Playwright/browser contra backend real (sesión inválida → redirect automático a login; logout manual → limpia sesión y redirige).
+
+## Gap resuelto (2026-09-16) — Cambiar contraseña logueado
+Backend entregó `PATCH /auth/password` dedicado (INTEGRACION §2.4ter). Implementado: `CambiarPasswordModal` en Perfil, `cambiarPasswordRequest` en `src/auth/api.ts`, y un ajuste en `apiClient` (`suppressUnauthorizedRedirect`, D015) para que el 401 de "contraseña actual incorrecta" no dispare el logout global (era un riesgo real: sin el fix, escribir mal la actual una vez te desconectaba de una sesión válida). Validado en vivo contra backend real: error de actual no desloguea, éxito no desloguea, y la contraseña nueva funciona para loguearse de nuevo tras un logout manual. Ver `requirements.md` FR8, `decisions.md` D015, `implementation.md` §9.6, `testing.md` §7.
 
 ## Qué se agregó (este update — Sprint 4, Integrante 2)
 - **S4-06** Shell responsive: `App.tsx` sacó el `maxWidth:430` fijo del shell raíz. Nuevo `SidebarNav` (desktop, `md:+`) reemplaza a `BottomNav` (que ahora solo se ve en mobile). Bug encontrado y corregido en el camino: `BottomNav` tenía `display:"flex"` en `style` inline, que anulaba el `display:none` de la clase `md:hidden` sin importar el viewport — se movió `display` a la clase (`className="flex md:hidden"`).

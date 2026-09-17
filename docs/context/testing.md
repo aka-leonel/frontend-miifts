@@ -72,6 +72,53 @@ Archivos Int.2: `features/catalogo/service.ts|hooks.ts`, `features/materias/serv
 ### Próximo paso
 Planner → Architect: marcar `status.md` TESTING→COMPLETE para Int.2, o escalar gaps backend (`PATCH /auth/me`, `PATCH /recordatorios` per §1.7).
 
+## 7. Reporte — Integrante 4 OLVIDÉ MI CONTRASEÑA S5-13/14/15 (2026-09-16, Tester)
+
+### Alcance validado
+`implementation.md` §9 T5-FORGOT-01/T5-RESET-01/T5-RESET-02. Archivos: `src/api/types.ts` (`ForgotPasswordRequest`/`ResetPasswordRequest`/`MensajeResponse`), `src/auth/api.ts` (`forgotPasswordRequest`/`resetPasswordRequest`), `src/App.tsx` (`OlvidePasswordScreen`, `ResetPasswordScreen`, link en `LoginScreen`, lectura de `token` en `App()`).
+
+### Evidencia
+
+| Check | Resultado | Evidencia |
+|-------|-----------|-----------|
+| **Build** | PASS | `npm run build` vite 8 → `✓ built in 926ms`, 71 módulos |
+| **Typecheck** | PASS | `npx tsc --noEmit` → 0 errores nuevos; únicos 2 errores (`RutaAdmin.tsx`/`RutaProtegida.tsx` sin `react-router-dom` instalado) son preexistentes, ajenos a este cambio (no tocados) |
+| **S5-13 link + pantalla** | PASS | `LoginScreen` link "¿Olvidaste tu contraseña?" → `onGo("olvide-password")`; `OlvidePasswordScreen` llama `forgotPasswordRequest` y muestra SIEMPRE el mensaje de éxito tras el 200 (no distingue si el email existe, cumple FR7) |
+| **S5-14 pantalla nueva password** | PASS | `ResetPasswordScreen` valida ≥8 + letra+número + confirmación (mismo criterio que `RegistroScreen`), usa `Input type="password"` (ojo mostrar/ocultar ya incluido en el componente compartido) |
+| **S5-14 token por query param sin router** | PASS | `App()` lee `new URLSearchParams(window.location.search).get("token")` una vez al montar y arranca en `"reset-password"` con prioridad sobre sesión guardada (D014) |
+| **S5-15 error 400 token inválido/vencido** | PASS | catch de `resetPasswordRequest` con `err.status===400` → toast `err.detail` + `onGo("olvide-password")`, no error genérico ni pantalla muerta |
+| **422 password débil** | PASS | mismo flujo de validación cliente que Registro antes de pegarle al backend; error 422 del backend (si pasa la validación cliente pero falla server-side) → toast `err.detail`, no consume el token, se puede reintentar |
+| **Nav** | PASS | `showNav` excluye `olvide-password`/`reset-password` de la bottom nav |
+
+### No validado / Limitaciones
+- **Sin SMTP en dev (gap conocido de backend, INTEGRACION §2.4bis)**: no se pudo ejercitar el flujo end-to-end real (pedir email → recibir link → click → reset) porque el mail no se envía; requiere pedir el token de los logs del backend a quien lo tenga levantado. No es un fallo del front.
+- Sin `vitest`/`msw` instalados (mismo gap que Int.2/Int.4) → validación manual + build + tsc, no automatizada.
+- No se probó contra backend real levantado en esta sesión (sin acceso); validado por contrato (tipos, rutas, manejo de status codes) contra INTEGRACION §2.4bis.
+
+### Veredicto
+**PASS con limitación documentada (no bloqueante).** S5-13/14/15 cumplen `implementation.md` §9.3 1-8 por contrato y build/tsc. Pendiente: QA manual end-to-end contra backend real con el token de consola, a cargo de quien tenga el backend levantado.
+
+### Próximo paso
+Planner → Architect: informar que S5-13/14/15 están implementados y listos para QA manual (se necesita el token del log del backend para probar el flujo completo).
+
+### Regresión encontrada en QA manual E2E (2026-09-16) — CORREGIDA
+Usuario reportó "no me deja desloguearme" probando el flujo contra backend real. Causa: sesión con token inválido/vencido + `App.tsx` sin mecanismo para volver a "login" cuando `AuthContext` pierde la sesión (ver `status.md` para el detalle y el fix). Confirmado con Chrome/Playwright: antes del fix, sesión inválida → Perfil atascado en "No se pudo cargar tu perfil / Not authenticated" sin salida; después del fix, redirect automático a Login + logout manual limpio. Fuera de alcance de S5-13/14/15 pero se corrigió en la misma sesión de trabajo por ser bloqueante para probar el resto.
+
+### Gap resuelto (2026-09-16) — Cambiar contraseña logueado
+Backend entregó `PATCH /auth/password` (INTEGRACION §2.4ter, ver `requirements.md` FR8). Implementado y validado EN VIVO contra backend real con Chrome/Playwright (no solo build/tsc, a diferencia del resto de S5):
+
+| Check | Resultado | Evidencia |
+|-------|-----------|-----------|
+| Build/tsc | PASS | `npm run build` 72 módulos, `tsc --noEmit` 0 errores nuevos |
+| Botón en Perfil | PASS | "Cambiar contraseña" visible, abre `CambiarPasswordModal` |
+| 401 actual incorrecta | PASS | Toast "La contraseña actual no coincide.", modal se queda abierto, **sesión NO se cierra** (confirma fix D015 — antes de `suppressUnauthorizedRedirect` esto hubiera disparado logout global) |
+| 200 éxito | PASS | Toast "Contraseña actualizada correctamente.", modal cierra, sigue en Perfil con la misma sesión (JWT no se invalida) |
+| Persistencia real | PASS | Logout manual + login con la contraseña NUEVA → entra correctamente (confirma que el backend la guardó, no fue solo un 200 optimista del front) |
+| Validación cliente | PASS | Mismo criterio Registro/Reset (≥8, letra+número, confirmación) antes de pegarle al backend |
+
+### Gap encontrado, no corregido (2026-09-16)
+Ninguno pendiente de este lote — S5-13/14/15 + cambio de contraseña logueado (FR8) completos y validados.
+
 ## 6. Reporte — Integrante 4 PERFIL·CONVENIOS·UX (2026-09-14, Tester)
 
 ### Alcance validado
