@@ -247,40 +247,48 @@ Dependencias: T4-CONV-02 bloqueado por T4-CONV-01 (validar datos reales antes de
 T5-PERFIL-01 → T5-PERFIL-02 → T5-PERFIL-03 → T5-PERFIL-04
 Dependencias: T5-PERFIL-01 bloquea 02/03/04; 02 y 03 pueden ir en paralelo tras 01; 04 es verificación final tras 01. **Bloqueante externo:** S5-03 (Integrante 1) debe entregar `useAuth().usuario` unificado antes de T5-PERFIL-03, si no Perfil quedará con `getMiUsuario()` legacy y la sync no se verá en Inicio.
 
-## 10. Plan Detallado — Extensión: Cambio de contraseña desde Perfil (FR8, integración lista)
+## 10. Plan Detallado — Extensión: Cambio de contraseña desde Perfil (FR8, gap backend real)
 
-> Fuente: solicitud usuario 2026-09-16 + `requirements.md` FR8 + `decisions.md` D015. **Objetivo:** dejar todo el front listo para que, cuando el backend exponga la ruta, solo haya que cambiar `CHANGE_PASSWORD_PATH` en `src/auth/api.ts`. Modal limpio sin aviso de "endpoint no disponible".
+> Fuente: auditoría 2026-09-16 live `backend-ifts/app/features/auth/{router,schema,service}.py` + `docs/openapi.json` + `requirements.md` FR8 + `SPRINT5_FRONT.md` S5-08/S5-12. **Gap crítico:** frontend asume `POST /auth/change-password {current_password,new_password}` (D015/FR8, `CHANGE_PASSWORD_PATH` en `src/auth/api.ts:40`), pero **backend no lo expone** — solo existe `POST /auth/forgot-password {email}` y `POST /auth/reset-password {token,password}` (ver `router.py:56-69`). Docker daemon offline (`npipe` no disponible) impide levantar `http://localhost:8000` para re-test live; validación por código.
+> **Decisión SPRINT5 original (S5-08):** no tocar contraseña desde Perfil — va por "Olvidé mi contraseña" (Int.4). FR8 es extensión solicitada por usuario que contradice S5-08 y requiere endpoint nuevo.
 
-### 10.1 Estado actual (auditoría 2026-09-16)
-- `src/auth/api.ts`: **PARCIAL** — `loginRequest`, `registroRequest`, `meRequest`, `updateMeRequest` OK. Existe `CHANGE_PASSWORD_PATH = "/auth/change-password"` + `changePasswordRequest(payload: ChangePasswordRequest): Promise<void>` → `apiClient<void>(CHANGE_PASSWORD_PATH, {method:"POST", body:payload, auth:true})` (agregado, integración lista).
-- `src/api/types.ts`: **OK** — `ChangePasswordRequest {current_password, new_password}` agregado.
-- `src/features/perfil/PerfilScreen.tsx`: **LISTO LIMPIO** — botón "Cambiar contraseña" + modal con 3 inputs `type=password` (`current`, `next`, `confirm`) + `pwdSaving` + `pwdErrors`, sin banner ámbar de endpoint faltante. Handler valida cliente y llama `changePasswordRequest`. Seguridad: `autoComplete="current-password"/"new-password"`, no hash frontend, no guarda en storage.
-- `live openapi.json`: **PENDIENTE BACKEND** — no expone `POST /auth/change-password` (solo `GET/PATCH /auth/me`, `POST /auth/login|registro|verify`). Cuando lo exponga, solo hay que confirmar el path.
-- `src/auth/AuthContext.tsx` y `useToast/useApiForm` sin cambios necesarios.
+### 10.1 Estado actual (auditoría 2026-09-16 — revisada)
+- `src/auth/api.ts`: `CHANGE_PASSWORD_PATH="/auth/change-password"` + `changePasswordRequest → apiClient<void>(PATH,{POST,auth:true})` **listo pero contra endpoint inexistente** → hoy 404 si se clickea Guardar.
+- `src/api/types.ts`: `ChangePasswordRequest {current_password,new_password}` OK.
+- `src/features/perfil/PerfilScreen.tsx`: modal limpio 3× `type=password` + validación cliente (current requerido, next ≥8 letra+número, confirm===next) + `pwdSaving` + `ApiError` 422→fields/401→toast + sin hash frontend — **UI lista, integración rota**.
+- Backend real: `PerfilUpdate` solo `{nombre?,apellido?}` (schema.py:134), `forgot/reset-password` con `password_reset_tokens` tabla, sin `change-password`. `SPRINT5 § Int.4 S5-12→S5-15` es el flujo oficial.
+- `status.md`: marcaba IMPLEMENTATION READY asumiendo backend pendiente; debe pasar a **BLOCKED/BACKEND_GAP** hasta decisión Architect.
 
-### 10.2 Principios para el Developer (esta extensión ya está implementada, solo documentar para futuro)
-1. **Único punto de integración:** `export const CHANGE_PASSWORD_PATH = "/auth/change-password"` en `src/auth/api.ts` línea 38. Si backend usa otro path (ej. `POST /auth/password`, `PATCH /auth/me/password`, `PUT /auth/change-password`), cambiar **solo ese string** — el resto no se toca.
-2. **Seguridad obligatoria:** texto plano por TLS, backend hashea con bcrypt. **Prohibido** hashear en frontend (`crypto.subtle.digest`, `bcryptjs` en cliente) — daría falsa seguridad y rompería el flujo. No loguear `current_password`/`new_password` ni en `console` ni en `ApiError.detail` más allá del toast.
-3. **Validación:** cliente: `current` requerido, `next` ≥8 + letra+número, `confirm===next`. Servidor: 422 `errors[]` mapeado a campo (`new_password`→`next`, `current_password`→`current`) vía `pwdErrors`; 401/403 current incorrecto → toast `detail`.
-4. **UI limpia:** modal sin aviso ámbar, 3 campos, botón `Guardar` con `disabled pwdSaving`, `Cancel` cierra y limpia `pwdForm/pwdErrors`. No tocar `PATCH /auth/me` ni `carrera`.
+### 10.2 Principios / Decisiones para Planner→Architect (escalar antes de codear)
+1. **No inventar endpoint en front:** cambiar solo `CHANGE_PASSWORD_PATH` no alcanza — el 404 persistirá hasta que backend lo cree.
+2. **Opciones (Architect elige):**
+   - **A — Crear `POST /auth/change-password` en backend (recomendado FR8):** con `auth:true`, body `{current_password,new_password}`, valida `current` con `verify_password`, valida `new` con mismo `field_validator` que `UsuarioCreate` (≥8 letra+número), hashea bcrypt, `detail` genérico 401 si current mal. Toca `router.py`+`schema.py ChangePasswordRequest`+`service.py cambiar_password(user_id,current,new)`. 0.5d backend, front queda tal cual.
+   - **B — Reusar flujo existente sin backend nuevo:** modal pasa a "Enviar email de recupero" → `POST /auth/forgot-password {email: me.data.email}` + toast "Revisá tu email" (no revela existencia). No pide `current_password`; UX distinta pero S5-08 compliant. 0.2d front.
+   - **C — Desactivar modal hasta Sprint 6:** ocultar botón "Cambiar contraseña" (`hidden`/`featureFlag`) y mantener S5-08 verbatim; documentar gap en `decisions.md`.
+3. **Seguridad (cualquiera opción):** texto plano por TLS, backend hashea bcrypt, no `crypto`/`bcryptjs` en frontend, no log `password`, `autoComplete` ya OK.
+4. **Contrato si se elige A:** método `POST`, path `/auth/change-password` (o variante `PATCH /auth/password` — entonces cambiar solo `CHANGE_PASSWORD_PATH`+`method`), response `200 {detail}` o `204`, errores `401 current mal`, `422 new_password inválida`, `400 current===new`.
 
-### 10.3 Tareas delegables al Developer (checklist de cierre, 0.5d)
+### 10.3 Tareas delegables al Developer (cuando Architect decida — orden estricto)
 
-#### T5-PWD-01 · Integrar string de ruta cuando el back esté listo (0.1d) — Baja
+#### T5-PWD-BE-01 · Backend `POST /auth/change-password` (0.5d) — Alta — solo si opción A — dueño backend
+- Archivos: `backend-ifts/app/features/auth/schema.py` (+ `ChangePasswordRequest`), `service.py` (+ `cambiar_password`), `router.py` (+ `@router.post("/change-password")` con `Depends(get_current_user)`), `tests/test_auth.py` (+ casos 401/422/200).
+- Verificación: `curl openapi.json | grep change-password` muestra path; `pytest tests/test_auth.py -k change_password` verde.
+
+#### T5-PWD-01 · Front integrar string de ruta (0.1d) — Baja — depende T5-PWD-BE-01 si A
 - Archivo: `src/auth/api.ts`
-- Acción: confirmar con backend el path y método exacto en `openapi.json`. Editar **solo** `CHANGE_PASSWORD_PATH` y si el método no es `POST` ajustar `method`. No tocar `ChangePasswordRequest` salvo que backend use `password`/`newPassword` en snake/camel distinto — mapear en `changePasswordRequest` wrapper.
-- Verificación: `curl -s http://localhost:8000/openapi.json | grep -A2 change-password` debe mostrar el endpoint; `npx openapi-typescript` regenerar si se tipó distinto.
+- Acción: confirmar path/método del backend en `docs/openapi.json` (exportado). Editar **solo** `CHANGE_PASSWORD_PATH` y `method` si difiere. Mapear campo si backend usa `password` vs `new_password`.
+- Verificación docker: levantar `docker compose up` en `ProyectoIntegrador/` (requiere Docker Desktop running; hoy `npipe` falló — reintentar) y `curl -s http://localhost:8000/openapi.json | grep change-password`.
 
-#### T5-PWD-02 · Validación E2E contra backend real (0.2d)
-- Archivos: `src/features/perfil/PerfilScreen.tsx` (ya listo)
-- Casos: login → abrir modal → `current` vacío → fieldError; `next` sin número → fieldError; `confirm !== next` → fieldError; `current` incorrecto → `POST` 401 → toast; `next` corta → 422 → fieldError `next`; éxito → 200 → toast "Contraseña actualizada" + modal cierra + siguiente login con nueva contraseña funciona.
-- No permitir reuse de `current===next` si backend lo valida (422).
+#### T5-PWD-01B · Front fallback forgot-password (0.2d) — solo si opción B
+- Archivos: `src/auth/api.ts` (+ `forgotPasswordRequest`), `src/features/perfil/PerfilScreen.tsx` (modal cambia a 1 campo email readOnly + botón "Enviar email")
+- Lógica: `POST /auth/forgot-password {email}` → toast éxito siempre (mismo `detail` exista o no), 422 email inválido → field.
 
-#### T5-PWD-03 · Criterios de aceptación para Tester (validar cuando exista endpoint)
-- `grep -n CHANGE_PASSWORD_PATH src/auth/api.ts` → 1 definición única.
-- Modal sin texto "Endpoint aún no disponible" (`grep -i "no disponible" src/features/perfil` → 0).
-- `POST` real con `auth:true`, inputs `type=password`, sin hash frontend (`grep -i "hash\|bcrypt\|crypto" src/features/perfil` → 0).
-- `npm run build && npx tsc --noEmit -p tsconfig.app.json` verdes.
+#### T5-PWD-02 · Validación E2E contra backend real (0.2d) — depende T5-PWD-01/01B
+- Casos A: login→modal→ `current` vacío→field, `next` sin número→field, `confirm!=next`→field, `current` mal→401 toast, `next` corta→422 field, éxito→toast "Contraseña actualizada" + login con nueva funciona, `change-password` sin auth→401.
+- Casos B: `POST /auth/forgot-password` con email propio→200, con email inexistente→mismo 200 (no revela).
+
+#### T5-PWD-03 · Criterios Tester (0.1d)
+- `grep CHANGE_PASSWORD_PATH src/auth/api.ts` 1 def; `grep -i "hash|bcrypt|crypto" src/features/perfil` 0; `grep -i "no disponible"` 0; `npm run build && npx tsc --noEmit -p tsconfig.app.json` verde; modal `type=password` + `autoComplete` OK.
 
 ### 10.4 Orden de ejecución Developer
-T5-PWD-01 → T5-PWD-02 → T5-PWD-03 (cuando backend ready). Hoy ya están implementados; Planner marca **IMPLEMENTATION READY** y deja T5-PWD-01 como único TODO futuro.
+**Escalar a Architect → elegir A/B/C. Si A:** T5-PWD-BE-01 → T5-PWD-01 → T5-PWD-02 → T5-PWD-03. **Si B:** T5-PWD-01B → T5-PWD-02 → T5-PWD-03. **Si C:** ocultar botón + documentar. Estado actual: **PLANNING/BLOCKED** hasta decisión.

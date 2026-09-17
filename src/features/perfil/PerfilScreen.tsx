@@ -30,6 +30,7 @@ export default function PerfilScreen({ onCerrarSesion }: { onCerrarSesion: () =>
   const [pwdForm, setPwdForm] = useState({ current: "", next: "", confirm: "" });
   const [pwdErrors, setPwdErrors] = useState<Record<string, string>>({});
   const [pwdSaving, setPwdSaving] = useState(false);
+  const [showPwd, setShowPwd] = useState({ current: false, next: false, confirm: false });
 
   useEffect(() => {
     if (!me.data) return;
@@ -133,9 +134,13 @@ export default function PerfilScreen({ onCerrarSesion }: { onCerrarSesion: () =>
           <div className="rounded-2xl border border-border bg-card p-6 text-center">
             <div className="text-sm font-semibold text-text">No se pudo cargar tu perfil</div>
             <div className="mt-1 text-xs text-muted">{String((me.error as Error)?.message ?? me.error)}</div>
-            <button type="button" onClick={() => me.refetch()} className="mt-4 rounded-xl bg-violet px-4 py-2 text-sm font-semibold text-white">
+            <button type="button" onClick={() => me.refetch()} className="mt-4 w-full rounded-xl bg-violet px-4 py-2 text-sm font-semibold text-white">
               Reintentar
             </button>
+            <button type="button" onClick={handleLogout} className="mt-3 w-full rounded-xl border border-[#FF6B6B]/40 bg-[#FF6B6B]/10 px-4 py-2 text-sm font-semibold text-[#FF6B6B]">
+              Cerrar sesión
+            </button>
+            <div className="mt-3 text-xs text-muted">Si el error persiste, cerrá sesión y volvé a ingresar.</div>
           </div>
         </div>
       </div>
@@ -262,35 +267,60 @@ export default function PerfilScreen({ onCerrarSesion }: { onCerrarSesion: () =>
             <div className="flex flex-col gap-3">
               <div>
                 <label className="mb-1.5 block text-[11px] font-semibold text-muted">CONTRASEÑA ACTUAL</label>
-                <input
-                  type="password"
-                  autoComplete="current-password"
-                  value={pwdForm.current}
-                  onChange={(e) => setPwdForm((p) => ({ ...p, current: e.target.value }))}
-                  className={`w-full rounded-xl border bg-card px-4 py-3 text-sm text-text outline-none ${pwdErrors.current ? "border-red-500" : "border-border focus:border-violet"}`}
-                />
+                <div className="relative">
+                  <input
+                    type={showPwd.current ? "text" : "password"}
+                    autoComplete="current-password"
+                    value={pwdForm.current}
+                    onChange={(e) => setPwdForm((p) => ({ ...p, current: e.target.value }))}
+                    className={`w-full rounded-xl border bg-card px-4 py-3 pr-11 text-sm text-text outline-none ${pwdErrors.current ? "border-red-500" : "border-border focus:border-violet"}`}
+                  />
+                  <button type="button" aria-label="ver contraseña" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-text" onMouseDown={() => setShowPwd((p) => ({ ...p, current: true }))} onMouseUp={() => setShowPwd((p) => ({ ...p, current: false }))} onMouseLeave={() => setShowPwd((p) => ({ ...p, current: false }))} onTouchStart={() => setShowPwd((p) => ({ ...p, current: true }))} onTouchEnd={() => setShowPwd((p) => ({ ...p, current: false }))}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /><circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.5" /></svg>
+                  </button>
+                </div>
                 {pwdErrors.current && <span className="mt-1 block text-xs text-red-400">{pwdErrors.current}</span>}
               </div>
               <div>
                 <label className="mb-1.5 block text-[11px] font-semibold text-muted">NUEVA CONTRASEÑA</label>
-                <input
-                  type="password"
-                  autoComplete="new-password"
-                  value={pwdForm.next}
-                  onChange={(e) => setPwdForm((p) => ({ ...p, next: e.target.value }))}
-                  className={`w-full rounded-xl border bg-card px-4 py-3 text-sm text-text outline-none ${pwdErrors.next ? "border-red-500" : "border-border focus:border-violet"}`}
-                />
+                <div className="relative">
+                  <input
+                    type={showPwd.next ? "text" : "password"}
+                    autoComplete="new-password"
+                    value={pwdForm.next}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setPwdForm((p) => ({ ...p, next: v }));
+                      if (pwdForm.confirm && v !== pwdForm.confirm) setPwdErrors((prev) => ({ ...prev, confirm: "contraseña no coincide" }));
+                      else if (pwdForm.confirm && v === pwdForm.confirm) setPwdErrors((prev) => { const n = { ...prev }; delete n.confirm; return n; });
+                    }}
+                    className={`w-full rounded-xl border bg-card px-4 py-3 pr-11 text-sm text-text outline-none ${pwdErrors.next ? "border-red-500" : "border-border focus:border-violet"}`}
+                  />
+                  <button type="button" aria-label="ver contraseña" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-text" onMouseDown={() => setShowPwd((p) => ({ ...p, next: true }))} onMouseUp={() => setShowPwd((p) => ({ ...p, next: false }))} onMouseLeave={() => setShowPwd((p) => ({ ...p, next: false }))} onTouchStart={() => setShowPwd((p) => ({ ...p, next: true }))} onTouchEnd={() => setShowPwd((p) => ({ ...p, next: false }))}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /><circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.5" /></svg>
+                  </button>
+                </div>
                 {pwdErrors.next && <span className="mt-1 block text-xs text-red-400">{pwdErrors.next}</span>}
               </div>
               <div>
                 <label className="mb-1.5 block text-[11px] font-semibold text-muted">CONFIRMAR NUEVA</label>
-                <input
-                  type="password"
-                  autoComplete="new-password"
-                  value={pwdForm.confirm}
-                  onChange={(e) => setPwdForm((p) => ({ ...p, confirm: e.target.value }))}
-                  className={`w-full rounded-xl border bg-card px-4 py-3 text-sm text-text outline-none ${pwdErrors.confirm ? "border-red-500" : "border-border focus:border-violet"}`}
-                />
+                <div className="relative">
+                  <input
+                    type={showPwd.confirm ? "text" : "password"}
+                    autoComplete="new-password"
+                    value={pwdForm.confirm}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setPwdForm((p) => ({ ...p, confirm: v }));
+                      if (v && pwdForm.next !== v) setPwdErrors((prev) => ({ ...prev, confirm: "contraseña no coincide" }));
+                      else setPwdErrors((prev) => { const n = { ...prev }; delete n.confirm; return n; });
+                    }}
+                    className={`w-full rounded-xl border bg-card px-4 py-3 pr-11 text-sm text-text outline-none ${pwdErrors.confirm ? "border-red-500" : "border-border focus:border-violet"}`}
+                  />
+                  <button type="button" aria-label="ver contraseña" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-text" onMouseDown={() => setShowPwd((p) => ({ ...p, confirm: true }))} onMouseUp={() => setShowPwd((p) => ({ ...p, confirm: false }))} onMouseLeave={() => setShowPwd((p) => ({ ...p, confirm: false }))} onTouchStart={() => setShowPwd((p) => ({ ...p, confirm: true }))} onTouchEnd={() => setShowPwd((p) => ({ ...p, confirm: false }))}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /><circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.5" /></svg>
+                  </button>
+                </div>
                 {pwdErrors.confirm && <span className="mt-1 block text-xs text-red-400">{pwdErrors.confirm}</span>}
               </div>
             </div>
@@ -306,7 +336,7 @@ export default function PerfilScreen({ onCerrarSesion }: { onCerrarSesion: () =>
                   if (!pwdForm.current) errs.current = "Requerido";
                   if (pwdForm.next.length < 8) errs.next = "Mínimo 8 caracteres";
                   else if (!/[A-Za-z]/.test(pwdForm.next) || !/[0-9]/.test(pwdForm.next)) errs.next = "Debe tener letra y número";
-                  if (pwdForm.next !== pwdForm.confirm) errs.confirm = "No coincide";
+                  if (pwdForm.next !== pwdForm.confirm) errs.confirm = "contraseña no coincide";
                   if (Object.keys(errs).length) {
                     setPwdErrors(errs);
                     return;
@@ -327,6 +357,14 @@ export default function PerfilScreen({ onCerrarSesion }: { onCerrarSesion: () =>
                           mapped[key] = Array.isArray(v) ? String(v[0]) : String(v);
                         }
                         setPwdErrors(mapped);
+                        return;
+                      }
+                      if (e.status === 401) {
+                        setPwdErrors({ current: e.detail || "Contraseña actual incorrecta" });
+                        return;
+                      }
+                      if (e.status === 400) {
+                        setPwdErrors({ next: e.detail || "La nueva debe ser distinta" });
                         return;
                       }
                       pushToast(e.detail || "No se pudo cambiar la contraseña", "error");

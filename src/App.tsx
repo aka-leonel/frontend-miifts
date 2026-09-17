@@ -450,10 +450,15 @@ const screenToNav: Partial<Record<Screen, NavTab>> = {
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>(() => (haySesion() ? "inicio" : "login"));
-  // No hay react-router en esta app todavía (el resto navega con este mismo
-  // switch, no con URLs) — mientras tanto, la materia que se está viendo en
-  // "detalle" se guarda acá y se pasa por prop.
+  const { token, verificandoSesion } = useAuth();
   const [materiaIdSeleccionada, setMateriaIdSeleccionada] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (verificandoSesion) return;
+    if (!token && !["login", "registro", "carrera"].includes(screen)) {
+      setScreen("login");
+    }
+  }, [token, verificandoSesion, screen]);
 
   const handleNav = (tab: NavTab) => setScreen(navToScreen[tab]);
   const showNav = !["login", "registro", "carrera"].includes(screen);
