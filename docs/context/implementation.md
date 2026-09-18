@@ -169,3 +169,139 @@ Dependencias: T2-MAT-02 bloquea T2-INI-01 (reuso widgets); T2-INI-01 depende de 
 ### 8.5 Orden de ejecución Developer
 T4-PERFIL-01 → T4-CONV-01 → T4-CONV-02 → T4-CLEAN-01 → T4-RESP-01 (+ T4-SERVICE-01 en paralelo a T4-CONV-02)
 Dependencias: T4-CONV-02 bloqueado por T4-CONV-01 (validar datos reales antes de borrar fallback); T4-CLEAN-01 independiente pero antes de T4-RESP-01 (evitar responsive sobre código muerto); T4-PERFIL-01 independiente al inicio.
+
+## 9. Plan Detallado — Integrante 4: OLVIDÉ MI CONTRASEÑA (Sprint 5, S5-12 a S5-15)
+
+> Fuente: `SPRINT5_FRONT.md` (líneas 86-95) + `INTEGRACION_FRONT.md` §2.4bis (backend, contrato cerrado 2026-09-16, ver `requirements.md` FR7 / `decisions.md` D014). S5-12 (coordinar contrato) ya está resuelto — este plan cubre S5-13/14/15.
+
+### 9.1 Estado actual (auditoría 2026-09-16)
+- `LoginScreen` (`App.tsx`) no tiene link "¿Olvidaste tu contraseña?".
+- No existen pantallas de forgot/reset password ni tipos/servicios asociados.
+- `Screen` (`App.tsx:19`) no incluye los nuevos estados; no hay lectura de query param en ningún lado (D014 aplica acá por primera vez).
+- Convención a reusar: `Input`/`PrimaryButton`/`ScreenWrap`/`EyeIcon` (`App.tsx`), `useToast`, `ApiError.detail` (mismo patrón que `LoginScreen`/`RegistroScreen`).
+
+### 9.2 Tareas delegables al Developer
+
+#### T5-FORGOT-01 · S5-13 Tipos + servicio + pantalla "Olvidé mi contraseña" (1d) — Alta
+- Archivos: `src/api/types.ts`, `src/auth/api.ts`, `src/App.tsx`
+- `api/types.ts`: agregar `ForgotPasswordRequest {email}`, `ResetPasswordRequest {token,password}`, `MensajeResponse {detail}` (calcados de INTEGRACION §2.4bis, mismo criterio que el resto del archivo — "SEAM" hasta que se regeneren con openapi).
+- `auth/api.ts`: agregar `forgotPasswordRequest(payload): Promise<MensajeResponse>` → `POST /auth/forgot-password` `auth:false`.
+- `App.tsx`: `Screen` += `"olvide-password"`; nueva `OlvidePasswordScreen({onGo})` (mismo layout que `LoginScreen`): input email, botón "Enviar instrucciones", SIEMPRE éxito tras el 200 (no chequear nada distinto, FR7) → mostrar mensaje "Revisá tu email" en la misma pantalla (no auto-navegar, el usuario decide volver a Login). Link nuevo en `LoginScreen` bajo el botón "Ingresar": `¿Olvidaste tu contraseña?` → `onGo("olvide-password")`.
+
+#### T5-RESET-01 · S5-14 Pantalla contraseña nueva + token por query param (1.5d) — Alta — depende T5-FORGOT-01
+- Archivos: `src/auth/api.ts`, `src/App.tsx`
+- `auth/api.ts`: agregar `resetPasswordRequest(payload): Promise<MensajeResponse>` → `POST /auth/reset-password` `auth:false`.
+- `App.tsx`: `Screen` += `"reset-password"`. En `App()` (mount), leer `new URLSearchParams(window.location.search).get("token")`; si hay token, `screen` inicial = `"reset-password"` guardando el token en `useState` (D014 — no agregar router). `ResetPasswordScreen({token, onGo})`: password + repetir con `Input type="password"` (ojo ya incluido), MISMA validación que `RegistroScreen` (≥8, letra+número, coinciden) antes de pegarle al backend. Éxito (200) → toast + `onGo("login")`.
+- No tocar `AuthContext`: este flujo es público, no toca `usuario`/`token` de sesión.
+
+#### T5-RESET-02 · S5-15 Estados de error token inválido/vencido (0.5d) — Media — depende T5-RESET-01
+- Archivo: `src/App.tsx` (`ResetPasswordScreen`)
+- Catch de `resetPasswordRequest`: si `err instanceof ApiError && err.status === 400` → toast con `err.detail` ("Token inválido o expirado") + `onGo("olvide-password")` (NO error genérico, NO quedarse en la pantalla de reset). Si `422` → mismo patrón que `RegistroScreen` (toast con el mensaje de password, se puede reintentar con el mismo token — el backend no lo consume en 422 per INTEGRACION §2.4bis).
+
+### 9.3 Criterios de aceptación para Tester
+1. Link "¿Olvidaste tu contraseña?" visible en `LoginScreen`, navega a `olvide-password`.
+2. `POST /auth/forgot-password` siempre resuelve en estado de éxito visible, sin importar si el backend devuelve "existe" o no (no se puede distinguir, y no debe intentarse).
+3. `/reset-password?token=...` (sin sesión) carga directo `ResetPasswordScreen` con el token de la URL, no pide login.
+4. Validación de password en reset idéntica a Registro (≥8, letra+número, confirmación) antes de llamar al backend.
+5. `400` con "Token inválido o expirado" → vuelve a `olvide-password`, no error genérico ni pantalla en blanco.
+6. `422` de password → toast con el detail real, el usuario puede reintentar sin perder el token.
+7. `showNav`/`screenToNav` (`App.tsx`) excluyen `olvide-password`/`reset-password` de la bottom nav (mismo criterio que `login`/`registro`).
+8. `npm run build && tsc --noEmit` verdes.
+
+### 9.4 Limitación conocida (no bloquea DONE)
+Sin SMTP en dev, no hay forma de disparar el flujo 100% end-to-end sin pedirle a quien tenga el backend levantado el token logueado en consola (INTEGRACION §2.4bis). El Tester debe documentar esto como limitación, no como fallo.
+
+### 9.5 Orden de ejecución Developer
+T5-FORGOT-01 → T5-RESET-01 → T5-RESET-02
+
+### 9.6 T5-CAMBIO-01 · Cambiar contraseña logueado (INTEGRACION §2.4ter, agregado 2026-09-16) — DONE
+> Reemplaza la idea original (S5-08 desactualizado) de reusar `forgot-password` desde Perfil — el backend entregó un endpoint dedicado. Ver también D017: otro integrante llegó a este mismo gap en paralelo asumiendo un endpoint (`POST /auth/change-password`) que nunca existió en el backend real — la implementación final es la de esta sección, contra `PATCH /auth/password` verificado en el código del backend.
+- Archivos: `src/api/types.ts` (`CambiarPasswordRequest`), `src/auth/api.ts` (`cambiarPasswordRequest`), `src/lib/apiClient.ts` (`suppressUnauthorizedRedirect`, ver D015), `src/features/perfil/CambiarPasswordModal.tsx` (nuevo), `src/features/perfil/PerfilScreen.tsx` (botón + wiring).
+- `PATCH /auth/password` Bearer, `suppressUnauthorizedRedirect:true` (el 401 de este endpoint es "actual no coincide", no debe desloguear — D015).
+- Modal propio en vez de `FormModal` (dueño Int.1): no hay id ni create/update, es una única acción.
+- Validado en vivo contra backend real (Chrome/Playwright): actual incorrecta → toast, sesión intacta (no desloguea); actual correcta → éxito, modal cierra, sesión sigue viva; logout + login con la password nueva confirma que quedó persistida.
+
+## 10. Plan Detallado — Sprint 5 Integrante 2: Perfil editable (S5-05 → S5-07; S5-08 superado, ver D016)
+
+> **Corrección post-merge (2026-09-16):** el plan original de abajo asumía `email` editable junto con nombre/apellido en `PATCH /auth/me`. Se verificó contra `backend-ifts/app/features/auth/schema.py` (`PerfilUpdate`) que el backend **ignora silenciosamente** cualquier campo que no sea `nombre`/`apellido` — mandar `email` ahí no lo cambia y el front mostraba un falso "Perfil actualizado". La implementación final deja `email` readOnly (igual que carrera). El resto del plan (nombre/apellido editables, manejo de errores, sincronización con `AuthContext`) se mantiene igual y está DONE.
+
+> Fuente: `docs/SPRINT5_FRONT.md` § Integrante 2 + `docs/context/requirements.md` FR7 + `decisions.md` D014. **Stack real sin mocks:** Vite+React+TS+Tailwind+`apiClient` (`VITE_API_URL=http://localhost:8000`, `Authorization: Bearer`, `ApiError {detail,errors[]}`, `401→logout`, `useAuth()` fuente única). Prioridad Alta/Media, ≈3.5d. **Depende de S5-03** (identidad unificada en `useAuth()`).
+
+### 10.1 Estado actual (auditoría 2026-09-15)
+- `src/api/types.ts`: **OK** — `Usuario {id,nombre,apellido,email,carrera_id,fecha_registro,rol}`; falta `UsuarioUpdate = Partial<Pick<Usuario,"nombre"|"apellido"|"email">>` para PATCH.
+- `src/api/client.ts` → `src/lib/apiClient.ts`: wrapper único con `auth:true` agrega `Bearer`, parser `errors[]`→`Record`, `401→setUnauthorizedHandler(logout)`, `204` sin parse. Listo.
+- `src/auth/AuthContext.tsx`: **PARCIAL** — `usuario/token/cargando/verificandoSesion/login/registro/logout` OK, persiste `miifts_token`/`miifts_usuario` via `auth/storage.ts`, `setUnauthorizedHandler(logout)` y timers expiración. **Falta** método `actualizarPerfil(patch)` o `setUsuario` expuesto para S5-07; hoy solo `meRequest()` en mount actualiza al arrancar.
+- `src/auth/api.ts`: `loginRequest`, `registroRequest`, `meRequest() → GET /auth/me` OK. **Falta** `updateMeRequest(patch) → PATCH /auth/me`.
+- `src/features/perfil/service.ts`: solo `getAuthMe() → apiClient<Usuario>("/auth/me")` sin rama demo. **Falta** `updateAuthMe(patch: UsuarioUpdate) → apiClient<Usuario>("/auth/me", {method:"PATCH", body:patch})`.
+- `src/features/perfil/hooks.ts`: `useAuthMe()` con `useAsync(() => getAuthMe())` expone `data/loading/error/refetch`. No usa `useAuth()` aún.
+- `src/features/perfil/PerfilScreen.tsx`: **BLOQUEADO S4-16** — 3 inputs `readOnly disabled opacity-80`, `useState nombre` sync con `me.data`, carrera `readOnly` vía `useCarreras + carreraNombre` OK, banner `amber-500/10 "PATCH /auth/me (§1.7)"`, `Skeleton`/`ErrorState` con `me.refetch()` OK, `handleLogout` limpia `localStorage` + `onCerrarSesion()`. **No hay edición**: falta modo edición, validación, `PATCH`, `useApiForm`/`useToast`, sincronización. 0× `password` (S5-08 ya cumplido en este commit).
+- `src/hooks/useApiForm.ts` + `src/hooks/useToast.ts` + `src/components/EntityForm.tsx`: kit existente, patrón `409 toast / 422 fields` ya usado en `materiaUsuarioSpec`/`recursoSpec` — reusar.
+- Tokens Tailwind `bg #111218, card #1A1B23, violet #8C7DFF, lime #CFFF5E` + `Skeleton/ErrorState` existentes.
+
+### 10.2 Principios para el Developer (no mocks, no scope-creep)
+1. `PATCH /auth/me` con `auth:true`, body **solo** `nombre/apellido/email` parciales; nunca `carrera_id` ni `password`. Si backend responde `openapi.json` sin PATCH, igual implementar (SPRINT5 confirma que ya existe).
+2. Componentes usan **hooks/service** (`updateAuthMe`), nunca `fetch` directo. `PerfilScreen` consume `useAuth().usuario` como fallback/inicial, pero `GET /auth/me` sigue siendo fetch de verdad (S5-03).
+3. Sin `DEMO_MODE`/`demo.ts`; datos reales. Validación cliente mínima (trim, required, email regex) + servidor `422` mapea a field.
+4. No tocar `features/recordatorios`, `features/convenios`, `SidebarNav` (dueños Int.3/5). No agregar ruta nueva.
+
+### 10.3 Tareas delegables al Developer (orden estricto)
+
+#### T5-PERFIL-01 · S5-05 Editar nombre/apellido/email en Perfil (2d) — Alta — depende S5-03
+- Archivos: `src/api/types.ts`, `src/auth/api.ts`, `src/auth/AuthContext.tsx`, `src/auth/storage.ts`, `src/features/perfil/service.ts`, `src/features/perfil/hooks.ts`, `src/features/perfil/PerfilScreen.tsx`
+- `api/types.ts`: agregar `export type UsuarioUpdate = Partial<Pick<Usuario,"nombre"|"apellido"|"email">>;` (no incluir `carrera_id`/`rol`/`password`).
+- `auth/api.ts`: agregar `export function updateMeRequest(patch: UsuarioUpdate): Promise<Usuario> { return apiClient<Usuario>("/auth/me", {method:"PATCH", body: patch, auth:true}); }`
+- `features/perfil/service.ts`: agregar `export async function updateAuthMe(patch: UsuarioUpdate): Promise<Usuario> { return apiClient<Usuario>("/auth/me", {method:"PATCH", body: patch}); }` (o reexportar `updateMeRequest`). Mantener `getAuthMe`.
+- `auth/AuthContext.tsx`: exponer actualización sin recarga para S5-07: agregar `actualizarUsuario: (u: Usuario) => void` o `actualizarPerfil: (patch: UsuarioUpdate) => Promise<Usuario>` que llame `updateMeRequest`, luego `setUsuarioGuardado(u)` + `setUsuarioState(u)` + `pushToast` opcional. Alternativa mínima: exponer `setUsuarioState` via `setUsuarioGuardado` + helper `refreshAuthMe()` que hace `meRequest().then(set...)`. Elegir una y documentar en context value. No romper `login/registro/logout` existentes.
+- `features/perfil/PerfilScreen.tsx`: transformar de readOnly a editable:
+  - Estado: `form {nombre, apellido, email}` controlado, `isEditing` boolean (o siempre editable con `Guardar` disabled si no cambió), `saving` boolean, `fieldErrors` via `useApiForm()`, `pushToast` via `useToast()`.
+  - Inicialización: `useEffect` cuando `me.data` cambia → `setForm({nombre: me.data.nombre, apellido: me.data.apellido ?? "", email: me.data.email})`; también `queueMicrotask` OK pero preferir `useEffect` directo.
+  - Carrera: mantener `<input value={carreraNombre} readOnly disabled cursor-not-allowed opacity-60>` — nunca editable, no enviar en PATCH.
+  - Validación cliente: `nombre.trim().length>=2 && <=100`, `apellido` igual, `email` regex simple; si falla, set `fieldErrors` local y no fetch.
+  - Guardar: `onClick Guardar` → `clearErrors()` → `await updateAuthMe({nombre: form.nombre.trim(), apellido: form.apellido.trim(), email: form.email.trim()})` solo con campos cambiados (diff vs `me.data`); `setSaving(true/false)`. Éxito → `pushToast("Perfil actualizado","success")` + sincronizar (ver T5-PERFIL-03) + `me.refetch()` o `actualizarUsuario`.
+  - UI estados: `me.loading&&!me.data → Skeleton` (ya existe); `me.error → ErrorState retry` (ya existe); form habilitado cuando `!saving`; botón `Guardar` muestra `Guardando...` + `disabled` si `saving` o `!hasChanges`; carrera `disabled` siempre; inputs editables con `border-violet` en foco, `border-red` si `fieldErrors[campo]`.
+  - No agregar `<input type="password">` ni botón "Cambiar contraseña" (S5-08).
+- No tocar: `FormModal` (dueño Int.1) no aplica acá — Perfil es inline, no modal. Pero reusar `useApiForm` pattern.
+
+#### T5-PERFIL-02 · S5-06 Manejo de errores del guardado (0.5d) — Alta — depende T5-PERFIL-01
+- Archivo principal: `src/features/perfil/PerfilScreen.tsx` (lógica catch)
+- En `catch (e)`:
+  - Si `e instanceof ApiError && e.status===422` → `applyApiError(e)` mapea `errors` → `fieldErrors` por campo (`nombre`/`apellido`/`email`). No toast genérico si hay fields.
+  - Si `status===409` → `pushToast(e.detail || "Email ya registrado","error")` (email duplicado). Limpiar `fieldErrors`.
+  - Otros `401` ya dispara `logout` vía `apiClient`; no duplicar. `403/500` → `pushToast(detail,"error")`.
+  - Mantener `fieldErrors` visibles bajo cada input (`<span className="text-xs text-red-500">{fieldErrors.email}</span>`).
+- Reusar mismo patrón que `src/components/FormModal.tsx:73 applyApiError` y `materiaUsuarioSpec onError:{409:toast,422:fields}`.
+- Test manual: enviar `email` existente → 409 toast; `nombre="a"` → 422 field; vacío → cliente no fetch.
+
+#### T5-PERFIL-03 · S5-07 Sincronizar usuario actualizado (0.5d) — Media — depende T5-PERFIL-01
+- Archivos: `src/auth/AuthContext.tsx`, `src/auth/storage.ts`, `src/features/perfil/PerfilScreen.tsx`
+- Tras `PATCH 200` que devuelve `Usuario` actualizado:
+  - `AuthContext`: `setUsuarioGuardado(nuevoUsuario)` (`localStorage.setItem("miifts_usuario", JSON.stringify(u))`) + `setUsuarioState(nuevoUsuario)` para que `useAuth().usuario` cambie al instante.
+  - Si se expuso `actualizarPerfil`, que lo haga internamente; si no, `PerfilScreen` llama `setUsuarioGuardado` + `me.refetch()` y además notifica a `AuthContext` vía prop o context (preferir método en context para no duplicar `localStorage` keys).
+  - Verificar en `InicioScreen` (bienvenida `usuario.nombre`), avatar `iniciales()`, `MisMateriasScreen` no usan `getMiUsuario()` legacy (S5-03 ya migrado; si no, documentar que dependerán de `useAuth()` tras este ticket).
+  - No requerir `window.location.reload()`. Probar: cambiar nombre → navegar a Inicio sin reload → nombre nuevo visible.
+- Keys: si `useAuthMe` usa TanStack Query futura, invalidar `['auth-me']`; hoy con `useAsync`, basta `me.refetch()` + context update.
+
+#### T5-PERFIL-04 · S5-08 Confirmar que no hay forma de tocar contraseña desde Perfil (0.5d) — Baja — depende T5-PERFIL-01
+- Archivos: `src/features/perfil/PerfilScreen.tsx`, `src/features/perfil/service.ts`, `src/auth/api.ts`
+- Verificación negativa: `grep -r "password" src/features/perfil/` y `grep -r "contrase" src/features/perfil/` deben dar 0 hits. No debe existir `<input type="password">`, `Button "Cambiar contraseña"`, ni `apiClient(..., {body:{password}})`.
+- Si revisión encuentra campo agregado "para completar CRUD", eliminarlo y dejar comentario `// S5-08: password va por flujo Olvidé mi contraseña (Int.4), no en Perfil`.
+- `service.ts`/`auth/api.ts` nunca envían `password` en `updateAuthMe`.
+- Entrega: archivo `PerfilScreen.tsx` <300 líneas, 3 campos editables + carrera readOnly + logout, 0 referencias a password.
+
+### 10.4 Criterios de aceptación para Tester (validar contra backend real, sin mocks)
+1. **S5-05 Edición:** `GET /auth/me` pobla form; editar `nombre/apellido/email` + `Guardar` → `PATCH /auth/me` con body parcial, `200` devuelve `Usuario` y persiste (recargar → datos nuevos). Carrera `input disabled cursor-not-allowed opacity-60`, no se envía. Sin campo password.
+2. **S5-06 Errores:** `422` (nombre<2, email inválido) → `fieldErrors` bajo input (no toast); `409` email duplicado → toast `detail`; `saving` deshabilita botón. Mismo canal que `useApiForm` (ver `src/hooks/useApiForm.ts:11`).
+3. **S5-07 Sync:** Tras 200, `useAuth().usuario.nombre` + `localStorage miifts_usuario` actualizados sin reload; `InicioScreen` bienvenida/avatar reflejan cambio inmediato. `me.refetch()` o context update invocado.
+4. **S5-08 No-contraseña:** `grep password src/features/perfil` vacío; `service.ts` no importa ni envía `password`; UI sin botón/input password. Veredicto binario pass/fail.
+5. **Contrato global:** `apiClient` único `Authorization: Bearer`, `Paginated` no aplica acá pero `ApiError` parser OK, `401→logout`, `useToast`/`useApiForm` reusados, `npm run build && npx tsc --noEmit -p tsconfig.app.json --ignoreDeprecations 6.0` 0 errores, `VITE_API_URL` configurable.
+6. **No regresión S4-16:** `Skeleton`/`ErrorState` + `carreraNombre` fallback `Carrera #id` siguen OK; `Cerrar sesión` limpia `miifts_token`/`miifts_usuario` → `onCerrarSesion()`.
+
+### 10.5 Orden de ejecución Developer
+T5-PERFIL-01 → T5-PERFIL-02 → T5-PERFIL-03 → T5-PERFIL-04
+Dependencias: T5-PERFIL-01 bloquea 02/03/04; 02 y 03 pueden ir en paralelo tras 01; 04 es verificación final tras 01. **Bloqueante externo:** S5-03 (Integrante 1) debe entregar `useAuth().usuario` unificado antes de T5-PERFIL-03, si no Perfil quedará con `getMiUsuario()` legacy y la sync no se verá en Inicio.
+
+## 11. Extensión: Cambio de contraseña desde Perfil (FR8) — CERRADO, ver §9.6/D017
+
+> Auditoría 2026-09-16 (paralela a §9.6): se detectó el mismo gap — el frontend de este plan asumía `POST /auth/change-password` (`CHANGE_PASSWORD_PATH` en `src/auth/api.ts`), pero el backend real (`backend-ifts/app/features/auth/router.py`) **nunca expuso ese endpoint**. En su momento se escaló a 3 opciones para el Architect (A: crear endpoint dedicado en backend, B: reusar `forgot-password` sin pedir la actual, C: ocultar el botón hasta Sprint 6).
+>
+> **Resolución:** se tomó la opción A — el backend entregó `PATCH /auth/password` (INTEGRACION §2.4ter). La implementación final quedó en `CambiarPasswordModal.tsx` contra ese endpoint real (§9.6, D017), no contra `CHANGE_PASSWORD_PATH`/`/auth/change-password` (nunca llegó a existir, se descartó al mergear). Sin acción pendiente.
