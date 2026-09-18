@@ -11,7 +11,6 @@ import { useLogin } from "./features/auth/hooks";
 import { haySesion } from "./features/auth/service";
 import { forgotPasswordRequest, resetPasswordRequest } from "./auth/api";
 import AdminCatalogoScreen from "./features/catalogo-admin/AdminCatalogoScreen";
-import { getMiUsuario } from "./api/scope";
 import { ApiError } from "./lib/apiClient";
 import { useToast } from "./hooks/useToast";
 import { useAuth } from "./auth/AuthContext";
@@ -66,10 +65,30 @@ const navItems: { key: NavTab; label: string; icon: React.ReactNode }[] = [
 ];
 
 function BottomNav({ active, onNav }: { active: NavTab; onNav: (t: NavTab) => void }) {
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  if (!isMobile) return null;
+
   return (
     <div
       className="w-full"
-      style={{ position: "fixed", bottom: 0, left: 0, background: CARD, borderTop: `0.5px solid ${BORDER}`, display: "flex", justifyContent: "space-around", padding: "10px 0 20px", zIndex: 100 }}
+      style={{ 
+        position: "fixed", 
+        bottom: 0, 
+        left: 0, 
+        background: CARD, 
+        borderTop: `0.5px solid ${BORDER}`, 
+        display: "flex", 
+        justifyContent: "space-around", 
+        padding: "10px 0 20px", 
+        zIndex: 100 
+      }}
     >
       {navItems.map((item) => {
         const isActive = active === item.key;
@@ -90,13 +109,13 @@ function BottomNav({ active, onNav }: { active: NavTab; onNav: (t: NavTab) => vo
 function SidebarNav({ active, onNav }: { active: NavTab; onNav: (t: NavTab) => void }) {
   return (
     <div
-      className="hidden md:flex md:w-60 md:flex-shrink-0 md:flex-col md:border-r md:px-4 md:py-8"
+      className="hidden md:flex md:w-64 md:flex-shrink-0 md:flex-col md:border-r md:py-8"
       style={{ borderColor: BORDER, background: CARD }}
     >
-      <div className="mb-8 px-2 text-xl font-black" style={{ color: TEXT, letterSpacing: -0.4 }}>
+      <div className="mb-8 px-6 text-xl font-black" style={{ color: TEXT, letterSpacing: -0.4 }}>
         mi<span style={{ color: VIOLET }}>IFTS</span>
       </div>
-      <nav className="flex flex-col gap-1">
+      <nav className="flex flex-col gap-1 px-3">
         {navItems.map((item) => {
           const isActive = active === item.key;
           return (
@@ -660,7 +679,7 @@ export default function App() {
         // S4-10: guard de rol acá además del link condicional en
         // MisMateriasScreen — nadie que no sea admin llega a esta pantalla
         // aunque fuerce el estado.
-        return getMiUsuario().rol === "admin" ? (
+        return usuario?.rol === "admin" ? (
           <AdminCatalogoScreen onVolver={() => setScreen("materias")} />
         ) : (
           <MisMateriasReal onOpenMateria={abrirDetalle} />
@@ -675,7 +694,16 @@ export default function App() {
   return (
     <div style={{ background: BG, minHeight: "100%", display: "flex", justifyContent: "center" }}>
       <div className="flex min-h-screen w-full max-w-[430px] flex-col bg-[#111218] text-[#E8E8F0] sm:max-w-2xl lg:max-w-5xl">
-        {renderScreen()}
+        {showNav && activeTab ? <SidebarNav active={activeTab} onNav={handleNav} /> : null}
+        <div className="flex flex-1 flex-col">{renderScreen()}</div>
+      <div className={showNav 
+        ? "flex min-h-screen w-full bg-[#111218] text-[#E8E8F0] md:flex-row" 
+        : "flex min-h-screen w-full max-w-[430px] flex-col bg-[#111218] text-[#E8E8F0]"
+      }>
+        {showNav && <SidebarNav active={activeTab} onNav={handleNav} />}
+        <div className="flex flex-1 flex-col overflow-hidden">
+          {renderScreen()}
+        </div>
         {showNav && activeTab ? <BottomNav active={activeTab} onNav={handleNav} /> : null}
       </div>
       <Toaster />

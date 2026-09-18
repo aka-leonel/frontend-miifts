@@ -1,33 +1,22 @@
-// SEAM · trabajo de Integrante 1 (Fundaciones): AuthProvider / useAuth.
-//
-// Mientras no exista `useAuth`, la identidad sale de `localStorage` (mismas claves que
-// usará el AuthProvider) y, si no hay sesión, se cae a un usuario DEMO para poder
-// recorrer la UI. Cuando Int. 1 entregue el auth real, SOLO este archivo cambia: las
-// features ya consumen `withUsuarioId()` / `getMiUsuarioId()`.
 import type { Usuario } from "./types";
 
 const SESSION_KEY = "miifts_usuario";
 
-export const DEMO_USUARIO: Usuario = {
-  id: 1,
-  nombre: "Martina",
-  apellido: "Ríos",
-  email: "martina.demo@ifts.edu.ar",
-  carrera_id: 1,
-  fecha_registro: "2026-09-01T00:00:00",
-  rol: "estudiante",
-};
-
 export function getMiUsuario(): Usuario {
-  try {
-    const raw = window.localStorage.getItem(SESSION_KEY);
-    if (raw) {
-      return JSON.parse(raw) as Usuario;
-    }
-  } catch {
-    // sesión corrupta → demo
+  const raw = window.localStorage.getItem(SESSION_KEY);
+  if (!raw) {
+    throw new Error("No hay usuario en sesión.");
   }
-  return DEMO_USUARIO;
+
+  try {
+    const usuario = JSON.parse(raw) as Usuario;
+    if (!usuario?.id) {
+      throw new Error("La sesión del usuario no es válida.");
+    }
+    return usuario;
+  } catch {
+    throw new Error("La sesión del usuario no es válida.");
+  }
 }
 
 export function getMiUsuarioId(): number {
