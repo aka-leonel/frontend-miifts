@@ -29,7 +29,6 @@ type Screen =
 type NavTab = "inicio" | "materias" | "recordatorios" | "convenios" | "perfil";
 
 // ─── Design tokens ─────────────────────────────────────────────────────────────
-const BG = "#111218";
 const CARD = "#1A1B23";
 const BORDER = "#2A2B36";
 const VIOLET = "#8C7DFF";
@@ -536,21 +535,26 @@ export default function App() {
   // el flujo de auth (sin nav, pensado como una tarjeta angosta) mantiene ese
   // ancho; el resto de la app crece hasta un contenido fluido con sidebar
   // desde `md:` en vez de BottomNav.
-  return (
-    <div style={{ background: BG, minHeight: "100%", display: "flex", justifyContent: "center" }}>
-      <div className="flex min-h-screen w-full max-w-[430px] flex-col bg-[#111218] text-[#E8E8F0] sm:max-w-2xl lg:max-w-5xl">
-        {showNav && activeTab ? <SidebarNav active={activeTab} onNav={handleNav} /> : null}
-        <div className="flex flex-1 flex-col">{renderScreen()}</div>
-      <div className={showNav 
-        ? "flex min-h-screen w-full bg-[#111218] text-[#E8E8F0] md:flex-row" 
-        : "flex min-h-screen w-full max-w-[430px] flex-col bg-[#111218] text-[#E8E8F0]"
-      }>
-        {showNav && <SidebarNav active={activeTab} onNav={handleNav} />}
-        <div className="flex flex-1 flex-col overflow-hidden">
-          {renderScreen()}
-        </div>
-        {showNav && activeTab ? <BottomNav active={activeTab} onNav={handleNav} /> : null}
+  //
+  // Los dos casos necesitan una forma de contenedor distinta (tarjeta angosta
+  // centrada vs. fluido a todo el ancho), no solo un className distinto:
+  // el fondo oscuro tiene que cubrir TODA la pantalla y centrar la tarjeta
+  // en el medio, si no queda como acá (la tarjeta pegada a la izquierda y
+  // el resto en blanco, el fondo del <body> sin pintar).
+  if (!showNav) {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center bg-[#111218] text-[#E8E8F0]">
+        <div className="flex w-full max-w-[430px] flex-col">{renderScreen()}</div>
+        <Toaster />
       </div>
+    );
+  }
+
+  return (
+    <div className="flex min-h-screen w-full bg-[#111218] text-[#E8E8F0] md:flex-row">
+      {activeTab ? <SidebarNav active={activeTab} onNav={handleNav} /> : null}
+      <div className="flex flex-1 flex-col overflow-hidden">{renderScreen()}</div>
+      {activeTab ? <BottomNav active={activeTab} onNav={handleNav} /> : null}
       <Toaster />
     </div>
   );
