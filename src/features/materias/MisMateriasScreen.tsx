@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ConfirmDialog, FormModal, ListState, Paginador } from "../../components";
 import { useToast } from "../../hooks/useToast";
 import { ApiError } from "../../api/client";
 import { getMiUsuario } from "../../api/scope";
 import { useMateriasDeCarrera } from "../catalogo/hooks";
-import type { Cursada } from "../../api/types";
+import type { Cursada, Materia } from "../../api/types";
 import { estadoLabel, type EstadoUI } from "./estado";
 import { useBorrarCursada, useMisMaterias, usePromedio } from "./hooks";
 import ByteWidget from "./ByteWidget";
@@ -51,7 +51,25 @@ export default function MisMateriasScreen({
     refrescar();
   });
 
-  const items = lista.data?.items ?? [];
+  // El backend no embebe `materia` en la cursada (solo manda `materia_id`),
+  // a diferencia de las correlativas (que sí traen `requiere` embebido). Se
+  // resuelve acá con la lista de materias de la carrera que esta pantalla ya
+  // pedía para el selector del form — así las cards, el Inicio y el diálogo
+  // de borrado muestran el nombre real en vez de "Materia #N".
+  const materiasPorId = useMemo(() => {
+    const mapa = new Map<number, Materia>();
+    for (const m of materiasDeMiCarrera.data?.items ?? []) mapa.set(m.id, m);
+    return mapa;
+  }, [materiasDeMiCarrera.data]);
+
+  const itemsCrudos = lista.data?.items ?? [];
+  const items = useMemo(
+    () =>
+      itemsCrudos.map((cursada) =>
+        cursada.materia ? cursada : { ...cursada, materia: materiasPorId.get(cursada.materia_id) },
+      ),
+    [itemsCrudos, materiasPorId],
+  );
   const filtrados = chip === "Todas" ? items : items.filter((item) => estadoLabel(item) === chip);
   // El backend ahora deriva 5 estados (cursando/promocionada/aprobada/
   // desaprobada/pendiente, ver feature/estados-materia) — "promocionada"

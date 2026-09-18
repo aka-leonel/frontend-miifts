@@ -1,4 +1,7 @@
+import { useMemo } from "react";
 import { getMiUsuario } from "../../api/scope";
+import type { Materia } from "../../api/types";
+import { useMateriasDeCarrera } from "../catalogo/hooks";
 import { useRecordatorios } from "../recordatorios/hooks";
 import { estadoLabel } from "./estado";
 import { useMisMaterias, usePromedio } from "./hooks";
@@ -21,8 +24,24 @@ export default function InicioScreen({ onOpenMateria }: { onOpenMateria?: (id: n
   const lista = useMisMaterias(1);
   const promedio = usePromedio();
   const recordatorios = useRecordatorios({ desde: hoyISO(), per_page: 3 });
+  const materiasDeMiCarrera = useMateriasDeCarrera(usuario.carrera_id);
 
-  const items = lista.data?.items ?? [];
+  // El backend no embebe `materia` en la cursada, solo `materia_id` — se
+  // resuelve acá igual que en MisMateriasScreen para no mostrar "Materia #N".
+  const materiasPorId = useMemo(() => {
+    const mapa = new Map<number, Materia>();
+    for (const m of materiasDeMiCarrera.data?.items ?? []) mapa.set(m.id, m);
+    return mapa;
+  }, [materiasDeMiCarrera.data]);
+
+  const itemsCrudos = lista.data?.items ?? [];
+  const items = useMemo(
+    () =>
+      itemsCrudos.map((cursada) =>
+        cursada.materia ? cursada : { ...cursada, materia: materiasPorId.get(cursada.materia_id) },
+      ),
+    [itemsCrudos, materiasPorId],
+  );
   // El backend ahora deriva 5 estados (cursando/promocionada/aprobada/
   // desaprobada/pendiente, ver feature/estados-materia) — "promocionada"
   // también es una materia aprobada (exime el final por parciales ≥7).
