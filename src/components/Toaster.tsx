@@ -4,7 +4,17 @@ export default function Toaster() {
   const { toasts, dismissToast } = useToast();
 
   return (
-    <div className="pointer-events-none fixed right-4 top-4 z-50 flex w-[min(92vw,360px)] flex-col gap-2">
+    // z-[300]: por encima de los overlays de FormModal/ConfirmDialog/
+    // CambiarPasswordModal (z-[200]) — si no, un toast de error disparado
+    // mientras hay un modal abierto (ej. guardar y que tire 422/409) queda
+    // atrás del fondo oscuro del modal, apagado y casi invisible.
+    //
+    // Mismo quiebre `md:` que BottomNav/SidebarNav: en mobile es un banner
+    // de ancho completo (con margen) arriba de la pantalla — más fácil de
+    // leer con el pulgar y no compite con la barra inferior; desde `md:` se
+    // achica a una pila angosta arriba a la derecha, que es lo que ya tenía
+    // sentido con el sidebar ocupando la izquierda.
+    <div className="pointer-events-none fixed inset-x-4 top-4 z-[300] flex flex-col gap-2 md:inset-x-auto md:right-4 md:w-[360px]">
       {toasts.map((toast) => (
         <div
           key={toast.id}

@@ -43,7 +43,10 @@ export default function RecordatoriosScreen() {
 
   return (
     <div className="flex-1 overflow-y-auto pb-24">
-      <div className="px-6 pt-14">
+      {/* S5-10: mismo contenedor fluido que Inicio/Materias/Convenios/Perfil
+          — esta pantalla era la única que se quedaba en una columna angosta
+          sin importar el ancho de la ventana. */}
+      <div className="mx-auto w-full max-w-lg px-4 pt-14 sm:max-w-2xl sm:px-6 lg:max-w-5xl">
         <div className="mb-6">
           <div className="text-2xl font-black tracking-[-0.04em] text-text">Recordatorios</div>
           <div className="mt-1 text-sm text-muted">
@@ -63,7 +66,7 @@ export default function RecordatoriosScreen() {
             {estaSemana.length > 0 && (
               <div>
                 <div className="mb-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted">Esta semana</div>
-                <div className="space-y-2.5">
+                <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
                   {estaSemana.map((r) => (
                     <RecordatorioCard
                       key={r.id}
@@ -82,7 +85,7 @@ export default function RecordatoriosScreen() {
             {masAdelante.length > 0 && (
               <div>
                 <div className="mb-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted">Más adelante</div>
-                <div className="space-y-2.5">
+                <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
                   {masAdelante.map((r) => (
                     <RecordatorioCard
                       key={r.id}
