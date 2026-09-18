@@ -8,9 +8,7 @@ import { MateriaDetalleScreen as MateriaDetalleFeatureScreen } from "./features/
 import { RecordatoriosScreen as RecordatoriosFeatureScreen } from "./features/recordatorios";
 import PerfilFeatureScreen from "./features/perfil/PerfilScreen";
 import { useLogin } from "./features/auth/hooks";
-import { haySesion } from "./features/auth/service";
 import AdminCatalogoScreen from "./features/catalogo-admin/AdminCatalogoScreen";
-import { getMiUsuario } from "./api/scope";
 import { ApiError } from "./lib/apiClient";
 import { useToast } from "./hooks/useToast";
 import { useAuth } from "./auth/AuthContext";
@@ -469,11 +467,18 @@ const screenToNav: Partial<Record<Screen, NavTab>> = {
 };
 
 export default function App() {
-  const [screen, setScreen] = useState<Screen>(() => (haySesion() ? "inicio" : "login"));
+  const { token, usuario, logout } = useAuth();
+  const [screen, setScreen] = useState<Screen>(() => (token ? "inicio" : "login"));
   // No hay react-router en esta app todavía (el resto navega con este mismo
   // switch, no con URLs) — mientras tanto, la materia que se está viendo en
   // "detalle" se guarda acá y se pasa por prop.
   const [materiaIdSeleccionada, setMateriaIdSeleccionada] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!token) {
+      setScreen((current) => (["login", "registro", "carrera"].includes(current) ? current : "login"));
+    }
+  }, [token]);
 
   const handleNav = (tab: NavTab) => setScreen(navToScreen[tab]);
   const showNav = !["login", "registro", "carrera"].includes(screen);
@@ -506,12 +511,20 @@ export default function App() {
         );
       case "recordatorios": return <RecordatoriosFeatureScreen />;
       case "convenios": return <ConveniosFeatureScreen />;
-      case "perfil": return <PerfilFeatureScreen onCerrarSesion={() => setScreen("login")} />;
+      case "perfil":
+        return (
+          <PerfilFeatureScreen
+            onCerrarSesion={() => {
+              logout();
+              setScreen("login");
+            }}
+          />
+        );
       case "admin-catalogo":
         // S4-10: guard de rol acá además del link condicional en
         // MisMateriasScreen — nadie que no sea admin llega a esta pantalla
         // aunque fuerce el estado.
-        return getMiUsuario().rol === "admin" ? (
+        return usuario?.rol === "admin" ? (
           <AdminCatalogoScreen onVolver={() => setScreen("materias")} />
         ) : (
           <MisMateriasReal onOpenMateria={abrirDetalle} />
@@ -525,6 +538,9 @@ export default function App() {
   // desde `md:` en vez de BottomNav.
   return (
     <div style={{ background: BG, minHeight: "100%", display: "flex", justifyContent: "center" }}>
+      <div className="flex min-h-screen w-full max-w-[430px] flex-col bg-[#111218] text-[#E8E8F0] sm:max-w-2xl lg:max-w-5xl">
+        {showNav && activeTab ? <SidebarNav active={activeTab} onNav={handleNav} /> : null}
+        <div className="flex flex-1 flex-col">{renderScreen()}</div>
       <div className={showNav 
         ? "flex min-h-screen w-full bg-[#111218] text-[#E8E8F0] md:flex-row" 
         : "flex min-h-screen w-full max-w-[430px] flex-col bg-[#111218] text-[#E8E8F0]"

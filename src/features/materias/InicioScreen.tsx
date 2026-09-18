@@ -1,5 +1,5 @@
-import { getMiUsuario } from "../../api/scope";
 import { useRecordatorios } from "../recordatorios/hooks";
+import { useAuth } from "../../auth/AuthContext";
 import { estadoLabel } from "./estado";
 import { useMisMaterias, usePromedio } from "./hooks";
 import ByteWidget from "./ByteWidget";
@@ -17,7 +17,11 @@ const dotByTipo: Record<string, string> = {
 };
 
 export default function InicioScreen({ onOpenMateria }: { onOpenMateria?: (id: number) => void }) {
-  const usuario = getMiUsuario();
+  const { usuario } = useAuth();
+  if (!usuario) {
+    return <div className="p-6 text-sm text-muted">Tu sesión ya no es válida.</div>;
+  }
+
   const lista = useMisMaterias(1);
   const promedio = usePromedio();
   const recordatorios = useRecordatorios({ desde: hoyISO(), per_page: 3 });

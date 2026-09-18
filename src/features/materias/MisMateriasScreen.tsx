@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ConfirmDialog, FormModal, ListState, Paginador } from "../../components";
 import { useToast } from "../../hooks/useToast";
 import { ApiError } from "../../api/client";
-import { getMiUsuario } from "../../api/scope";
+import { useAuth } from "../../auth/AuthContext";
 import { useMateriasDeCarrera } from "../catalogo/hooks";
 import type { Cursada } from "../../api/types";
 import { estadoLabel, type EstadoUI } from "./estado";
@@ -28,8 +28,12 @@ export default function MisMateriasScreen({
   const [chip, setChip] = useState<EstadoUI | "Todas">("Todas");
   const [modal, setModal] = useState<{ open: boolean; item: Cursada | null }>({ open: false, item: null });
   const [toDelete, setToDelete] = useState<Cursada | null>(null);
+  const { usuario } = useAuth();
 
-  const usuario = getMiUsuario();
+  if (!usuario) {
+    return <div className="p-6 text-sm text-muted">Tu sesión ya no es válida.</div>;
+  }
+
   const materiasDeMiCarrera = useMateriasDeCarrera(usuario.carrera_id);
   const lista = useMisMaterias(page);
   const promedio = usePromedio();
