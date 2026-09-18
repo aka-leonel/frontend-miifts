@@ -11,8 +11,8 @@ import {
   useRef,
   type ReactNode,
 } from "react";
-import type { RegistroRequest, Usuario, UsuarioUpdate } from "../api/types";
-import { loginRequest, meRequest, registroRequest, updateMeRequest } from "./api";
+import type { RegistroRequest, Usuario } from "../api/types";
+import { loginRequest, meRequest, registroRequest } from "./api";
 import {
   clearSesion,
   getToken,
@@ -26,14 +26,20 @@ import { setUnauthorizedHandler } from "../api/client";
 interface AuthContextValue {
   usuario: Usuario | null;
   token: string | null;
+  /** true mientras se resuelve login/registro (para deshabilitar botones) */
   cargando: boolean;
+  /**
+   * true solo al arrancar la app, mientras se confirma contra el backend
+   * que el token guardado en localStorage todavía es válido. Útil para
+   * evitar mostrar una pantalla protegida con datos potencialmente
+   * vencidos por una fracción de segundo.
+   */
   verificandoSesion: boolean;
+  /** true si la sesión expirará en breve (p.ej. < 60s) */
   expirandoPronto: boolean;
   login: (email: string, password: string) => Promise<void>;
   registro: (payload: RegistroRequest) => Promise<void>;
   logout: () => void;
-  actualizarUsuario: (usuario: Usuario) => void;
-  actualizarPerfil: (patch: UsuarioUpdate) => Promise<Usuario>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -77,17 +83,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearSesion();
     setUsuarioState(null);
     setTokenState(null);
-  }
-
-  function actualizarUsuario(usuario: Usuario): void {
-    setUsuarioGuardado(usuario);
-    setUsuarioState(usuario);
-  }
-
-  async function actualizarPerfil(patch: UsuarioUpdate): Promise<Usuario> {
-    const actualizado = await updateMeRequest(patch);
-    actualizarUsuario(actualizado);
-    return actualizado;
   }
 
   useEffect(() => {
@@ -208,8 +203,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         registro,
         logout,
-        actualizarUsuario,
-        actualizarPerfil,
       }}
     >
       {children}

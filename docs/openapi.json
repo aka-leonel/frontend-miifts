@@ -181,61 +181,6 @@
       }
     },
     "/recordatorios/{recordatorio_id}": {
-      "patch": {
-        "tags": [
-          "recordatorios"
-        ],
-        "summary": "Update Recordatorio",
-        "operationId": "update_recordatorio_recordatorios__recordatorio_id__patch",
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "recordatorio_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Recordatorio Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RecordatorioUpdate"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RecordatorioResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
       "delete": {
         "tags": [
           "recordatorios"
@@ -2435,51 +2380,6 @@
             "OAuth2PasswordBearer": []
           }
         ]
-      },
-      "patch": {
-        "tags": [
-          "auth"
-        ],
-        "summary": "Update Me",
-        "description": "Actualiza el nombre y/o apellido del usuario autenticado.",
-        "operationId": "update_me_auth_me_patch",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PerfilUpdate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UsuarioResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ]
       }
     },
     "/auth/verify": {
@@ -2496,137 +2396,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/VerifyResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ]
-      }
-    },
-    "/auth/forgot-password": {
-      "post": {
-        "tags": [
-          "auth"
-        ],
-        "summary": "Forgot Password",
-        "description": "Dispara el envío del email de reset. Responde siempre lo mismo,\nexista o no el email, para no revelar qué direcciones están registradas.",
-        "operationId": "forgot_password_auth_forgot_password_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ForgotPasswordRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MensajeResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/auth/reset-password": {
-      "post": {
-        "tags": [
-          "auth"
-        ],
-        "summary": "Reset Password",
-        "description": "Consume el token de un solo uso y actualiza la contraseña.",
-        "operationId": "reset_password_auth_reset_password_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ResetPasswordRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MensajeResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/auth/password": {
-      "patch": {
-        "tags": [
-          "auth"
-        ],
-        "summary": "Cambiar Password",
-        "description": "Cambia la contraseña del usuario autenticado. Requiere la actual.",
-        "operationId": "cambiar_password_auth_password_patch",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CambiarPasswordRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MensajeResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -2674,33 +2443,6 @@
   },
   "components": {
     "schemas": {
-      "CambiarPasswordRequest": {
-        "properties": {
-          "password_actual": {
-            "type": "string",
-            "title": "Password Actual",
-            "examples": [
-              "secreta123"
-            ]
-          },
-          "password_nueva": {
-            "type": "string",
-            "minLength": 8,
-            "title": "Password Nueva",
-            "description": "Contraseña nueva (mínimo 8 caracteres, al menos una letra y un número)",
-            "examples": [
-              "nuevaSecreta123"
-            ]
-          }
-        },
-        "type": "object",
-        "required": [
-          "password_actual",
-          "password_nueva"
-        ],
-        "title": "CambiarPasswordRequest",
-        "description": "`PATCH /auth/password` — el usuario ya está logueado, pero igual tiene\nque reprobar identidad con la contraseña actual (si alguien le roba la\nsesión, no puede usarla para expulsarlo cambiándole la contraseña)."
-      },
       "CarreraCreate": {
         "properties": {
           "nombre": {
@@ -2890,24 +2632,6 @@
         ],
         "title": "CorrelativaResponse"
       },
-      "ForgotPasswordRequest": {
-        "properties": {
-          "email": {
-            "type": "string",
-            "format": "email",
-            "title": "Email",
-            "examples": [
-              "ada@ifts.edu.ar"
-            ]
-          }
-        },
-        "type": "object",
-        "required": [
-          "email"
-        ],
-        "title": "ForgotPasswordRequest",
-        "description": "`POST /auth/forgot-password` — dispara el envío del email de reset."
-      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -3063,8 +2787,8 @@
             "anyOf": [
               {
                 "type": "number",
-                "maximum": 10,
-                "minimum": 1
+                "maximum": 10.0,
+                "minimum": 1.0
               },
               {
                 "type": "null"
@@ -3079,8 +2803,8 @@
             "anyOf": [
               {
                 "type": "number",
-                "maximum": 10,
-                "minimum": 1
+                "maximum": 10.0,
+                "minimum": 1.0
               },
               {
                 "type": "null"
@@ -3091,19 +2815,18 @@
               7
             ]
           },
-          "examen_final": {
+          "nota_final": {
             "anyOf": [
               {
                 "type": "number",
-                "maximum": 10,
-                "minimum": 1
+                "maximum": 10.0,
+                "minimum": 1.0
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Examen Final",
-            "description": "Nota del examen final rendido. No aplica si promocionó (parciales >= 7): en ese caso se ignora.",
+            "title": "Nota Final",
             "examples": [
               null
             ]
@@ -3159,17 +2882,6 @@
             ],
             "title": "Nota Parcial 2"
           },
-          "examen_final": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Examen Final"
-          },
           "nota_final": {
             "anyOf": [
               {
@@ -3179,8 +2891,7 @@
                 "type": "null"
               }
             ],
-            "title": "Nota Final",
-            "description": "Nota que cierra la cursada: promedio de los parciales si promocionó, o el examen_final rendido si no. Es un valor calculado, no se manda en el request."
+            "title": "Nota Final"
           }
         },
         "type": "object",
@@ -3192,7 +2903,6 @@
           "estado",
           "nota_parcial_1",
           "nota_parcial_2",
-          "examen_final",
           "nota_final"
         ],
         "title": "MateriaUsuarioResponse"
@@ -3214,8 +2924,8 @@
             "anyOf": [
               {
                 "type": "number",
-                "maximum": 10,
-                "minimum": 1
+                "maximum": 10.0,
+                "minimum": 1.0
               },
               {
                 "type": "null"
@@ -3227,8 +2937,8 @@
             "anyOf": [
               {
                 "type": "number",
-                "maximum": 10,
-                "minimum": 1
+                "maximum": 10.0,
+                "minimum": 1.0
               },
               {
                 "type": "null"
@@ -3236,36 +2946,22 @@
             ],
             "title": "Nota Parcial 2"
           },
-          "examen_final": {
+          "nota_final": {
             "anyOf": [
               {
                 "type": "number",
-                "maximum": 10,
-                "minimum": 1
+                "maximum": 10.0,
+                "minimum": 1.0
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Examen Final"
+            "title": "Nota Final"
           }
         },
         "type": "object",
         "title": "MateriaUsuarioUpdate"
-      },
-      "MensajeResponse": {
-        "properties": {
-          "detail": {
-            "type": "string",
-            "title": "Detail"
-          }
-        },
-        "type": "object",
-        "required": [
-          "detail"
-        ],
-        "title": "MensajeResponse",
-        "description": "Respuesta genérica de un solo mensaje (forgot/reset password)."
       },
       "PaginatedResponse_CarreraResponse_": {
         "properties": {
@@ -3555,45 +3251,6 @@
         ],
         "title": "PaginatedResponse[TalentoTechResponse]"
       },
-      "PerfilUpdate": {
-        "properties": {
-          "nombre": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 100,
-                "minLength": 2
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Nombre",
-            "examples": [
-              "Ada"
-            ]
-          },
-          "apellido": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 100,
-                "minLength": 2
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Apellido",
-            "examples": [
-              "Lovelace"
-            ]
-          }
-        },
-        "type": "object",
-        "title": "PerfilUpdate",
-        "description": "`PATCH /auth/me` — el alumno sólo edita su propio nombre y apellido.\n\nLa carrera se muestra en el perfil pero no se cambia desde acá. El email\nidentifica la cuenta y el rol nunca se acepta desde el request. Cualquier\notro campo del body se ignora."
-      },
       "PromedioResponse": {
         "properties": {
           "promedio": {
@@ -3714,71 +3371,6 @@
         ],
         "title": "RecordatorioResponse"
       },
-      "RecordatorioUpdate": {
-        "properties": {
-          "titulo": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Titulo",
-            "examples": [
-              "Parcial de Programación I"
-            ]
-          },
-          "fecha": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Fecha",
-            "description": "Datetime ISO 8601, tiene que ser futura",
-            "examples": [
-              "2026-12-15T10:00:00"
-            ]
-          },
-          "tipo": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Tipo",
-            "examples": [
-              "parcial"
-            ]
-          },
-          "materia_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Materia Id",
-            "examples": [
-              1
-            ]
-          }
-        },
-        "type": "object",
-        "title": "RecordatorioUpdate",
-        "description": "PATCH /recordatorios/{id} — edición parcial de un recordatorio propio.\n\nTodos los campos son opcionales; sólo se actualizan los que llegan en el\nbody. Las mismas validaciones que en la creación aplican cuando el campo\nviene presente."
-      },
       "RecursoCreate": {
         "properties": {
           "titulo": {
@@ -3882,34 +3474,6 @@
           "fecha_creacion"
         ],
         "title": "RecursoResponse"
-      },
-      "ResetPasswordRequest": {
-        "properties": {
-          "token": {
-            "type": "string",
-            "minLength": 1,
-            "title": "Token",
-            "examples": [
-              "b8f2b3b7c1a94e6c9d0e..."
-            ]
-          },
-          "password": {
-            "type": "string",
-            "minLength": 8,
-            "title": "Password",
-            "description": "Contraseña nueva (mínimo 8 caracteres, al menos una letra y un número)",
-            "examples": [
-              "nuevaSecreta123"
-            ]
-          }
-        },
-        "type": "object",
-        "required": [
-          "token",
-          "password"
-        ],
-        "title": "ResetPasswordRequest",
-        "description": "`POST /auth/reset-password` — token recibido por email + contraseña nueva.\n\nMisma validación de contraseña que `UsuarioCreate`."
       },
       "RolUsuario": {
         "type": "string",
@@ -4042,19 +3606,9 @@
             "maxLength": 100,
             "minLength": 2,
             "title": "Nombre",
-            "description": "Nombre",
+            "description": "Nombre completo",
             "examples": [
-              "Ada"
-            ]
-          },
-          "apellido": {
-            "type": "string",
-            "maxLength": 100,
-            "minLength": 2,
-            "title": "Apellido",
-            "description": "Apellido",
-            "examples": [
-              "Lovelace"
+              "Ada Lovelace"
             ]
           },
           "email": {
@@ -4087,7 +3641,6 @@
         "type": "object",
         "required": [
           "nombre",
-          "apellido",
           "email",
           "password",
           "carrera_id"
@@ -4131,10 +3684,6 @@
             "type": "string",
             "title": "Nombre"
           },
-          "apellido": {
-            "type": "string",
-            "title": "Apellido"
-          },
           "email": {
             "type": "string",
             "title": "Email"
@@ -4156,7 +3705,6 @@
         "required": [
           "id",
           "nombre",
-          "apellido",
           "email",
           "carrera_id",
           "fecha_registro",

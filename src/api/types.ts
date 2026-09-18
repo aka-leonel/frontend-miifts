@@ -37,27 +37,6 @@ export interface TokenResponse {
   usuario: Usuario;
 }
 
-// S5-12 (Olvidé mi contraseña): calcados de INTEGRACION_FRONT.md §2.4bis.
-export interface ForgotPasswordRequest {
-  email: string;
-}
-
-export interface ResetPasswordRequest {
-  token: string;
-  password: string;
-}
-
-export interface MensajeResponse {
-  detail: string;
-}
-
-// PATCH /auth/password (INTEGRACION §2.4ter): cambiar contraseña logueado,
-// reautenticando con la actual. Reemplaza la idea de reusar forgot-password.
-export interface CambiarPasswordRequest {
-  password_actual: string;
-  password_nueva: string;
-}
-
 export interface Carrera {
   id: number;
   nombre: string;
@@ -175,12 +154,6 @@ export interface Token {
   token_type: string;
   usuario: Usuario;
 }
-
-// PATCH /auth/me (`PerfilUpdate` en backend auth/schema.py) solo acepta
-// nombre/apellido — "el email identifica la cuenta... cualquier otro campo
-// del body se ignora". No agregar `email` acá: mandarlo no lo cambia, solo
-// finge un guardado exitoso que nunca pasó.
-export type UsuarioUpdate = Partial<Pick<Usuario, "nombre" | "apellido">>;
 
 export interface Paginated<T> {
   items: T[];

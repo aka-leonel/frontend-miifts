@@ -19,14 +19,6 @@ export type ApiClientOptions = Omit<RequestInit, "body"> & {
   // Cualquier feature puede mandar el objeto tipado tal cual (`{ titulo, ... }`);
   // acá abajo se decide si hace falta JSON.stringify o no.
   body?: unknown;
-  /**
-   * `PATCH /auth/password` (INTEGRACION §2.4ter) usa 401 para "la contraseña
-   * actual no coincide", no para "sesión inválida" — con el JWT sigue
-   * andando perfecto. Sin esto, ese 401 dispara igual el logout global de
-   * `unauthorizedHandler` y te saca de una sesión válida por escribir mal la
-   * contraseña actual una vez.
-   */
-  suppressUnauthorizedRedirect?: boolean;
 };
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
@@ -40,7 +32,7 @@ export function setUnauthorizedHandler(fn: (() => void) | null): void {
 }
 
 export async function apiClient<T>(path: string, options: ApiClientOptions = {}): Promise<T> {
-  const { method = "GET", body, headers, auth = true, suppressUnauthorizedRedirect = false, ...rest } = options;
+  const { method = "GET", body, headers, auth = true, ...rest } = options;
 
   const requestHeaders = new Headers(headers);
 
@@ -73,7 +65,7 @@ export async function apiClient<T>(path: string, options: ApiClientOptions = {})
   if (!response.ok) {
     // Si es 401, disparar el handler global antes de lanzar el error para que
     // la app pueda limpiar sesión y redirigir en un único lugar.
-    if (response.status === 401 && !suppressUnauthorizedRedirect) {
+    if (response.status === 401) {
       try {
         unauthorizedHandler && unauthorizedHandler();
       } catch {
