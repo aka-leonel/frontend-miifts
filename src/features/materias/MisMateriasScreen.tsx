@@ -1,50 +1,69 @@
 import { useState } from "react";
-import { ConfirmDialog, FormModal, ListState, Paginador } from "../../components";
+import { ConfirmDialog, ListState, Paginador } from "../../components";
 import { useToast } from "../../hooks/useToast";
 import { ApiError } from "../../api/client";
 import { useAuth } from "../../auth/AuthContext";
 import { useMateriasDeCarrera } from "../catalogo/hooks";
-import type { Cursada } from "../../api/types";
-import { estadoLabel, type EstadoUI } from "./estado";
-import { useBorrarCursada, useMisMaterias, usePromedio } from "./hooks";
+import type { Cursada, Usuario } from "../../api/types";
+import { estadoLabel, nombreDeCursada, type EstadoUI } from "./estado";
+import { useBorrarCursada, useMisMaterias, useProgresoCarrera, usePromedio } from "./hooks";
 import ByteWidget from "./ByteWidget";
+import CursadaFormModal, { type AccionCursada } from "./CursadaFormModal";
 import MateriaCard from "./MateriaCard";
 import PromedioCard from "./PromedioCard";
-import { materiaUsuarioInitial, materiaUsuarioSpec } from "./materiaUsuarioSpec";
 
-const chips: (EstadoUI | "Todas")[] = ["Todas", "cursando", "promocionada", "aprobada", "desaprobada", "pendiente"];
+// "cursando" primero (es lo que se mira a diario) y "Total" (todas) al final.
+type Filtro = EstadoUI | "Total";
+const chips: Filtro[] = ["cursando", "promocionada", "aprobada", "desaprobada", "pendiente", "Total"];
 
+const MENSAJE: Record<AccionCursada, string> = {
+  creada: "Materia cargada.",
+  actualizada: "Materia actualizada.",
+  recursada: "Recursando: se borraron las notas viejas y pasó a cursando.",
+};
 
-
-export default function MisMateriasScreen({
-  onOpenMateria,
-  onAbrirAdmin,
-}: {
+type Props = {
   onOpenMateria?: (id: number) => void;
   onAbrirAdmin?: () => void;
-}) {
-  const { pushToast } = useToast();
-  const [page, setPage] = useState(1);
-  const [chip, setChip] = useState<EstadoUI | "Todas">("Todas");
-  const [modal, setModal] = useState<{ open: boolean; item: Cursada | null }>({ open: false, item: null });
-  const [toDelete, setToDelete] = useState<Cursada | null>(null);
+};
+
+// El guard de sesión vive en este wrapper (y no dentro del componente de
+// abajo) para que los hooks se llamen siempre en el mismo orden: un `return`
+// temprano ANTES de useMateriasDeCarrera/useMisMaterias/etc. rompe las reglas
+// de hooks y React tira "Rendered fewer hooks than expected" si la sesión cae
+// (401) con esta pantalla abierta.
+export default function MisMateriasScreen(props: Props) {
   const { usuario } = useAuth();
 
   if (!usuario) {
     return <div className="p-6 text-sm text-muted">Tu sesión ya no es válida.</div>;
   }
 
+  return <MisMateriasContent usuario={usuario} {...props} />;
+}
+
+function MisMateriasContent({ usuario, onOpenMateria, onAbrirAdmin }: Props & { usuario: Usuario }) {
+  const { pushToast } = useToast();
+  const [page, setPage] = useState(1);
+  const [chip, setChip] = useState<Filtro>("cursando");
+  const [modal, setModal] = useState<{ open: boolean; item: Cursada | null }>({ open: false, item: null });
+  const [toDelete, setToDelete] = useState<Cursada | null>(null);
+
   const materiasDeMiCarrera = useMateriasDeCarrera(usuario.carrera_id);
   const lista = useMisMaterias(page);
   const promedio = usePromedio();
+  // El progreso es sobre el TOTAL de materias de la carrera, no sobre las que
+  // se están cursando ni sobre las cursadas cargadas.
+  const progreso = useProgresoCarrera(usuario.carrera_id);
 
   const refrescar = () => {
     lista.refetch();
     promedio.refetch();
+    progreso.refetch();
   };
 
-  const onSaved = (message: string) => () => {
-    pushToast(message, "success");
+  const onSaved = (accion: AccionCursada) => {
+    pushToast(MENSAJE[accion], "success");
     setPage(1);
     refrescar();
   };
@@ -56,32 +75,7 @@ export default function MisMateriasScreen({
   });
 
   const items = lista.data?.items ?? [];
-  const filtrados = chip === "Todas" ? items : items.filter((item) => estadoLabel(item) === chip);
-  // El backend ahora deriva 5 estados (cursando/promocionada/aprobada/
-  // desaprobada/pendiente, ver feature/estados-materia) — "promocionada"
-  // también es una materia aprobada (exime el final por parciales ≥7).
-  const aprobadas = items.filter((c) => ["aprobada", "promocionada"].includes(estadoLabel(c))).length;
-
-  const spec = materiaUsuarioSpec({
-    materias: materiasDeMiCarrera.data?.items ?? [],
-    cursadaActual: modal.item,
-  });
-
-  const crearSpec = {
-    ...spec,
-    submit: {
-      create: spec.submit.create,
-      update: async () => {},
-    },
-  };
-
-  const editarSpec = {
-    ...spec,
-    submit: {
-      create: async () => {},
-      update: spec.submit.update,
-    },
-  };
+  const filtrados = chip === "Total" ? items : items.filter((item) => estadoLabel(item) === chip);
 
   const handleDelete = async () => {
     if (!toDelete) return;
@@ -116,7 +110,7 @@ export default function MisMateriasScreen({
 
         <PromedioCard promedio={promedio.data} loading={promedio.loading} />
         <div className="mb-4">
-          <ByteWidget aprobadas={aprobadas} total={lista.data?.total ?? 0} />
+          <ByteWidget aprobadas={progreso.aprobadas} total={progreso.total} />
         </div>
 
         {/* S4-09: el select de "Agregar materia" sale vacío cuando el
@@ -151,7 +145,7 @@ export default function MisMateriasScreen({
           loading={lista.loading}
           error={lista.error}
           items={filtrados}
-          emptyTitle={chip === "Todas" ? "Todavía no cargaste materias" : "No hay materias en este estado"}
+          emptyTitle={chip === "Total" ? "Todavía no cargaste materias" : "No hay materias en este estado"}
           emptyDescription="Tocá + para cargar tu primera cursada."
           onRetry={() => lista.refetch()}
         >
@@ -183,19 +177,19 @@ export default function MisMateriasScreen({
         +
       </button>
 
-      <FormModal
+      <CursadaFormModal
         open={modal.open}
-        item={modal.item ?? undefined}
-        spec={modal.item ? editarSpec : crearSpec}
-        initialValues={materiaUsuarioInitial(modal.item ?? undefined)}
-        onSuccess={onSaved(modal.item ? "Materia actualizada." : "Materia cargada.")}
+        cursada={modal.item}
+        materias={materiasDeMiCarrera.data?.items ?? []}
+        edicion="estado"
         onClose={() => setModal({ open: false, item: null })}
+        onSaved={onSaved}
       />
 
       <ConfirmDialog
         open={toDelete != null}
         title="Borrar materia"
-        description={toDelete ? `¿Eliminar ${toDelete.materia?.nombre ?? `la materia #${toDelete.materia_id}`}? No se puede deshacer.` : ""}
+        description={toDelete ? `¿Eliminar ${nombreDeCursada(toDelete)}? No se puede deshacer.` : ""}
         confirmText="Borrar"
         onConfirm={() => void handleDelete()}
         onClose={() => setToDelete(null)}

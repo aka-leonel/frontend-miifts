@@ -12,11 +12,13 @@ import { ApiError } from "../../api/client";
 import { useAuth } from "../../auth/AuthContext";
 import type { Recordatorio, Recurso } from "../../api/types";
 import { ConfirmDialog, FormModal, ListState } from "../../components";
+import type { Usuario } from "../../api/types";
 import { useToast } from "../../hooks/useToast";
 import { useMateriasDeCarrera } from "../catalogo/hooks";
 import { estadoBadgeClasses, estadoLabel } from "../materias/estado";
 import { useMisMaterias } from "../materias/hooks";
-import { materiaUsuarioInitial, materiaUsuarioSpec } from "../materias/materiaUsuarioSpec";
+import AyudaParciales from "../materias/AyudaParciales";
+import CursadaFormModal, { type AccionCursada } from "../materias/CursadaFormModal";
 import { RecordatorioCard } from "../recordatorios/RecordatorioCard";
 import { useBorrarRecordatorio, useRecordatorios } from "../recordatorios/hooks";
 import { recordatorioFormInitial, recordatorioSpec } from "../recordatorios/recordatorioSpec";
@@ -31,19 +33,27 @@ interface Props {
   onVolver: () => void;
 }
 
-export function MateriaDetalleScreen({ materiaId, onVolver }: Props) {
+// Guard de sesión en el wrapper: los hooks del componente de abajo tienen que
+// llamarse siempre en el mismo orden (un `return` antes de ellos rompe las
+// reglas de hooks si la sesión cae con esta pantalla abierta).
+export function MateriaDetalleScreen(props: Props) {
   const { usuario } = useAuth();
-  const { pushToast } = useToast();
 
   if (!usuario) {
     return <div className="p-6 text-sm text-muted">Tu sesión ya no es válida.</div>;
   }
 
+  return <MateriaDetalleContent usuario={usuario} {...props} />;
+}
+
+function MateriaDetalleContent({ usuario, materiaId, onVolver }: Props & { usuario: Usuario }) {
+  const { pushToast } = useToast();
+
   const materia = useMateria(materiaId);
   const correlativas = useCorrelativas(materiaId);
   const recursos = useRecursosDeMateria(materiaId);
   const materiasDeMiCarrera = useMateriasDeCarrera(usuario.carrera_id);
-  const misMaterias = useMisMaterias(1);
+  const misMaterias = useMisMaterias(1, 100);
   const recordatoriosParams = useMemo(() => ({ materia_id: materiaId, per_page: 50 }), [materiaId]);
   const recordatorios = useRecordatorios(recordatoriosParams);
 
@@ -143,15 +153,26 @@ export function MateriaDetalleScreen({ materiaId, onVolver }: Props) {
             </button>
           </div>
           {cursadaActual ? (
-            <div className="flex flex-wrap items-center gap-2">
+            <div>
               <span className={["rounded-full px-3 py-1 text-xs font-semibold capitalize", estadoBadgeClasses[estado]].join(" ")}>
                 {estado}
               </span>
-              {cursadaActual.nota_final != null ? (
-                <span className="rounded-full bg-surface2 px-2 py-1 text-xs text-muted">
-                  Final: {cursadaActual.nota_final}
-                </span>
-              ) : null}
+              <div className="mb-2 mt-4 flex items-center gap-2">
+                <span className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">Notas</span>
+                <AyudaParciales />
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { etiqueta: "Nota 1", valor: cursadaActual.nota_parcial_1 },
+                  { etiqueta: "Nota 2", valor: cursadaActual.nota_parcial_2 },
+                  { etiqueta: "Final", valor: cursadaActual.nota_final },
+                ].map((n) => (
+                  <div key={n.etiqueta} className="rounded-xl border border-border bg-bg px-3 py-2.5 text-center">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted">{n.etiqueta}</div>
+                    <div className="mt-0.5 text-lg font-bold text-text">{n.valor ?? "—"}</div>
+                  </div>
+                ))}
+              </div>
             </div>
           ) : (
             <p className="text-sm text-muted">Todavía no cargaste esta materia entre tus cursadas.</p>
@@ -246,14 +267,22 @@ export function MateriaDetalleScreen({ materiaId, onVolver }: Props) {
         </div>
       </div>
 
-      <FormModal
+      <CursadaFormModal
         open={modalNotas}
-        item={cursadaActual ?? undefined}
-        spec={materiaUsuarioSpec({ materias: materiasDeMiCarrera.data?.items ?? [], cursadaActual })}
-        initialValues={materiaUsuarioInitial(cursadaActual ?? { materia_id: materiaId })}
+        cursada={cursadaActual}
+        materias={materiasDeMiCarrera.data?.items ?? []}
+        edicion="notas"
+        materiaIdFija={materiaId}
         onClose={() => setModalNotas(false)}
-        onSuccess={() => {
-          pushToast(cursadaActual ? "Cursada actualizada." : "Cursada agregada.", "success");
+        onSaved={(accion: AccionCursada) => {
+          pushToast(
+            accion === "creada"
+              ? "Cursada agregada."
+              : accion === "recursada"
+                ? "Recursando: se borraron las notas viejas y pasó a cursando."
+                : "Cursada actualizada.",
+            "success",
+          );
           misMaterias.refetch();
         }}
       />

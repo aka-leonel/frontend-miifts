@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useApiForm } from "../hooks/useApiForm";
 import EntityForm, { type FormFieldSpec } from "./EntityForm";
 
@@ -23,6 +23,8 @@ export type FormModalProps<T extends Record<string, unknown>> = {
   initialValues: T;
   onClose: () => void;
   onSuccess?: () => void;
+  /** Contenido extra entre los campos y los botones (ej. un botón de acción puntual). */
+  extra?: ReactNode;
 };
 
 export default function FormModal<T extends Record<string, unknown>>({
@@ -32,6 +34,7 @@ export default function FormModal<T extends Record<string, unknown>>({
   initialValues,
   onClose,
   onSuccess,
+  extra,
 }: FormModalProps<T>) {
   const { fieldErrors, applyApiError, clearErrors } = useApiForm();
   const [values, setValues] = useState<T>(initialValues);
@@ -101,6 +104,7 @@ export default function FormModal<T extends Record<string, unknown>>({
           showSubmitButton={false}
           isEditing={Boolean(item?.id)}
         >
+          {extra ? <div className="pb-1">{extra}</div> : null}
           <div className="flex gap-3 pt-2">
             <button
               type="button"

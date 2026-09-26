@@ -1,7 +1,8 @@
 import { useRecordatorios } from "../recordatorios/hooks";
 import { useAuth } from "../../auth/AuthContext";
-import { estadoLabel } from "./estado";
-import { useMisMaterias, usePromedio } from "./hooks";
+import type { Usuario } from "../../api/types";
+import { nombreDeCursada } from "./estado";
+import { useMisMaterias, useProgresoCarrera, usePromedio } from "./hooks";
 import ByteWidget from "./ByteWidget";
 import PromedioCard from "./PromedioCard";
 
@@ -16,22 +17,30 @@ const dotByTipo: Record<string, string> = {
   otro: "bg-fuchsia-400",
 };
 
-export default function InicioScreen({ onOpenMateria }: { onOpenMateria?: (id: number) => void }) {
+type Props = { onOpenMateria?: (id: number) => void };
+
+// Guard de sesión en el wrapper: los hooks del componente de abajo tienen que
+// llamarse siempre en el mismo orden (ver nota en MisMateriasScreen).
+export default function InicioScreen(props: Props) {
   const { usuario } = useAuth();
   if (!usuario) {
     return <div className="p-6 text-sm text-muted">Tu sesión ya no es válida.</div>;
   }
+  return <InicioContent usuario={usuario} {...props} />;
+}
 
+function InicioContent({ usuario, onOpenMateria }: Props & { usuario: Usuario }) {
   const lista = useMisMaterias(1);
   const promedio = usePromedio();
   const recordatorios = useRecordatorios({ desde: hoyISO(), per_page: 3 });
-
-  const items = lista.data?.items ?? [];
-  // El backend ahora deriva 5 estados (cursando/promocionada/aprobada/
-  // desaprobada/pendiente, ver feature/estados-materia) — "promocionada"
-  // también es una materia aprobada (exime el final por parciales ≥7).
-  const aprobadas = items.filter((c) => ["aprobada", "promocionada"].includes(estadoLabel(c))).length;
-  const total = lista.data?.total ?? 0;
+  // Progreso sobre el TOTAL de materias de la carrera (no sobre las cursadas
+  // cargadas ni las que están en curso). "promocionada" también cuenta como
+  // aprobada (exime el final por parciales ≥7).
+  const { aprobadas, total } = useProgresoCarrera(usuario.carrera_id);
+  // Las que se están cursando primero (sort estable: el resto mantiene su orden).
+  const items = [...(lista.data?.items ?? [])].sort(
+    (a, b) => Number(b.estado === "cursando") - Number(a.estado === "cursando"),
+  );
 
   return (
     <div className="flex-1 overflow-y-auto pb-24">
@@ -101,7 +110,7 @@ export default function InicioScreen({ onOpenMateria }: { onOpenMateria?: (id: n
                   onClick={() => onOpenMateria?.(c.materia_id)}
                   className="rounded-2xl border border-border bg-card p-4 text-left"
                 >
-                  <div className="truncate text-sm font-semibold text-text">{c.materia?.nombre ?? `Materia #${c.materia_id}`}</div>
+                  <div className="truncate text-sm font-semibold text-text">{nombreDeCursada(c)}</div>
                   <div className="mt-1 text-xs capitalize text-muted">{c.estado}</div>
                   {c.nota_final != null ? <div className="mt-2 text-xs font-bold text-violet">Nota {c.nota_final}</div> : null}
                 </button>

@@ -1,5 +1,5 @@
 import type { Cursada } from "../../api/types";
-import { estadoBadgeClasses, estadoLabel } from "./estado";
+import { estadoBadgeClasses, estadoLabel, nombreDeCursada } from "./estado";
 
 function subtitulo(cursada: Cursada): string {
   const partes: string[] = [];
@@ -29,7 +29,7 @@ export default function MateriaCard({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="truncate text-sm font-semibold text-text">
-            {cursada.materia?.nombre ?? `Materia #${cursada.materia_id}`}
+            {nombreDeCursada(cursada)}
           </div>
           <div className="mt-1 text-xs text-muted">{subtitulo(cursada)}</div>
         </div>

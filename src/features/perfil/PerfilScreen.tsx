@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
 import { useCarreras } from "../catalogo/hooks";
-import { useMisMaterias } from "../materias/hooks";
+import { useProgresoCarrera } from "../materias/hooks";
 import CambiarPasswordModal from "./CambiarPasswordModal";
 import { useAuthMe } from "./hooks";
 import { useApiForm } from "../../hooks/useApiForm";
@@ -19,7 +19,8 @@ export default function PerfilScreen({ onCerrarSesion }: { onCerrarSesion: () =>
   const auth = useAuth();
   const me = useAuthMe();
   const carreras = useCarreras({ page: 1 });
-  const misMaterias = useMisMaterias(1);
+  // Progreso sobre el TOTAL de materias de la carrera (mismo criterio que Inicio/Materias).
+  const { aprobadas, total } = useProgresoCarrera(auth.usuario?.carrera_id ?? 0);
   const { fieldErrors, applyApiError, clearErrors, setFieldErrors } = useApiForm();
   const { pushToast } = useToast();
   // Solo nombre/apellido: `PerfilUpdate` (backend auth/schema.py) dice
@@ -36,8 +37,6 @@ export default function PerfilScreen({ onCerrarSesion }: { onCerrarSesion: () =>
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [me.data]);
 
-  const aprobadas = (misMaterias.data?.items ?? []).filter((c) => c.estado === "aprobada").length;
-  const total = misMaterias.data?.total ?? 0;
   const pct = total > 0 ? Math.round((aprobadas / total) * 100) : 0;
   const carreraNombre =
     (carreras.data?.items ?? []).find((c) => c.id === me.data?.carrera_id)?.nombre ??

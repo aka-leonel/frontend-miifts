@@ -16,3 +16,9 @@ export const estadoBadgeClasses: Record<EstadoUI, string> = {
   desaprobada: "bg-red-500/15 text-red-300",
   pendiente: "bg-border text-muted",
 };
+
+
+/** Nombre a mostrar de una cursada: lo que devuelve el back (`materia_nombre`) o, si falta, "Materia #id". */
+export function nombreDeCursada(cursada: Cursada): string {
+  return cursada.materia_nombre ?? `Materia #${cursada.materia_id}`;
+}
