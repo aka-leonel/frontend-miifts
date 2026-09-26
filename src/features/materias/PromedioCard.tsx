@@ -8,7 +8,7 @@ export default function PromedioCard({
   loading: boolean;
 }) {
   if (loading && !promedio) {
-    return <div className="h-20 animate-pulse rounded-2xl border border-border bg-card" />;
+    return <div role="status" aria-label="Cargando promedio" className="h-20 animate-pulse rounded-2xl border border-border bg-card" />;
   }
 
   const value = promedio?.promedio ?? null;

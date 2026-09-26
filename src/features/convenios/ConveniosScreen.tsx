@@ -16,7 +16,7 @@ export default function ConveniosScreen() {
     <div className="flex-1 overflow-y-auto pb-24">
       <div className="mx-auto w-full max-w-lg px-4 pt-14 sm:max-w-2xl sm:px-6 lg:max-w-5xl">
         <div className="mb-6">
-          <div className="text-2xl font-black tracking-[-0.04em] text-text">Convenios</div>
+          <h1 className="text-2xl font-black tracking-[-0.04em] text-text">Convenios</h1>
           <div className="mt-1 text-sm text-muted">Oportunidades para estudiantes IFTS</div>
         </div>
 
@@ -25,13 +25,14 @@ export default function ConveniosScreen() {
             <button
               key={option}
               type="button"
+              aria-pressed={tab === option}
               onClick={() => {
                 setTab(option);
                 setPage(1);
               }}
               className={[
                 "flex-1 rounded-lg px-3 py-2 text-sm font-medium transition",
-                tab === option ? "bg-violet text-white" : "text-muted",
+                tab === option ? "bg-primary text-on-primary" : "text-muted",
               ].join(" ")}
             >
               {option === "universidades" ? "Universidades" : "Talento Tech"}
@@ -52,6 +53,7 @@ export default function ConveniosScreen() {
               <div key={item.id} className="flex flex-col rounded-2xl border border-border bg-card p-4">
                 <div className="mb-3 flex items-center gap-3">
                   <div
+                    aria-hidden="true"
                     className={[
                       "flex h-11 w-11 items-center justify-center rounded-xl text-base font-extrabold",
                       tab === "universidades" ? "bg-violet/15 text-violet" : "bg-lime/15 text-lime",
@@ -60,7 +62,7 @@ export default function ConveniosScreen() {
                     {item.logo}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-semibold text-text">{item.nombre}</div>
+                    <h2 className="truncate text-sm font-semibold text-text">{item.nombre}</h2>
                     <div className="mt-1 line-clamp-2 text-xs text-muted">{item.requisitos}</div>
                   </div>
                 </div>
@@ -71,6 +73,7 @@ export default function ConveniosScreen() {
                     const url = item.link_info ?? item.link_inscripcion ?? "#";
                     window.open(url, "_blank", "noopener,noreferrer");
                   }}
+                  aria-label={`Más información sobre ${item.nombre} (se abre en una pestaña nueva)`}
                   className="mt-auto w-full rounded-xl border border-violet/70 bg-violet/10 px-3 py-2.5 text-sm font-semibold text-violet"
                 >
                   Más info

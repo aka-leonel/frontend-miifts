@@ -83,7 +83,7 @@ export default function CursadaFormModal({
             <button
               type="button"
               onClick={() => setConfirmando(true)}
-              className="w-full rounded-xl border border-amber-500/50 bg-amber-500/10 px-4 py-2.5 text-sm font-semibold text-amber-200 transition hover:bg-amber-500/20"
+              className="w-full rounded-xl border border-warning/50 bg-warning/10 px-4 py-2.5 text-sm font-semibold text-warning transition hover:bg-warning/20"
             >
               Recursar
             </button>

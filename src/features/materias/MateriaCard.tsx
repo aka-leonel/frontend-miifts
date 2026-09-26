@@ -24,13 +24,29 @@ export default function MateriaCard({
   return (
     <div
       onClick={() => onOpen?.(cursada.materia_id)}
-      className="rounded-2xl border border-border bg-card p-4 transition hover:border-violet/40"
+      className={[
+        "relative rounded-2xl border border-border bg-card p-4 transition hover:border-violet/40",
+        onOpen ? "cursor-pointer" : "",
+      ].join(" ")}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="truncate text-sm font-semibold text-text">
-            {nombreDeCursada(cursada)}
-          </div>
+          {/* Con onOpen el título es un botón que se estira sobre toda la
+              tarjeta: se abre con teclado (Enter/Espacio) además del click. */}
+          {onOpen ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpen(cursada.materia_id);
+              }}
+              className="block max-w-full truncate text-left text-sm font-semibold text-text after:absolute after:inset-0 after:rounded-2xl after:content-['']"
+            >
+              {nombreDeCursada(cursada)}
+            </button>
+          ) : (
+            <div className="truncate text-sm font-semibold text-text">{nombreDeCursada(cursada)}</div>
+          )}
           <div className="mt-1 text-xs text-muted">{subtitulo(cursada)}</div>
         </div>
         <span className={["flex-shrink-0 rounded-full px-3 py-1 text-xs font-semibold capitalize", estadoBadgeClasses[estado]].join(" ")}>
@@ -38,7 +54,7 @@ export default function MateriaCard({
         </span>
       </div>
       {onEdit || onDelete ? (
-        <div className="mt-3 flex gap-2 border-t border-border pt-3">
+        <div className="relative mt-3 flex gap-2 border-t border-border pt-3">
           {onEdit ? (
             <button
               type="button"
@@ -46,7 +62,8 @@ export default function MateriaCard({
                 e.stopPropagation();
                 onEdit();
               }}
-              className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted transition hover:text-text"
+              aria-label={`Editar ${nombreDeCursada(cursada)}`}
+              className="rounded-lg border border-border px-3 py-2 text-xs font-medium text-muted transition hover:text-text"
             >
               Editar
             </button>
@@ -58,7 +75,8 @@ export default function MateriaCard({
                 e.stopPropagation();
                 onDelete();
               }}
-              className="rounded-lg border border-red-500/40 px-3 py-1.5 text-xs font-medium text-red-300"
+              aria-label={`Borrar ${nombreDeCursada(cursada)}`}
+              className="rounded-lg border border-danger/40 px-3 py-2 text-xs font-medium text-danger"
             >
               Borrar
             </button>

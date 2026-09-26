@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useApiForm } from "../hooks/useApiForm";
+import Modal from "./Modal";
 import EntityForm, { type FormFieldSpec } from "./EntityForm";
 
 export type FormSpec<T extends Record<string, unknown>> = {
@@ -81,20 +82,22 @@ export default function FormModal<T extends Record<string, unknown>>({
   };
 
   return (
-    <div className="fixed inset-0 z-[200] flex overflow-y-auto bg-black/70 p-4 pb-8" onClick={onClose}>
-      <div
-        role="dialog"
-        aria-modal="true"
-        className="m-auto max-h-none w-full max-w-md rounded-2xl border border-border bg-card p-5 shadow-2xl"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <h2 className="text-lg font-bold text-text">{spec.title(item)}</h2>
-          <button type="button" onClick={onClose} className="text-xl text-muted transition hover:text-text">
-            ×
-          </button>
-        </div>
-
+    <Modal
+      title={spec.title(item)}
+      onClose={onClose}
+      className="m-auto w-full max-w-md p-5"
+      overlayClassName=""
+      headerExtra={
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Cerrar"
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-xl text-muted transition hover:text-text"
+        >
+          <span aria-hidden="true">×</span>
+        </button>
+      }
+    >
         <EntityForm
           fields={spec.fields}
           values={values}
@@ -117,13 +120,12 @@ export default function FormModal<T extends Record<string, unknown>>({
               type="button"
               onClick={handleSubmit}
               disabled={waiting}
-              className="flex-1 rounded-xl bg-violet px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+              className="flex-1 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-on-primary disabled:cursor-not-allowed disabled:opacity-60"
             >
               {waiting ? "Guardando..." : "Guardar"}
             </button>
           </div>
         </EntityForm>
-      </div>
-    </div>
+    </Modal>
   );
 }

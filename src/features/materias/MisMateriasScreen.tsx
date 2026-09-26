@@ -93,7 +93,7 @@ function MisMateriasContent({ usuario, onOpenMateria, onAbrirAdmin }: Props & { 
       <div className="px-6 pt-14">
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
-            <div className="text-2xl font-black tracking-[-0.04em] text-text">Mis Materias</div>
+            <h1 className="text-2xl font-black tracking-[-0.04em] text-text">Mis Materias</h1>
             <div className="mt-1 text-sm text-muted">Tus cursadas y tu promedio</div>
           </div>
           {/* S4-10: ABM de catálogo, solo visible para admin. */}
@@ -101,7 +101,7 @@ function MisMateriasContent({ usuario, onOpenMateria, onAbrirAdmin }: Props & { 
             <button
               type="button"
               onClick={onAbrirAdmin}
-              className="flex-shrink-0 rounded-lg border border-violet/60 bg-violet/10 px-3 py-1.5 text-xs font-semibold text-violet"
+              className="flex-shrink-0 rounded-lg border border-violet/60 bg-violet/10 px-3 py-2 text-xs font-semibold text-violet"
             >
               Admin catálogo
             </button>
@@ -118,7 +118,7 @@ function MisMateriasContent({ usuario, onOpenMateria, onAbrirAdmin }: Props & { 
             el backend (gap de datos, no de esta pantalla) — se avisa acá en
             vez de dejar el select en blanco sin explicación. */}
         {!materiasDeMiCarrera.loading && (materiasDeMiCarrera.data?.items.length ?? 0) === 0 ? (
-          <div className="mb-4 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-xs text-amber-100">
+          <div role="status" className="mb-4 rounded-xl border border-warning/40 bg-warning/10 px-3 py-2.5 text-xs text-warning">
             Todavía no hay materias cargadas para tu carrera en el sistema. Avisale a un administrador antes de intentar agregar una cursada.
           </div>
         ) : null}
@@ -128,11 +128,12 @@ function MisMateriasContent({ usuario, onOpenMateria, onAbrirAdmin }: Props & { 
             <button
               key={option}
               type="button"
+              aria-pressed={chip === option}
               onClick={() => setChip(option)}
               className={[
                 "flex-shrink-0 rounded-full border px-4 py-1.5 text-sm capitalize transition",
                 chip === option
-                  ? "border-violet bg-violet font-semibold text-white"
+                  ? "border-primary bg-primary font-semibold text-on-primary"
                   : "border-border bg-card text-muted",
               ].join(" ")}
             >
@@ -172,7 +173,7 @@ function MisMateriasContent({ usuario, onOpenMateria, onAbrirAdmin }: Props & { 
         type="button"
         aria-label="Agregar materia"
         onClick={() => setModal({ open: true, item: null })}
-        className="fixed bottom-[90px] right-6 z-40 flex h-13 w-13 items-center justify-center rounded-2xl bg-violet text-2xl text-white shadow-[0_4px_20px_rgba(140,125,255,0.4)]"
+        className="fixed bottom-[90px] right-6 z-40 flex h-13 w-13 items-center justify-center rounded-2xl bg-primary text-2xl text-on-primary shadow-[0_4px_20px_rgba(140,125,255,0.4)]"
       >
         +
       </button>

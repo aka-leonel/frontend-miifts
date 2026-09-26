@@ -12,8 +12,8 @@ export function estadoLabel(cursada: Cursada): EstadoUI {
 export const estadoBadgeClasses: Record<EstadoUI, string> = {
   cursando: "bg-violet/15 text-violet",
   promocionada: "bg-lime/15 text-lime",
-  aprobada: "bg-green/15 text-green",
-  desaprobada: "bg-red-500/15 text-red-300",
+  aprobada: "bg-success/15 text-success",
+  desaprobada: "bg-danger/15 text-danger",
   pendiente: "bg-border text-muted",
 };
 

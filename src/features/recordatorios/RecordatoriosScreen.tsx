@@ -48,7 +48,7 @@ export default function RecordatoriosScreen() {
           sin importar el ancho de la ventana. */}
       <div className="mx-auto w-full max-w-lg px-4 pt-14 sm:max-w-2xl sm:px-6 lg:max-w-5xl">
         <div className="mb-6">
-          <div className="text-2xl font-black tracking-[-0.04em] text-text">Recordatorios</div>
+          <h1 className="text-2xl font-black tracking-[-0.04em] text-text">Recordatorios</h1>
           <div className="mt-1 text-sm text-muted">
             {items.length} recordatorio{items.length !== 1 ? "s" : ""} activo{items.length !== 1 ? "s" : ""}
           </div>
@@ -65,7 +65,7 @@ export default function RecordatoriosScreen() {
           <div className="space-y-6">
             {estaSemana.length > 0 && (
               <div>
-                <div className="mb-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted">Esta semana</div>
+                <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted">Esta semana</h2>
                 <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
                   {estaSemana.map((r) => (
                     <RecordatorioCard
@@ -84,7 +84,7 @@ export default function RecordatoriosScreen() {
             )}
             {masAdelante.length > 0 && (
               <div>
-                <div className="mb-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted">Más adelante</div>
+                <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted">Más adelante</h2>
                 <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
                   {masAdelante.map((r) => (
                     <RecordatorioCard
@@ -111,7 +111,7 @@ export default function RecordatoriosScreen() {
           setEditItem(null);
           setModalOpen(true);
         }}
-        className="fixed bottom-[90px] right-6 flex h-[52px] w-[52px] items-center justify-center rounded-2xl bg-violet text-2xl text-white shadow-[0_4px_20px_rgba(140,125,255,0.4)]"
+        className="fixed bottom-[90px] right-6 flex h-[52px] w-[52px] items-center justify-center rounded-2xl bg-primary text-2xl text-on-primary shadow-[0_4px_20px_rgba(140,125,255,0.4)]"
         aria-label="Agregar recordatorio"
       >
         +

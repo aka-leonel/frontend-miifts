@@ -64,22 +64,22 @@ export default function AdminCatalogoScreen({ onVolver }: { onVolver: () => void
   return (
     <div className="flex-1 overflow-y-auto pb-24">
       <div className="px-6 pt-14">
-        <button type="button" onClick={onVolver} className="mb-4 text-sm text-muted transition hover:text-text">
+        <button type="button" onClick={onVolver} className="mb-2 py-2 text-sm text-muted transition hover:text-text">
           ← Materias
         </button>
 
         <div className="mb-6">
-          <div className="text-2xl font-black tracking-[-0.04em] text-text">Catálogo (Admin)</div>
+          <h1 className="text-2xl font-black tracking-[-0.04em] text-text">Catálogo (Admin)</h1>
           <div className="mt-1 text-sm text-muted">ABM de carreras y materias contra la API real.</div>
         </div>
 
         <div className="mb-8">
           <div className="mb-3 flex items-center justify-between">
-            <span className="text-sm font-bold text-text">Carreras</span>
+            <h2 className="text-sm font-bold text-text">Carreras</h2>
             <button
               type="button"
               onClick={() => setModalCarrera({ open: true, item: null })}
-              className="text-xs font-semibold text-violet"
+              className="px-2 py-2 text-xs font-semibold text-violet"
             >
               + Nueva
             </button>
@@ -111,14 +111,21 @@ export default function AdminCatalogoScreen({ onVolver }: { onVolver: () => void
                           {c.duracion_cuatrimestres} cuatrimestres · instituto #{c.ifts_id}
                         </div>
                       </div>
-                      <span
+                      <button
+                        type="button"
+                        aria-pressed={activa}
+                        aria-label={`${activa ? "Viendo" : "Ver"} materias de ${c.nombre}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCarreraSeleccionada(c.id);
+                        }}
                         className={[
-                          "flex-shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold",
-                          activa ? "bg-violet text-white" : "bg-surface2 text-muted",
+                          "flex-shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold",
+                          activa ? "bg-primary text-on-primary" : "bg-surface2 text-muted",
                         ].join(" ")}
                       >
                         {activa ? "Viendo" : "Ver materias"}
-                      </span>
+                      </button>
                     </div>
                     <div className="mt-3 flex gap-2 border-t border-border pt-3">
                       <button
@@ -127,7 +134,7 @@ export default function AdminCatalogoScreen({ onVolver }: { onVolver: () => void
                           e.stopPropagation();
                           setModalCarrera({ open: true, item: c });
                         }}
-                        className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted transition hover:text-text"
+                        className="rounded-lg border border-border px-3 py-2 text-xs font-medium text-muted transition hover:text-text"
                       >
                         Editar
                       </button>
@@ -137,7 +144,7 @@ export default function AdminCatalogoScreen({ onVolver }: { onVolver: () => void
                           e.stopPropagation();
                           setABorrarCarrera(c);
                         }}
-                        className="rounded-lg border border-red-500/40 px-3 py-1.5 text-xs font-medium text-red-300"
+                        className="rounded-lg border border-danger/40 px-3 py-2 text-xs font-medium text-danger"
                       >
                         Borrar
                       </button>
@@ -151,14 +158,14 @@ export default function AdminCatalogoScreen({ onVolver }: { onVolver: () => void
 
         <div>
           <div className="mb-3 flex items-center justify-between">
-            <span className="text-sm font-bold text-text">
+            <h2 className="text-sm font-bold text-text">
               Materias{carreraActiva ? ` · ${carreraActiva.nombre}` : ""}
-            </span>
+            </h2>
             <button
               type="button"
               disabled={!carreraId}
               onClick={() => setModalMateria({ open: true, item: null })}
-              className="text-xs font-semibold text-violet disabled:opacity-40"
+              className="px-2 py-2 text-xs font-semibold text-violet disabled:opacity-40"
             >
               + Nueva
             </button>
@@ -184,14 +191,14 @@ export default function AdminCatalogoScreen({ onVolver }: { onVolver: () => void
                     <button
                       type="button"
                       onClick={() => setModalMateria({ open: true, item: m })}
-                      className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted transition hover:text-text"
+                      className="rounded-lg border border-border px-3 py-2 text-xs font-medium text-muted transition hover:text-text"
                     >
                       Editar
                     </button>
                     <button
                       type="button"
                       onClick={() => setABorrarMateria(m)}
-                      className="rounded-lg border border-red-500/40 px-3 py-1.5 text-xs font-medium text-red-300"
+                      className="rounded-lg border border-danger/40 px-3 py-2 text-xs font-medium text-danger"
                     >
                       Borrar
                     </button>

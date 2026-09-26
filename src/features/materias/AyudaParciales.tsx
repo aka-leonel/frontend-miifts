@@ -15,8 +15,8 @@ export default function AyudaParciales() {
         aria-expanded={abierta}
         onClick={() => setAbierta((v) => !v)}
         className={[
-          "flex h-5 w-5 items-center justify-center rounded-full border text-[11px] font-bold transition",
-          abierta ? "border-violet bg-violet text-white" : "border-border text-muted hover:text-text",
+          "flex h-7 w-7 items-center justify-center rounded-full border text-xs font-bold transition",
+          abierta ? "border-primary bg-primary text-on-primary" : "border-border text-muted hover:text-text",
         ].join(" ")}
       >
         ?

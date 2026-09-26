@@ -105,7 +105,7 @@ function MateriaDetalleContent({ usuario, materiaId, onVolver }: Props & { usuar
   if (materia.loading && !materia.data) {
     return (
       <div className="px-6 pt-14">
-        <div className="h-20 animate-pulse rounded-2xl border border-border bg-card" />
+        <div role="status" aria-label="Cargando materia" className="h-20 animate-pulse rounded-2xl border border-border bg-card" />
       </div>
     );
   }
@@ -113,10 +113,10 @@ function MateriaDetalleContent({ usuario, materiaId, onVolver }: Props & { usuar
   if (materia.error || !materia.data) {
     return (
       <div className="px-6 pt-14">
-        <div className="rounded-2xl border border-red-500/40 bg-red-500/10 p-6 text-center text-red-100">
+        <div role="alert" className="rounded-2xl border border-danger/40 bg-danger/10 p-6 text-center text-danger">
           No se pudo cargar la materia.
         </div>
-        <button type="button" onClick={onVolver} className="mt-4 text-sm text-violet">
+        <button type="button" onClick={onVolver} className="mt-4 py-2 text-sm text-violet">
           ← Volver
         </button>
       </div>
@@ -129,11 +129,11 @@ function MateriaDetalleContent({ usuario, materiaId, onVolver }: Props & { usuar
   return (
     <div className="flex-1 overflow-y-auto pb-24">
       <div className="px-6 pt-14">
-        <button type="button" onClick={onVolver} className="mb-4 text-sm text-muted transition hover:text-text">
+        <button type="button" onClick={onVolver} className="mb-2 py-2 text-sm text-muted transition hover:text-text">
           ← Materias
         </button>
 
-        <div className="mb-2 text-2xl font-black tracking-[-0.04em] text-text">{m.nombre}</div>
+        <h1 className="mb-2 text-2xl font-black tracking-[-0.04em] text-text">{m.nombre}</h1>
         <div className="mb-6 flex flex-wrap items-center gap-2">
           <span className="rounded-full bg-surface2 px-2 py-1 text-xs text-muted">{m.codigo}</span>
           <span className="text-xs text-muted">
@@ -143,11 +143,11 @@ function MateriaDetalleContent({ usuario, materiaId, onVolver }: Props & { usuar
 
         <div className="mb-6 rounded-2xl border border-border bg-card p-4">
           <div className="mb-2 flex items-center justify-between">
-            <span className="text-sm font-bold text-text">Tu cursada</span>
+            <h2 className="text-sm font-bold text-text">Tu cursada</h2>
             <button
               type="button"
               onClick={() => setModalNotas(true)}
-              className="rounded-lg border border-violet/60 bg-violet/10 px-3 py-1.5 text-xs font-semibold text-violet"
+              className="rounded-lg border border-violet/60 bg-violet/10 px-3 py-2 text-xs font-semibold text-violet"
             >
               {cursadaActual ? "Editar notas" : "Agregar cursada"}
             </button>
@@ -168,7 +168,7 @@ function MateriaDetalleContent({ usuario, materiaId, onVolver }: Props & { usuar
                   { etiqueta: "Final", valor: cursadaActual.nota_final },
                 ].map((n) => (
                   <div key={n.etiqueta} className="rounded-xl border border-border bg-bg px-3 py-2.5 text-center">
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted">{n.etiqueta}</div>
+                    <div className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">{n.etiqueta}</div>
                     <div className="mt-0.5 text-lg font-bold text-text">{n.valor ?? "—"}</div>
                   </div>
                 ))}
@@ -180,7 +180,7 @@ function MateriaDetalleContent({ usuario, materiaId, onVolver }: Props & { usuar
         </div>
 
         <div className="mb-6">
-          <div className="mb-3 text-sm font-bold text-text">Correlativas</div>
+          <h2 className="mb-3 text-sm font-bold text-text">Correlativas</h2>
           <ListState
             loading={correlativas.loading}
             error={correlativas.error}
@@ -199,11 +199,11 @@ function MateriaDetalleContent({ usuario, materiaId, onVolver }: Props & { usuar
 
         <div className="mb-6">
           <div className="mb-3 flex items-center justify-between">
-            <span className="text-sm font-bold text-text">Recursos</span>
+            <h2 className="text-sm font-bold text-text">Recursos</h2>
             <button
               type="button"
               onClick={() => setModalRecurso({ open: true, item: null })}
-              className="text-xs font-semibold text-violet"
+              className="px-2 py-2 text-xs font-semibold text-violet"
             >
               + Agregar
             </button>
@@ -235,11 +235,11 @@ function MateriaDetalleContent({ usuario, materiaId, onVolver }: Props & { usuar
 
         <div>
           <div className="mb-3 flex items-center justify-between">
-            <span className="text-sm font-bold text-text">Recordatorios</span>
+            <h2 className="text-sm font-bold text-text">Recordatorios</h2>
             <button
               type="button"
               onClick={() => setModalRecordatorio({ open: true, item: null })}
-              className="text-xs font-semibold text-violet"
+              className="px-2 py-2 text-xs font-semibold text-violet"
             >
               + Agregar
             </button>

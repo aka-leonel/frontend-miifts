@@ -32,9 +32,10 @@ export function RecursoCard({ recurso, onEdit, onDelete, disabled }: Props) {
         href={recurso.url}
         target="_blank"
         rel="noopener noreferrer"
-        className="mt-2 inline-block text-sm text-violet underline"
+        className="mt-2 inline-block py-1 text-sm text-violet underline"
       >
-        Ver recurso ↗
+        Ver recurso <span aria-hidden="true">↗</span>
+        <span className="sr-only"> (se abre en una pestaña nueva)</span>
       </a>
 
       {esDueno ? (
@@ -43,7 +44,8 @@ export function RecursoCard({ recurso, onEdit, onDelete, disabled }: Props) {
             <button
               type="button"
               onClick={onEdit}
-              className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted transition hover:text-text"
+              aria-label={`Editar recurso ${recurso.titulo}`}
+              className="rounded-lg border border-border px-3 py-2 text-xs font-medium text-muted transition hover:text-text"
             >
               Editar
             </button>
@@ -53,7 +55,8 @@ export function RecursoCard({ recurso, onEdit, onDelete, disabled }: Props) {
               type="button"
               onClick={onDelete}
               disabled={disabled}
-              className="rounded-lg border border-red-500/40 px-3 py-1.5 text-xs font-medium text-red-300 disabled:opacity-50"
+              aria-label={`Borrar recurso ${recurso.titulo}`}
+              className="rounded-lg border border-danger/40 px-3 py-2 text-xs font-medium text-danger disabled:opacity-50"
             >
               Borrar
             </button>

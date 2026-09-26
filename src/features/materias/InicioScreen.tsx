@@ -13,8 +13,8 @@ function hoyISO(): string {
 const dotByTipo: Record<string, string> = {
   parcial: "bg-violet",
   tp: "bg-lime",
-  final: "bg-green",
-  otro: "bg-fuchsia-400",
+  final: "bg-success",
+  otro: "bg-pink",
 };
 
 type Props = { onOpenMateria?: (id: number) => void };
@@ -48,9 +48,9 @@ function InicioContent({ usuario, onOpenMateria }: Props & { usuario: Usuario })
         <div className="mb-6 flex items-start justify-between gap-4">
           <div>
             <div className="text-sm text-muted">Bienvenida de vuelta</div>
-            <div className="text-2xl font-black tracking-[-0.04em] text-text">Hola, {usuario.nombre.split(" ")[0]} 👋</div>
+            <h1 className="text-2xl font-black tracking-[-0.04em] text-text">Hola, {usuario.nombre.split(" ")[0]} 👋</h1>
           </div>
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet to-[#6B5CE7] text-sm font-bold text-white">
+          <div aria-hidden="true" className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-sm font-bold text-on-primary">
             {usuario.nombre.slice(0, 2).toUpperCase()}
           </div>
         </div>
@@ -62,11 +62,11 @@ function InicioContent({ usuario, onOpenMateria }: Props & { usuario: Usuario })
 
         <div className="mb-6">
           <div className="mb-3 flex items-center justify-between">
-            <div className="text-sm font-bold text-text">Próximos</div>
+            <h2 className="text-sm font-bold text-text">Próximos</h2>
             <span className="text-xs text-muted">{recordatorios.data?.total ?? 0} recordatorios</span>
           </div>
           {recordatorios.loading && !recordatorios.data ? (
-            <div className="grid gap-2 sm:grid-cols-2">
+            <div role="status" aria-label="Cargando recordatorios" className="grid gap-2 sm:grid-cols-2">
               <div className="h-16 animate-pulse rounded-2xl border border-border bg-card" />
               <div className="h-16 animate-pulse rounded-2xl border border-border bg-card" />
             </div>
@@ -84,7 +84,7 @@ function InicioContent({ usuario, onOpenMateria }: Props & { usuario: Usuario })
                   onClick={() => r.materia_id && onOpenMateria?.(r.materia_id)}
                   className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 text-left"
                 >
-                  <span className={["h-2 w-2 flex-shrink-0 rounded-full", dotByTipo[r.tipo] ?? "bg-muted"].join(" ")} />
+                  <span aria-hidden="true" className={["h-2 w-2 flex-shrink-0 rounded-full", dotByTipo[r.tipo] ?? "bg-muted"].join(" ")} />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-medium text-text">{r.titulo}</span>
                     <span className="text-xs text-muted">{new Date(r.fecha).toLocaleDateString("es-AR")} · {r.tipo}</span>
@@ -96,9 +96,9 @@ function InicioContent({ usuario, onOpenMateria }: Props & { usuario: Usuario })
         </div>
 
         <div>
-          <div className="mb-3 text-sm font-bold text-text">Mis materias</div>
+          <h2 className="mb-3 text-sm font-bold text-text">Mis materias</h2>
           {lista.loading && !lista.data ? (
-            <div className="h-20 animate-pulse rounded-2xl border border-border bg-card" />
+            <div role="status" aria-label="Cargando materias" className="h-20 animate-pulse rounded-2xl border border-border bg-card" />
           ) : items.length === 0 ? (
             <div className="rounded-2xl border border-border bg-card p-6 text-center text-sm text-muted">Todavía no cargaste materias.</div>
           ) : (

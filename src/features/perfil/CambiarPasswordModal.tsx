@@ -2,7 +2,8 @@
 // estando logueado, reautenticando con la actual. Modal propio en vez de
 // `FormModal` (dueño Int.1): FormModal está armado para create/update de un
 // recurso con id, esto es una única acción sin id ni invalidación de cache.
-import { useState } from "react";
+import { useId, useState } from "react";
+import { Modal } from "../../components";
 import { cambiarPasswordRequest } from "../../auth/api";
 import { ApiError } from "../../lib/apiClient";
 import { useToast } from "../../hooks/useToast";
@@ -26,29 +27,35 @@ function PasswordField({
   label,
   value,
   onChange,
+  autoComplete,
 }: {
   label: string;
+  autoComplete: string;
   value: string;
   onChange: (v: string) => void;
 }) {
   const [visible, setVisible] = useState(false);
+  const id = useId();
   return (
     <div>
-      <label className="mb-1.5 block text-[11px] font-semibold text-muted">{label}</label>
+      <label htmlFor={id} className="mb-1.5 block text-xs font-semibold text-muted">{label}</label>
       <div className="relative">
         <input
+          id={id}
+          autoComplete={autoComplete}
           type={visible ? "text" : "password"}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full rounded-xl border border-border bg-card px-4 py-3.5 pr-11 text-[15px] text-text outline-none focus:border-violet"
+          className="w-full rounded-xl border border-border bg-card px-4 py-3.5 pr-12 text-[0.9375rem] text-text focus:border-violet"
         />
         <button
           type="button"
           onClick={() => setVisible((v) => !v)}
           aria-label={visible ? "Ocultar contraseña" : "Mostrar contraseña"}
-          className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center text-muted"
+          aria-pressed={visible}
+          className="absolute right-1 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center text-muted"
         >
-          <EyeIcon off={visible} />
+          <span aria-hidden="true" className="flex"><EyeIcon off={visible} /></span>
         </button>
       </div>
     </div>
@@ -126,48 +133,39 @@ export default function CambiarPasswordModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 p-4" onClick={handleClose}>
-      <div
-        role="dialog"
-        aria-modal="true"
-        className="w-full max-w-sm rounded-2xl border border-border bg-card p-5 shadow-2xl"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <h3 className="text-lg font-bold text-text">Cambiar contraseña</h3>
-
-        <div className="mt-4 flex flex-col gap-3.5">
-          <PasswordField label="CONTRASEÑA ACTUAL" value={actual} onChange={setActual} />
-          <div>
-            <PasswordField label="CONTRASEÑA NUEVA" value={nueva} onChange={setNueva} />
-            <div className={`mt-1.5 text-xs ${passwordDebil ? "text-[#F87171]" : "text-muted"}`}>
-              Mínimo 8 caracteres, con al menos una letra y un número.
-            </div>
-          </div>
-          <div>
-            <PasswordField label="REPETIR CONTRASEÑA NUEVA" value={confirmar} onChange={setConfirmar} />
-            {noCoinciden ? <div className="mt-1.5 text-xs text-[#F87171]">Las contraseñas no coinciden.</div> : null}
+    <Modal title="Cambiar contraseña" onClose={handleClose} className="w-full max-w-sm p-5">
+      <div className="flex flex-col gap-3.5">
+        <PasswordField label="CONTRASEÑA ACTUAL" autoComplete="current-password" value={actual} onChange={setActual} />
+        <div>
+          <PasswordField label="CONTRASEÑA NUEVA" autoComplete="new-password" value={nueva} onChange={setNueva} />
+          <div className={`mt-1.5 text-xs ${passwordDebil ? "text-danger" : "text-muted"}`}>
+            Mínimo 8 caracteres, con al menos una letra y un número.
           </div>
         </div>
-
-        <div className="mt-5 flex gap-3">
-          <button
-            type="button"
-            onClick={handleClose}
-            disabled={loading}
-            className="flex-1 rounded-xl border border-border bg-transparent px-3 py-2 text-sm font-medium text-muted disabled:opacity-60"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={loading}
-            className="flex-1 rounded-xl bg-violet px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
-          >
-            {loading ? "Guardando…" : "Guardar"}
-          </button>
+        <div>
+          <PasswordField label="REPETIR CONTRASEÑA NUEVA" autoComplete="new-password" value={confirmar} onChange={setConfirmar} />
+          {noCoinciden ? <div role="alert" className="mt-1.5 text-xs text-danger">Las contraseñas no coinciden.</div> : null}
         </div>
       </div>
-    </div>
+
+      <div className="mt-5 flex gap-3">
+        <button
+          type="button"
+          onClick={handleClose}
+          disabled={loading}
+          className="flex-1 rounded-xl border border-border bg-transparent px-3 py-2.5 text-sm font-medium text-muted disabled:opacity-60"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={loading}
+          className="flex-1 rounded-xl bg-primary px-3 py-2.5 text-sm font-semibold text-on-primary disabled:opacity-60"
+        >
+          {loading ? "Guardando…" : "Guardar"}
+        </button>
+      </div>
+    </Modal>
   );
 }

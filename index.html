@@ -5,6 +5,27 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title><!-- figma:title --></title>
+    <!-- Aplica las preferencias de accesibilidad (tema, tamaño de texto, contraste…)
+         ANTES de pintar, para que no parpadee al recargar. Mismo criterio que
+         src/lib/preferencias.ts. -->
+    <script>
+      (function () {
+        var d = document.documentElement;
+        try {
+          var q = function (m) { return window.matchMedia && window.matchMedia(m).matches; };
+          var p = JSON.parse(localStorage.getItem("miifts_preferencias") || "{}");
+          var t = p.tema || "oscuro";
+          if (t === "sistema") t = q("(prefers-color-scheme: light)") ? "claro" : "oscuro";
+          d.dataset.tema = t;
+          d.dataset.fuente = p.fuente || "normal";
+          d.dataset.contraste = (typeof p.contraste === "boolean" ? p.contraste : q("(prefers-contrast: more)")) ? "alto" : "normal";
+          d.dataset.daltonismo = p.daltonismo ? "si" : "no";
+          d.dataset.animaciones = (typeof p.reducirAnimaciones === "boolean" ? p.reducirAnimaciones : q("(prefers-reduced-motion: reduce)")) ? "reducidas" : "normal";
+        } catch (e) {
+          d.dataset.tema = "oscuro";
+        }
+      })();
+    </script>
     <!-- figma:head-end -->
   </head>
   <body>

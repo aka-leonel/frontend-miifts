@@ -6,3 +6,4 @@ export { default as Toaster } from "./Toaster";
 export { ListState, Skeleton, EmptyState, ErrorState } from "./ListState";
 export { default as ConfirmDialog } from "./ConfirmDialog";
 export { default as Paginador } from "./Paginador";
+export { default as Modal } from "./Modal";
