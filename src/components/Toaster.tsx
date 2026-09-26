@@ -1,26 +1,33 @@
-import { useToast } from "../hooks/useToast";
+import { useToast } from "../hooks/useToast"
 
 // z-[300] en los dos: por encima de los overlays de FormModal/ConfirmDialog/
+
 // CambiarPasswordModal (z-[200]) — si no, un toast de error disparado
+
 // mientras hay un modal abierto (ej. guardar y que tire 422/409) queda
+
 // atrás del fondo oscuro del modal, apagado y casi invisible.
 
-const ICONO: Record<string, string> = { error: "✕", success: "✓", info: "i" };
+const ICONO: Record<string, string> = { error: "✕", success: "✓", info: "i" }
 
 const CLASES_MOBILE: Record<string, string> = {
   error: "bg-red-500 text-white",
+
   success: "bg-emerald-500 text-white",
+
   info: "bg-violet text-white",
-};
+}
 
 const CLASES_DESKTOP: Record<string, string> = {
   error: "border-red-500/40 bg-red-500/10 text-red-100",
+
   success: "border-emerald-500/40 bg-emerald-500/10 text-emerald-100",
+
   info: "border-violet-500/40 bg-[#1A1B23]/95 text-text",
-};
+}
 
 export default function Toaster() {
-  const { toasts, dismissToast } = useToast();
+  const { toasts, dismissToast } = useToast()
 
   return (
     <>
@@ -34,13 +41,16 @@ export default function Toaster() {
             key={toast.id}
             className={[
               "pointer-events-auto flex items-center gap-3 rounded-lg px-4 py-3 shadow-lg",
+
               CLASES_MOBILE[toast.kind] ?? CLASES_MOBILE.info,
             ].join(" ")}
           >
             <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-white/25 text-xs font-bold">
               {ICONO[toast.kind] ?? ICONO.info}
             </span>
-            <span className="flex-1 text-sm font-semibold">{toast.message}</span>
+            <span className="flex-1 text-sm font-semibold">
+              {toast.message}
+            </span>
             <button
               type="button"
               onClick={() => dismissToast(toast.id)}
@@ -61,6 +71,7 @@ export default function Toaster() {
             key={toast.id}
             className={[
               "pointer-events-auto flex items-center justify-between gap-3 rounded-xl border px-3 py-2 shadow-lg backdrop-blur-sm",
+
               CLASES_DESKTOP[toast.kind] ?? CLASES_DESKTOP.info,
             ].join(" ")}
           >
@@ -77,5 +88,5 @@ export default function Toaster() {
         ))}
       </div>
     </>
-  );
+  )
 }

@@ -43,6 +43,9 @@ Se encontró que el commit base `fbf69d6` **no incluye** el trabajo de Registro/
 ## Próximo paso
 Tester validar T5-PWD-02 E2E (422/401/200 + login con nueva). Docker requiere Desktop running para `docker compose up`.
 
+## Sprint 7 — Persona B: Recordatorios y Notificaciones Push (Planner → Architect)
+**PLANNING** — `implementation.md` §12 define 5 tareas delegables (1.5d+1.5d+1d+1d+0.5d≈5.5d): T7-PUSH-01 PWA/SW/VAPID base, T7-PUSH-02 UI permiso+suscripción+backend, T7-PUSH-03 Badge contador en BottomNav, T7-PUSH-04 Push foreground/background+navegación+testing cross-platform, T7-PUSH-05 Fallback sin push+limpieza+docs. Sin `DEMO_MODE`, datos reales vía `apiClient` + `Paginated<T>`. Requiere `VITE_VAPID_PUBLIC_KEY` de backend team. `vite-plugin-pwa` debe agregarse a `package.json` + `vite.config.ts`.
+
 ## Sprint 5 — Extensión FR8 Cambio contraseña (Planner → Developer → Tester)
 **SUPERADO — ver `decisions.md` D017.** Este registro describe una implementación contra `POST /auth/change-password`; el backend que terminó mergeado a `dev` (commit `810809f`) expone `PATCH /auth/password`, no ese path — se descartó al mergear `feature/perfil_editable`. Se deja el registro original abajo como historial de la investigación, no como estado vigente.
 

@@ -305,3 +305,101 @@ Dependencias: T5-PERFIL-01 bloquea 02/03/04; 02 y 03 pueden ir en paralelo tras 
 > Auditoría 2026-09-16 (paralela a §9.6): se detectó el mismo gap — el frontend de este plan asumía `POST /auth/change-password` (`CHANGE_PASSWORD_PATH` en `src/auth/api.ts`), pero el backend real (`backend-ifts/app/features/auth/router.py`) **nunca expuso ese endpoint**. En su momento se escaló a 3 opciones para el Architect (A: crear endpoint dedicado en backend, B: reusar `forgot-password` sin pedir la actual, C: ocultar el botón hasta Sprint 6).
 >
 > **Resolución:** se tomó la opción A — el backend entregó `PATCH /auth/password` (INTEGRACION §2.4ter). La implementación final quedó en `CambiarPasswordModal.tsx` contra ese endpoint real (§9.6, D017), no contra `CHANGE_PASSWORD_PATH`/`/auth/change-password` (nunca llegó a existir, se descartó al mergear). Sin acción pendiente.
+
+---
+
+## 12. Plan Detallado — Persona B: Recordatorios y Notificaciones Push (SPRINT 7)
+
+> Fuente: `docs/TAREAS_FRONT_PERSONA_B.md` + backend implementado (`/notificaciones/suscripcion` POST/DELETE, VAPID keys). **Stack real sin mocks:** Vite+React+TS+Tailwind+`apiClient` (`VITE_API_URL=http://localhost:8000`, `Authorization: Bearer`, `ApiError {detail,errors[]}`, `401→logout`). `DEMO_MODE=false` obligatorio. PWA ya configurada en `vite.config.ts` (falta agregar `vite-plugin-pwa` para SW automático o implementar SW manual).
+
+### 12.1 Estado actual (auditoría 2026-09-26)
+- `features/recordatorios/service.ts` + `hooks.ts` + `RecordatoriosScreen.tsx` + `RecordatorioCard.tsx`: **DONE real** — CRUD completo contra `/recordatorios/` con token, `POST` sin `usuario_id`, `fecha futura 422`, `DELETE 204/404`. Consumido por `InicioScreen` y `MateriaDetalle`.
+- `src/App.tsx`: `BottomNav` con 5 tabs (inicio, materias, recordatorios, convenios, perfil). Tab "recordatorios" usa ícono campana (SVG inline). No hay badge/contador.
+- `vite.config.ts`: **NO tiene `vite-plugin-pwa`** — solo plugins Figma Make. Service Worker no registrado. Manifest/íconos PWA no generados.
+- `.env`: **NO tiene `VITE_VAPID_PUBLIC_KEY`** — debe proveerse por backend team (staging/prod).
+- `public/`: No existe `sw.js`, no existen íconos `/icons/icon-192.png`, `/icons/badge-72.png`.
+- `AuthContext`: Expone `usuario`/`token`/`logout`/`actualizarPerfil`. No expone helpers para push.
+
+### 12.2 Principios para el Developer (no mocks, no scope-creep)
+1. **Nunca pedir permiso al cargar** — solo tras gesto explícito (botón "Activar notificaciones", click en campana, etc.). Mostrar rationale antes.
+2. **Wrapper único `apiClient`** para `POST/DELETE /notificaciones/suscripcion` con `auth:true`.
+3. **Service Worker en scope raíz (`/`)** — registrar solo en secure context (HTTPS/localhost). Manejar `install`/`activate`/`push`/`notificationclick`/`notificationclose`.
+4. **Clave VAPID** desde `import.meta.env.VITE_VAPID_PUBLIC_KEY` → `urlBase64ToUint8Array()` → `applicationServerKey`.
+5. **Contador pendientes** desde `GET /recordatorios?estado=pendiente&limit=1` (usa `total` del `Paginated`) o endpoint dedicado si backend lo expone. Actualizar al recibir push (foreground), al click notificación, al marcar leído/completado.
+6. **Sin `DEMO_MODE`/`demo.ts`** en esta feature. Datos reales. Validar contra backend con seed.
+7. **iOS PWA**: documentar que requiere "Añadir a pantalla de inicio" + `display: "standalone"` en manifest. Probar con PWA instalada.
+8. **Desuscripción** en logout y/o settings: `pushManager.unsubscribe()` + `DELETE /notificaciones/suscripcion {endpoint}`.
+
+### 12.3 Tareas delegables al Developer (orden estricto)
+
+#### T7-PUSH-01 · Configuración PWA + VAPID + Service Worker base (1.5d) — Crítica
+- **Archivos**: `vite.config.ts`, `package.json`, `public/sw.js`, `src/lib/push.ts` (nuevo), `src/hooks/usePush.ts` (nuevo), `.env.example`
+- **Acciones**:
+  1. Agregar `vite-plugin-pwa` a `devDependencies` y configurar en `vite.config.ts`: `registerType: 'prompt'`, `manifest: { name: 'miIFTS', short_name: 'miIFTS', display: 'standalone', icons: [...] }`, `workbox: { globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'] }` o estrategia `generateSW` con `swSrc: 'public/sw.js'` si SW manual.
+  2. Crear `public/sw.js` con handlers: `install` (skipWaiting), `activate` (clients.claim), `push` (showNotification con `data.recordatorio_id`, `actions: [{action:'open',title:'Ver'},{action:'dismiss',title:'Descartar'}]`, `requireInteraction:true`), `notificationclick` (close + `clients.openWindow(/recordatorios/${recordatorio_id})`), `notificationclose` (opcional analytics).
+  3. Crear `src/lib/push.ts` con utilidades: `urlBase64ToUint8Array(base64)`, `arrayBufferToBase64(buffer)`, `registrarSW()`, `solicitarPermiso()`, `suscribirPush()`, `desuscribirPush()`.
+  4. Crear `src/hooks/usePush.ts` que exponga: `isSupported`, `permission`, `subscription`, `registrar()`, `activar()`, `desactivar()`, `contadorPendientes` (estado reactivo).
+  5. Agregar `VITE_VAPID_PUBLIC_KEY` a `.env.example` (comentado, valor de ejemplo).
+  6. Generar íconos PWA: `public/icons/icon-192.png`, `public/icons/icon-512.png`, `public/icons/badge-72.png` (monocromático para badge Android).
+  7. En `index.html` o `main.tsx`: `<link rel="manifest" href="/manifest.webmanifest">` (generado por plugin).
+- **Entrega**: SW registrado en consola (`SW registrado: /`), `Notification.permission` consultable, `VITE_VAPID_PUBLIC_KEY` documentada.
+
+#### T7-PUSH-02 · UI Permiso + Suscripción/Desuscripción + Integración Backend (1.5d) — Crítica — depende T7-PUSH-01
+- **Archivos**: `src/features/recordatorios/RecordatoriosScreen.tsx`, `src/hooks/usePush.ts`, `src/lib/push.ts`, `src/auth/api.ts` (nuevas funciones), `src/components/BadgeNotificaciones.tsx` (nuevo)
+- **Acciones**:
+  1. En `src/auth/api.ts`: agregar `suscribirNotificacionPush(payload)` → `POST /notificaciones/suscripcion` `auth:true`, `desuscribirNotificacionPush(endpoint)` → `DELETE /notificaciones/suscripcion` `auth:true`.
+  2. En `usePush.ts`: integrar `suscribirPush()` que llama `reg.pushManager.subscribe({userVisibleOnly:true, applicationServerKey})` → envía `{endpoint, p256dh, auth}` al backend vía `suscribirNotificacionPush`. `desactivar()` llama `pushManager.unsubscribe()` + `desuscribirNotificacionPush(endpoint)`.
+  3. En `RecordatoriosScreen.tsx`: agregar botón "Activar notificaciones" (o toggle en header) **solo si** `permission === 'default'` o `'granted'` sin suscripción activa. Mostrar rationale antes de pedir permiso (modal/toast explicativo). Si `permission === 'denied'`: banner "Activa notificaciones en ajustes del navegador" + enlace a `chrome://settings/content/notifications` (genérico).
+  4. En `RecordatoriosScreen.tsx`: si suscrito, mostrar "Notificaciones activadas" + botón "Desactivar".
+  5. Manejar errores: `401` → logout (ya en `apiClient`), `422` → toast `detail`, red `offline` → toast "Sin conexión".
+- **Entrega**: Flujo completo: click botón → rationale → permiso → suscripción → POST 201 → UI actualizada. Desuscripción funciona.
+
+#### T7-PUSH-03 · Badge/Contador en ícono Recordatorios (BottomNav) (1d) — Alta — depende T7-PUSH-02
+- **Archivos**: `src/components/BadgeNotificaciones.tsx`, `src/App.tsx`, `src/hooks/usePush.ts`, `src/features/recordatorios/hooks.ts`
+- **Acciones**:
+  1. Crear `src/components/BadgeNotificaciones.tsx`: recibe `count: number`, renderiza `null` si 0, círculo rojo `absolute -top-1 -right-1` con número (1-9) o "9+" (≥10), Tailwind tokens (`bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center`).
+  2. En `usePush.ts`: agregar `contadorPendientes` state + `cargarContador()` que hace `GET /recordatorios?estado=pendiente&limit=1` (o `page=1&per_page=1`) y lee `data.total`. Exponer `actualizarContador()` para llamada externa.
+  3. En `usePush.ts`: escuchar `navigator.serviceWorker.addEventListener('message', ...)` para actualizar contador al recibir push en foreground (SW puede hacer `clients.matchAll().postMessage({type:'PUSH_RECIBIDO'})`).
+  4. En `App.tsx`: importar `usePush` en componente raíz (o crear `PushProvider` context), leer `contadorPendientes` y pasarlo a `BottomNav` → `navItems[2]` (recordatorios) renderiza `<BadgeNotificaciones count={contador} />` junto al ícono campana.
+  5. Sincronización: al click notificación (`notificationclick` en SW) → app abre → `actualizarContador()`. Al crear/borrar/marcar recordatorio en `RecordatoriosScreen` → `actualizarContador()`.
+- **Entrega**: Badge visible en tab recordatorios con contador correcto, se actualiza en tiempo real (push foreground) y tras acciones CRUD.
+
+#### T7-PUSH-04 · Manejo Push Foreground/Background + Navegación + Testing cross-platform (1d) — Alta — depende T7-PUSH-03
+- **Archivos**: `public/sw.js`, `src/hooks/usePush.ts`, `src/features/recordatorios/RecordatoriosScreen.tsx`
+- **Acciones**:
+  1. En `sw.js` (`push` event): parsear `event.data.json()` → `data.recordatorio_id`, `data.tipo`, `data.materia_id`. `showNotification(title, options)` con `icon`, `badge`, `data`, `actions`, `requireInteraction:true`.
+  2. En `sw.js` (`notificationclick`): `event.notification.close()`. Si `action === 'open'` y `data.recordatorio_id` → `clients.openWindow(/recordatorios/${recordatorio_id})`. Si no hay action o `dismiss` → solo cerrar.
+  3. En `usePush.ts`: al montar, si `Notification.permission === 'granted'` y hay subscription → `cargarContador()` inicial.
+  4. Probar matriz: Android (Chrome/Edge/Firefox/Samsung) app cerrada → notificación en bandeja; iOS 16.4+ PWA instalada → notificación; Desktop (Chrome/Edge/Firefox/Safari) pestaña cerrada → notificación; Foreground → notificación nativa + badge actualizado.
+  5. Documentar en `docs/TESTING_PUSH.md` (o sección en `testing.md`): pasos QA por plataforma, limitaciones iOS, cómo probar con `ngrok`/`cloudflared` en móvil.
+- **Entrega**: Push recibido y mostrado nativamente en foreground/background/cerrada. Click navega a recordatorio correcto. Contador sincronizado.
+
+#### T7-PUSH-05 · Fallback Sin Push + Limpieza + Docs (0.5d) — Media — depende T7-PUSH-04
+- **Archivos**: `src/features/recordatorios/RecordatoriosScreen.tsx`, `src/hooks/usePush.ts`
+- **Acciones**:
+  1. Si `!('serviceWorker' in navigator)` o `!('PushManager' in window)` o `Notification.permission === 'denied'`: mostrar banner no intrusivo "Activa notificaciones para recibir avisos con la app cerrada" + botón "Entendido" (dismiss).
+  2. En fallback: al abrir app, `GET /recordatorios?desde=hoy` y mostrar lista (ya hace `RecordatoriosScreen` con filtro `desde`).
+  3. Limpiar `console.log` de debug, asegurar `eslint`/`tsc` verdes.
+  4. Actualizar `docs/context/testing.md` § Push Notifications con criterios de aceptación (ver checklist TAREAS_FRONT_PERSONA_B.md líneas 247-263).
+- **Entrega**: App funcional sin push (graceful degradation), sin errores consola, build+lint+tsc OK.
+
+### 12.4 Criterios de aceptación para Tester (validar contra backend real, sin mocks)
+1. **SW**: Registrado en `localhost`/`HTTPS`, `install`/`activate` OK, sin errores consola.
+2. **Permiso**: Pedido **solo** tras click en botón "Activar notificaciones" (nunca al cargar). Rationale visible.
+3. **Suscripción**: `POST /notificaciones/suscripcion` 201 con `{endpoint, p256dh, auth}`. `applicationServerKey` correcto (VAPID).
+4. **Push Foreground**: Notificación nativa visible, badge actualizado, `data.recordatorio_id` presente.
+5. **Push Background/Cerrada**: Notificación en bandeja sistema (Android) / centro notificaciones (iOS/macOS/Windows).
+6. **Click notificación**: Navega a `/recordatorios/{id}` (SPA route, no recarga completa).
+7. **Badge**: Círculo rojo en tab recordatorios con contador pendientes (0→sin badge, 1-9→número, 10+→"9+"). Actualiza al recibir push, al click notificación, al crear/borrar recordatorio.
+8. **Desuscripción**: Botón "Desactivar" → `unsubscribe()` + `DELETE /notificaciones/suscripcion` → UI vuelve a estado "Activar".
+9. **iOS**: Probado con PWA instalada ("Añadir a pantalla de inicio"), `display: "standalone"`, íconos 192/512/badge-72.
+10. **Android**: Probado con app cerrada (swipe away), notificación llega.
+11. **Graceful**: Permiso denegado / push no soportado → banner fallback, app usable.
+12. **Build**: `npm run build && npx tsc --noEmit` verdes, `oxfmt` sin cambios.
+
+### 12.5 Orden de ejecución Developer
+T7-PUSH-01 → T7-PUSH-02 → T7-PUSH-03 → T7-PUSH-04 → T7-PUSH-05
+
+**Dependencias**: T7-PUSH-01 bloquea todo (SW + VAPID + registro). T7-PUSH-02 requiere T7-PUSH-01 (suscripción usa SW registrado). T7-PUSH-03 requiere T7-PUSH-02 (contador necesita suscripción activa para push real, pero carga inicial funciona sin). T7-PUSH-04 requiere T7-PUSH-03 (navegación usa contador/badge). T7-PUSH-05 independizable pero al final.
+
+**Bloqueadores externos**: Backend team debe proveer `VITE_VAPID_PUBLIC_KEY` para staging/prod (dev puede generar local con `python -c "from pywebpush import generate_vapid_keys; print(generate_vapid_keys())"`). CORS: front corre en `:5173` (Vite default) pero Figma Make usa `:8443` — verificar `CORS_ORIGINS` en backend incluya ambos.

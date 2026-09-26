@@ -18,6 +18,7 @@ services:
       context: .
       args:
         VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+        VITE_VAPID_PUBLIC_KEY: ${VITE_VAPID_PUBLIC_KEY:-BA1tqHWxt4mO87lDTHUCILZzivyt7H-5vS0IIUXP7qdVU09M5XWKxxIV6eP_CdD_mDKrHFXFx3HG4Z84r0HXu-U}
     ports:
       - "80:80"
     depends_on:

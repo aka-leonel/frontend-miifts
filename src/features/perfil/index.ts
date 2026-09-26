@@ -1,3 +1,5 @@
-export { default as PerfilScreen } from "./PerfilScreen";
-export * from "./service";
-export * from "./hooks";
+export { default as PerfilScreen } from "./PerfilScreen"
+
+export * from "./service"
+
+export * from "./hooks"

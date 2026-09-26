@@ -5,12 +5,14 @@ WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@10.34.3 --activate
 
 COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --no-frozen-lockfile
 
 # VITE_API_URL se hornea en el build (queda fijo en el JS estático que corre
 # en el navegador). Default = puerto que el back mapea al host en su compose.
 ARG VITE_API_URL=http://localhost:8000
+ARG VITE_VAPID_PUBLIC_KEY
 ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_VAPID_PUBLIC_KEY=$VITE_VAPID_PUBLIC_KEY
 
 COPY . .
 RUN pnpm build

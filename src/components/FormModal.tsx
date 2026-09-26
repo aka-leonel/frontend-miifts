@@ -1,84 +1,113 @@
-import { useEffect, useState } from "react";
-import { useApiForm } from "../hooks/useApiForm";
-import EntityForm, { type FormFieldSpec } from "./EntityForm";
+import { useEffect, useState } from "react"
 
-export type FormSpec<T extends Record<string, unknown>> = {
-  title: (item?: Partial<T>) => string;
-  fields: FormFieldSpec[];
+import { useApiForm } from "../hooks/useApiForm"
+
+import EntityForm, { type FormFieldSpec } from "./EntityForm"
+
+export type FormSpec<T extends Record<string, unknown>,> = {
+  title: (item?: Partial<T>) => string
+
+  fields: FormFieldSpec[]
+
   submit: {
-    create: (values: T) => Promise<unknown> | unknown;
-    update: (id: string | number, values: T) => Promise<unknown> | unknown;
-  };
-  onError?: {
-    "409"?: "toast";
-    "422"?: "fields";
-  };
-  invalidates?: (id?: string | number) => unknown[];
-};
+    create: (values: T) => Promise<unknown> | unknown
 
-export type FormModalProps<T extends Record<string, unknown>> = {
-  open: boolean;
-  item?: Partial<T>;
-  spec: FormSpec<T>;
-  initialValues: T;
-  onClose: () => void;
-  onSuccess?: () => void;
-};
+    update: (id: string | number, values: T) => Promise<unknown> | unknown
+  }
+
+  onError?: {
+    "409"?: "toast"
+
+    "422"?: "fields"
+  }
+
+  invalidates?: (id?: string | number) => unknown[]
+}
+
+export type FormModalProps<T extends Record<string, unknown>,> = {
+  open: boolean
+
+  item?: Partial<T>
+
+  spec: FormSpec<T>
+
+  initialValues: T
+
+  onClose: () => void
+
+  onSuccess?: () => void
+}
 
 export default function FormModal<T extends Record<string, unknown>>({
   open,
+
   item,
+
   spec,
+
   initialValues,
+
   onClose,
+
   onSuccess,
 }: FormModalProps<T>) {
-  const { fieldErrors, applyApiError, clearErrors } = useApiForm();
-  const [values, setValues] = useState<T>(initialValues);
-  const [waiting, setWaiting] = useState(false);
+  const { fieldErrors, applyApiError, clearErrors } = useApiForm()
+
+  const [values, setValues] = useState<T>(initialValues)
+
+  const [waiting, setWaiting] = useState(false)
 
   useEffect(() => {
     if (!open) {
-      return;
+      return
     }
 
     // En un callback (no suelto en el cuerpo del efecto) para no disparar
-    // un render síncrono en cascada.
-    queueMicrotask(() => {
-      setValues(initialValues);
-      clearErrors();
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, item?.id]);
 
-  if (!open) return null;
+    // un render síncrono en cascada.
+
+    queueMicrotask(() => {
+      setValues(initialValues)
+
+      clearErrors()
+    })
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, item?.id])
+
+  if (!open) return null
 
   const onFieldChange = (name: keyof T, value: unknown) => {
-    setValues((current) => ({ ...current, [name]: value }));
-  };
+    setValues((current) => ({ ...current, [name]: value }))
+  }
 
   const handleSubmit = async () => {
-    setWaiting(true);
+    setWaiting(true)
 
     try {
       if (item?.id) {
-        await spec.submit.update(item.id as string | number, values);
+        await spec.submit.update(item.id as string | number, values)
       } else {
-        await spec.submit.create(values);
+        await spec.submit.create(values)
       }
 
-      clearErrors();
-      onSuccess?.();
-      onClose();
+      clearErrors()
+
+      onSuccess?.()
+
+      onClose()
     } catch (error) {
-      applyApiError(error, "No se pudo guardar el formulario.");
+      applyApiError(error, "No se pudo guardar el formulario.")
     } finally {
-      setWaiting(false);
+      setWaiting(false)
     }
-  };
+  }
 
   return (
-    <div className="fixed inset-0 z-[200] flex overflow-y-auto bg-black/70 p-4 pb-8" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-[200] flex overflow-y-auto bg-black/70 p-4 pb-8"
+      onClick={onClose}
+    >
       <div
         role="dialog"
         aria-modal="true"
@@ -87,7 +116,11 @@ export default function FormModal<T extends Record<string, unknown>>({
       >
         <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className="text-lg font-bold text-text">{spec.title(item)}</h2>
-          <button type="button" onClick={onClose} className="text-xl text-muted transition hover:text-text">
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-xl text-muted transition hover:text-text"
+          >
             ×
           </button>
         </div>
@@ -121,5 +154,5 @@ export default function FormModal<T extends Record<string, unknown>>({
         </EntityForm>
       </div>
     </div>
-  );
+  )
 }

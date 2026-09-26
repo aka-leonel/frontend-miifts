@@ -1,13 +1,15 @@
-import type { ReactNode } from "react";
-import { Navigate } from "react-router-dom";
-import { useAuth } from "../../auth/AuthContext";
+import type { ReactNode } from "react"
+
+import { Navigate } from "react-router-dom"
+
+import { useAuth } from "../../auth/AuthContext"
 
 export function RutaAdmin({ children }: { children: ReactNode }) {
-  const { usuario } = useAuth();
+  const { usuario } = useAuth()
 
   if (usuario?.rol !== "admin") {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/" replace />
   }
 
-  return <>{children}</>;
+  return <>{children}</>
 }

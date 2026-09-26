@@ -1,15 +1,17 @@
 // src/features/auth/RutaProtegida.tsx
 
-import type { ReactNode } from "react";
-import { Navigate } from "react-router-dom";
-import { useAuth } from "../../auth/AuthContext";
+import type { ReactNode } from "react"
+
+import { Navigate } from "react-router-dom"
+
+import { useAuth } from "../../auth/AuthContext"
 
 export function RutaProtegida({ children }: { children: ReactNode }) {
-  const { token } = useAuth();
+  const { token } = useAuth()
 
   if (!token) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" replace />
   }
 
-  return <>{children}</>;
+  return <>{children}</>
 }

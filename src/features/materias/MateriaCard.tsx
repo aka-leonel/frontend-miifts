@@ -1,26 +1,40 @@
-import type { Cursada } from "../../api/types";
-import { estadoBadgeClasses, estadoLabel } from "./estado";
+import type { Cursada } from "../../api/types"
+
+import { estadoBadgeClasses, estadoLabel } from "./estado"
 
 function subtitulo(cursada: Cursada): string {
-  const partes: string[] = [];
-  if (cursada.nota_parcial_1 != null) partes.push(`1er ${cursada.nota_parcial_1}`);
-  if (cursada.nota_parcial_2 != null) partes.push(`2do ${cursada.nota_parcial_2}`);
-  if (cursada.nota_final != null) partes.push(`Final ${cursada.nota_final}`);
-  return partes.length > 0 ? partes.join(" · ") : "Sin notas cargadas";
+  const partes: string[] = []
+
+  if (cursada.nota_parcial_1 != null)
+    partes.push(`1er ${cursada.nota_parcial_1}`)
+
+  if (cursada.nota_parcial_2 != null)
+    partes.push(`2do ${cursada.nota_parcial_2}`)
+
+  if (cursada.nota_final != null) partes.push(`Final ${cursada.nota_final}`)
+
+  return partes.length > 0 ? partes.join(" · ") : "Sin notas cargadas"
 }
 
 export default function MateriaCard({
   cursada,
+
   onOpen,
+
   onEdit,
+
   onDelete,
 }: {
-  cursada: Cursada;
-  onOpen?: (materiaId: number) => void;
-  onEdit?: () => void;
-  onDelete?: () => void;
+  cursada: Cursada
+
+  onOpen?: (materiaId: number) => void
+
+  onEdit?: () => void
+
+  onDelete?: () => void
 }) {
-  const estado = estadoLabel(cursada);
+  const estado = estadoLabel(cursada)
+
   return (
     <div
       onClick={() => onOpen?.(cursada.materia_id)}
@@ -33,7 +47,12 @@ export default function MateriaCard({
           </div>
           <div className="mt-1 text-xs text-muted">{subtitulo(cursada)}</div>
         </div>
-        <span className={["flex-shrink-0 rounded-full px-3 py-1 text-xs font-semibold capitalize", estadoBadgeClasses[estado]].join(" ")}>
+        <span
+          className={[
+            "flex-shrink-0 rounded-full px-3 py-1 text-xs font-semibold capitalize",
+            estadoBadgeClasses[estado],
+          ].join(" ")}
+        >
           {estado}
         </span>
       </div>
@@ -43,8 +62,9 @@ export default function MateriaCard({
             <button
               type="button"
               onClick={(e) => {
-                e.stopPropagation();
-                onEdit();
+                e.stopPropagation()
+
+                onEdit()
               }}
               className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted transition hover:text-text"
             >
@@ -55,8 +75,9 @@ export default function MateriaCard({
             <button
               type="button"
               onClick={(e) => {
-                e.stopPropagation();
-                onDelete();
+                e.stopPropagation()
+
+                onDelete()
               }}
               className="rounded-lg border border-red-500/40 px-3 py-1.5 text-xs font-medium text-red-300"
             >
@@ -66,5 +87,5 @@ export default function MateriaCard({
         </div>
       ) : null}
     </div>
-  );
+  )
 }

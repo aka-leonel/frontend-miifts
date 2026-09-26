@@ -1,25 +1,36 @@
 // Integrante 3 (INTEGRACION_FRONT.md §2.7 Tier 3). Presentacional puro —
+
 // mismo criterio que <MateriaCard> de Integrante 2: el padre decide si hay
+
 // `onEdit`/`onDelete` (solo cuando `recurso.usuario_id === usuario.id`) y
+
 // maneja el `<ConfirmDialog>` de borrado.
-import type { Recurso } from "../../api/types";
+
+import type { Recurso } from "../../api/types"
 
 interface Props {
-  recurso: Recurso;
-  onEdit?: () => void;
-  onDelete?: () => void;
-  disabled?: boolean;
+  recurso: Recurso
+
+  onEdit?: () => void
+
+  onDelete?: () => void
+
+  disabled?: boolean
 }
 
 export function RecursoCard({ recurso, onEdit, onDelete, disabled }: Props) {
-  const esDueno = Boolean(onEdit || onDelete);
+  const esDueno = Boolean(onEdit || onDelete)
 
   return (
     <div className="rounded-2xl border border-border bg-card p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="truncate text-sm font-semibold text-text">{recurso.titulo}</div>
-          {recurso.descripcion ? <p className="mt-1 text-sm text-muted">{recurso.descripcion}</p> : null}
+          <div className="truncate text-sm font-semibold text-text">
+            {recurso.titulo}
+          </div>
+          {recurso.descripcion ? (
+            <p className="mt-1 text-sm text-muted">{recurso.descripcion}</p>
+          ) : null}
         </div>
         {recurso.tipo ? (
           <span className="flex-shrink-0 rounded-full bg-surface2 px-2 py-0.5 text-xs uppercase text-muted">
@@ -61,5 +72,5 @@ export function RecursoCard({ recurso, onEdit, onDelete, disabled }: Props) {
         </div>
       ) : null}
     </div>
-  );
+  )
 }

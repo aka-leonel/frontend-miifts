@@ -1,194 +1,285 @@
 // SEAM · trabajo de Integrante 1 (Fundaciones).
+
 //
+
 // Estos tipos van a ser GENERADOS con `npm run gen:api` (`openapi-typescript` contra
+
 // `/openapi.json`, ver INTEGRACION_FRONT.md §1.8) y luego alias-eados en este mismo
+
 // archivo con los MISMOS nombres. Acá están calcados a mano del contrato para que
+
 // las features ya compilen; cuando Int. 1 entregue el schema generado, solo se
+
 // reemplaza el contenido de este archivo SIN tocar ninguna feature.
 
-export type Rol = "estudiante" | "admin";
+export type Rol = "estudiante" | "admin"
 
 export interface Usuario {
-  id: number;
-  nombre: string;
-  apellido: string;
-  email: string;
-  carrera_id: number;
-  fecha_registro: string;
-  rol: Rol;
+  id: number
+
+  nombre: string
+
+  apellido: string
+
+  email: string
+
+  carrera_id: number
+
+  fecha_registro: string
+
+  rol: Rol
 }
 
 export interface RegistroRequest {
-  nombre: string;
-  apellido: string;
-  email: string;
-  password: string;
-  carrera_id: number;
+  nombre: string
+
+  apellido: string
+
+  email: string
+
+  password: string
+
+  carrera_id: number
 }
 
 export interface LoginRequest {
-  email: string;
-  password: string;
+  email: string
+
+  password: string
 }
 
 export interface TokenResponse {
-  access_token: string;
-  token_type: string;
-  usuario: Usuario;
+  access_token: string
+
+  token_type: string
+
+  usuario: Usuario
 }
 
 // S5-12 (Olvidé mi contraseña): calcados de INTEGRACION_FRONT.md §2.4bis.
+
 export interface ForgotPasswordRequest {
-  email: string;
+  email: string
 }
 
 export interface ResetPasswordRequest {
-  token: string;
-  password: string;
+  token: string
+
+  password: string
 }
 
 export interface MensajeResponse {
-  detail: string;
+  detail: string
 }
 
 // PATCH /auth/password (INTEGRACION §2.4ter): cambiar contraseña logueado,
+
 // reautenticando con la actual. Reemplaza la idea de reusar forgot-password.
+
 export interface CambiarPasswordRequest {
-  password_actual: string;
-  password_nueva: string;
+  password_actual: string
+
+  password_nueva: string
 }
 
 export interface Carrera {
-  id: number;
-  nombre: string;
-  duracion_cuatrimestres: number;
-  ifts_id: number;
+  id: number
+
+  nombre: string
+
+  duracion_cuatrimestres: number
+
+  ifts_id: number
 }
 
 // S4-10 (Admin catálogo): calcado de `CarreraCreate`/`CarreraUpdate` en
-// docs/openapi.json — el backend no acepta `descripcion` en este recurso.
-export type CarreraCreate = {
-  nombre: string;
-  duracion_cuatrimestres: number;
-  ifts_id: number;
-};
 
-export type CarreraUpdate = Partial<CarreraCreate>;
+// docs/openapi.json — el backend no acepta `descripcion` en este recurso.
+
+export type CarreraCreate = {
+  nombre: string
+
+  duracion_cuatrimestres: number
+
+  ifts_id: number
+}
+
+export type CarreraUpdate = Partial<CarreraCreate>
 
 export interface Materia {
-  id: number;
-  carrera_id: number;
-  nombre: string;
-  codigo: string;
-  anio: number;
-  cuatrimestre: number;
+  id: number
+
+  carrera_id: number
+
+  nombre: string
+
+  codigo: string
+
+  anio: number
+
+  cuatrimestre: number
 }
 
 // S4-10 (Admin catálogo): calcado de `MateriaCreate`/`MateriaUpdate` en
+
 // docs/openapi.json — `carrera_id` no se puede editar por PUT (fijo al crear).
+
 export type MateriaCreate = {
-  carrera_id: number;
-  nombre: string;
-  codigo: string;
-  anio: number;
-  cuatrimestre: number;
-};
+  carrera_id: number
 
-export type MateriaUpdate = Partial<Omit<MateriaCreate, "carrera_id">>;
+  nombre: string
 
-export interface Correlativa {
-  id: number;
-  materia_id: number;
-  requiere_id: number;
-  requiere: Materia | null;
+  codigo: string
+
+  anio: number
+
+  cuatrimestre: number
 }
 
-export type EstadoCursada = "cursando" | "promocionada" | "aprobada" | "desaprobada" | "pendiente";
+export type MateriaUpdate = Partial<Omit<MateriaCreate, "carrera_id">>
+
+export interface Correlativa {
+  id: number
+
+  materia_id: number
+
+  requiere_id: number
+
+  requiere: Materia | null
+}
+
+export type EstadoCursada = "cursando" | "promocionada" | "aprobada" | "desaprobada" | "pendiente"
 
 export interface Cursada {
-  id: number;
-  usuario_id: number;
-  materia_id: number;
-  cursando: boolean;
-  estado: EstadoCursada;
-  nota_parcial_1?: number | null;
-  nota_parcial_2?: number | null;
-  examen_final?: number | null;
+  id: number
+
+  usuario_id: number
+
+  materia_id: number
+
+  cursando: boolean
+
+  estado: EstadoCursada
+
+  nota_parcial_1?: number | null
+
+  nota_parcial_2?: number | null
+
+  examen_final?: number | null
+
   // Calculado por el backend: si ambos parciales cierran en 7+, es su promedio
+
   // (promoción); si no, es `examen_final`. Nunca se manda en el body, solo se lee.
-  nota_final?: number | null;
-  materia?: Pick<Materia, "id" | "nombre" | "codigo">;
+
+  nota_final?: number | null
+
+  materia?: Pick<Materia, "id" | "nombre" | "codigo">
 }
 
 export type CursadaCreate = {
-  materia_id: number;
-  cursando?: boolean;
-  nota_parcial_1?: number | null;
-  nota_parcial_2?: number | null;
-  examen_final?: number | null;
-};
+  materia_id: number
 
-export type CursadaUpdate = Partial<Omit<CursadaCreate, "materia_id">>;
+  cursando?: boolean
+
+  nota_parcial_1?: number | null
+
+  nota_parcial_2?: number | null
+
+  examen_final?: number | null
+}
+
+export type CursadaUpdate = Partial<Omit<CursadaCreate, "materia_id">>
 
 export interface Promedio {
-  promedio: number | null;
-  materias_computadas: number;
+  promedio: number | null
+
+  materias_computadas: number
 }
 
 export interface Recordatorio {
-  id: number;
-  titulo: string;
-  fecha: string;
-  tipo: string;
-  materia_id?: number | null;
-  materia?: Pick<Materia, "id" | "nombre" | "codigo">;
+  id: number
+
+  titulo: string
+
+  fecha: string
+
+  tipo: string
+
+  materia_id?: number | null
+
+  materia?: Pick<Materia, "id" | "nombre" | "codigo">
 }
 
 export type RecordatorioCreate = {
-  titulo: string;
-  fecha: string;
-  tipo: string;
-  materia_id?: number | null;
-};
+  titulo: string
+
+  fecha: string
+
+  tipo: string
+
+  materia_id?: number | null
+}
 
 export interface Recurso {
-  id: number;
-  usuario_id: number;
-  fecha_creacion: string;
-  titulo: string;
-  url: string;
-  descripcion: string;
-  tipo: string | null;
-  materia_id: number;
+  id: number
+
+  usuario_id: number
+
+  fecha_creacion: string
+
+  titulo: string
+
+  url: string
+
+  descripcion: string
+
+  tipo: string | null
+
+  materia_id: number
 }
 
 export type RecursoCreate = {
-  titulo: string;
-  url: string;
-  descripcion: string;
-  tipo?: string | null;
-  materia_id: number;
-};
+  titulo: string
+
+  url: string
+
+  descripcion: string
+
+  tipo?: string | null
+
+  materia_id: number
+}
 
 export interface Token {
-  access_token: string;
-  token_type: string;
-  usuario: Usuario;
+  access_token: string
+
+  token_type: string
+
+  usuario: Usuario
 }
 
 // PATCH /auth/me (`PerfilUpdate` en backend auth/schema.py) solo acepta
+
 // nombre/apellido — "el email identifica la cuenta... cualquier otro campo
+
 // del body se ignora". No agregar `email` acá: mandarlo no lo cambia, solo
+
 // finge un guardado exitoso que nunca pasó.
-export type UsuarioUpdate = Partial<Pick<Usuario, "nombre" | "apellido">>;
+
+export type UsuarioUpdate = Partial<Pick<Usuario, "nombre" | "apellido">>
 
 export interface Paginated<T> {
-  items: T[];
-  total: number;
-  page: number;
-  per_page: number;
-  total_pages: number;
+  items: T[]
+
+  total: number
+
+  page: number
+
+  per_page: number
+
+  total_pages: number
 }
 
-export { ApiError } from "../lib/apiClient";
-export type { ApiFieldErrors } from "../lib/apiClient";
+export { ApiError } from "../lib/apiClient"
+
+export type { ApiFieldErrors } from "../lib/apiClient"

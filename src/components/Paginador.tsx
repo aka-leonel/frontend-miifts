@@ -1,11 +1,15 @@
 type PaginadorProps = {
-  page: number;
-  totalPages: number;
-  onPageChange: (page: number) => void;
-};
+  page: number
+  totalPages: number
+  onPageChange: (page: number) => void
+}
 
-export default function Paginador({ page, totalPages, onPageChange }: PaginadorProps) {
-  if (totalPages <= 1) return null;
+export default function Paginador({
+  page,
+  totalPages,
+  onPageChange,
+}: PaginadorProps) {
+  if (totalPages <= 1) return null
 
   return (
     <div className="mt-5 flex items-center justify-center gap-3">
@@ -31,5 +35,5 @@ export default function Paginador({ page, totalPages, onPageChange }: PaginadorP
         Siguiente
       </button>
     </div>
-  );
+  )
 }
