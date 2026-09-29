@@ -1,6 +1,6 @@
 # Requirements — miIFTS Frontend
 
-> Owner: Architect | Sources: `docs/REQUERIMIENTOS_FRONTEND_IA.md` (§1-10), `docs/INTEGRACION_FRONT.md` (§1-7), `docs/openapi.json` (v1.0.0)
+> Owner: Architect | Sources: `docs/REQUERIMIENTOS_FRONTEND_IA.md` (§1-10), `docs/INTEGRACION_FRONT.md` (§1-7), `docs/openapi.json` (v1.0.0), `docs/SPRINT5_FRONT.md` (S5-05→S5-08 Integrante 2)
 
 ## 1. Producto
 Plataforma académica IFTS: auth/perfiles, catálogo (carreras/materias/correlativas), cursadas+promedio, recursos, convenios/TalentoTech, recordatorios/agenda. Backend FastAPI 0.115.5 + SQLAlchemy 2 + Pydantic v2, `VITE_API_URL=http://localhost:8000`, CORS `localhost:5173`, JSON ISO8601, Swagger `/docs`.
@@ -13,7 +13,7 @@ Plataforma académica IFTS: auth/perfiles, catálogo (carreras/materias/correlat
 ## 3. Funcionales
 
 ### FR1 Auth JWT HS256 24h sin refresh
-- `POST /auth/registro` Pub {nombre 2-100, email único, password ≥8 letra+número, carrera_id existente} → 201 UsuarioResponse sin token, rol ignorado.
+- `POST /auth/registro` Pub {nombre 2-100, apellido 1-100, email único, password ≥8 letra+número, carrera_id existente} → 201 UsuarioResponse sin token, rol ignorado.
 - `POST /auth/login` Pub {email,password} → 200 {access_token, token_type:"bearer", usuario}; 401 credenciales.
 - `GET /auth/me` Bearer → Usuario; `GET /auth/verify` → {valid,user_id}
 - Flow: registro→login→ guardar token+usuario localStorage/memoria → interceptor 401→logout; login trae usuario (no necesita /me).
@@ -36,8 +36,27 @@ Plataforma académica IFTS: auth/perfiles, catálogo (carreras/materias/correlat
 ### FR6 Health
 - `GET /` → {mensaje} ; `GET /health` → {status:"ok"}
 
+### FR7 Perfil Editable — Sprint 5 Integrante 2 (S5-05 → S5-08)
+> Fuente: `SPRINT5_FRONT.md` § Integrante 2 + auditoría S4-16. Depende de S5-03 (identidad unificada en `useAuth()`).
+
+- **Endpoint:** `PATCH /auth/me` Bearer (ya disponible en backend Sprint 5; no existía en Sprint 4 §1.7). Request parcial `{nombre?, apellido?, email?}` — **solo esos 3 campos**. `carrera_id` **no** se envía ni es editable (restricción de negocio validada por backend); `password` **no** pertenece a este form (va por flujo "Olvidé mi contraseña" Integrante 4).
+- **S5-05 Edición:** `PerfilScreen` debe exponer 3 inputs editables (nombre, apellido, email) + carrera en solo lectura (`disabled` + `cursor-not-allowed` + valor derivado de `GET /auth/me` + `useCarreras` para nombre). Botón "Guardar" habilitado solo si hay cambios y validación cliente pasa. Al guardar → `PATCH /auth/me` via `apiClient` con `auth:true`. Éxito 200 → toast éxito + cerrar modo edición. Carrera nunca editable.
+- **S5-06 Errores:** 422 validación → mapear `errors[]` a campo con `useApiForm` (`nombre` 2-100, `apellido` 2-100, `email` formato válido) → `fieldErrors` bajo input. 409 email duplicado → `detail` toast error (no field). Otros 401/403/500 → toast `detail`. Mismo patrón que `materiaUsuarioSpec`/`recursoSpec` (`onError {422:fields, 409:toast}`).
+- **S5-07 Sincronización:** Tras 200, refrescar identidad en `AuthContext` (`usuario`) + `localStorage` (`miifts_usuario`) sin recarga. Debe reflejarse al instante en `InicioScreen` (bienvenida `usuario.nombre`), avatar/iniciales y cualquier `useAuth().usuario`. Invalidar `['auth-me']` si se usa, pero la fuente de verdad es `useAuth()`. No depender de S5-03 `getMiUsuario()` legacy.
+- **S5-08 No-contraseña (Sprint 5 original):** Verificación negativa original: `PATCH /auth/me` nunca recibe `password`. Superado por FR8 si se habilita cambio dedicado.
+- **Estados UI:** `loading` inicial → `Skeleton`; `error` carga → `ErrorState` con retry `refetch`; guardando → botón `Guardando...` disabled + spinner; sin cambios → guardar disabled.
+- **Dependencia:** S5-03 debe estar completo (`InicioScreen`/`MisMateriasScreen`/`MateriaDetalleScreen` migrados a `useAuth().usuario`) para que S5-05 lea/escriba identidad única.
+
+### FR8 Cambio de contraseña desde Perfil — Extensión Sprint 5 (integración lista)
+> Fuente: solicitud usuario 2026-09-16 + auditoría live `openapi.json` (no existe `POST /auth/change-password` aún). **Frontend listo, backend pendiente: solo falta integrar string de ruta.**
+
+- **Endpoint (único punto de integración):** `POST /auth/change-password` Bearer (o el que defina backend: `PATCH /auth/password`, `POST /auth/me/password`). Contrato: `ChangePasswordRequest {current_password: string, new_password: string}` → 200/204 éxito, 401 current incorrecto, 422 validación (`new_password` ≥8 letra+número), 400/403. **Constante `CHANGE_PASSWORD_PATH` en `src/auth/api.ts` es el único lugar a editar cuando el back esté listo.**
+- **Seguridad:** contraseña se envía en texto plano por TLS (HTTPS), **nunca hasheada en frontend**. Backend hashea con bcrypt y nunca loguea. Inputs `type="password"` con `autoComplete="current-password"` / `new-password`, no se guarda en `localStorage`, no se envía en `PATCH /auth/me`.
+- **UI:** `PerfilScreen` botón "Cambiar contraseña" abre modal limpio (sin aviso de endpoint faltante) con 3 campos: actual, nueva, confirmar. Validación cliente: actual requerido, nueva ≥8 letra+número, confirmar === nueva. Al guardar → `POST CHANGE_PASSWORD_PATH` con `auth:true` vía `apiClient`. Éxito → toast "Contraseña actualizada" + cerrar modal + limpiar campos. Error 422 → `fieldErrors` mapeado (`new_password`→`next`), 401 → toast "Contraseña actual incorrecta".
+- **NFR:** sin `DEMO_MODE`, reutiliza `useToast`/`ApiError`, deshabilita botón mientras `pwdSaving`, no toca `carrera` ni perfil.
+
 ## 4. Modelos TS (copiar de REQUERIMIENTOS §6)
-Paginated<T>, ApiError, Rol, Usuario, RegistroRequest, LoginRequest, TokenResponse, Carrera, Materia, Correlativa, MateriaCreate, EstadoCursada, Cursada, CursadaCreate, Promedio, Recurso, RecursoCreate, Convenio, TalentoTech, Recordatorio, RecordatorioCreate. Generables vía `npx openapi-typescript docs/openapi.json -o src/api/schema.d.ts`.
+Paginated<T>, ApiError, Rol, Usuario {id,nombre,apellido,email,carrera_id,fecha_registro,rol}, RegistroRequest, LoginRequest, TokenResponse, Carrera, Materia, Correlativa, MateriaCreate, EstadoCursada, Cursada, CursadaCreate, Promedio, Recurso, RecursoCreate, Convenio, TalentoTech, Recordatorio, RecordatorioCreate. `UsuarioUpdate = Partial<Pick<Usuario,"nombre"|"apellido"|"email">>` para PATCH /auth/me, `ChangePasswordRequest {current_password, new_password}` para POST /auth/change-password. Generables vía `npx openapi-typescript docs/openapi.json -o src/api/schema.d.ts`.
 
 ## 5. Pantallas MVP → Endpoints (REQUERIMIENTOS §7 / INTEGRACION §4)
 - Registro/Login: select carreras, registro→login, login guarda token, rehidratar /auth/me
@@ -45,15 +64,35 @@ Paginated<T>, ApiError, Rol, Usuario, RegistroRequest, LoginRequest, TokenRespon
 - Mis cursadas: listar, promedio, agregar, editar, quitar
 - Recursos: lista filtrada, detalle, crear, editar/borrar dueño, convenios/TT lectura
 - Recordatorios: agenda filtrada, crear, borrar
+- **Perfil (Sprint5):** `GET /auth/me` poblar form + `PATCH /auth/me` guardar (solo nombre/apellido — email se ignora en el backend, ver D016), carrera y email readOnly; **Cambio contraseña:** modal `PATCH /auth/password` (FR8, D017)
+
+### FR7 Olvidé mi contraseña (Sprint5 S5-12..S5-15, INTEGRACION §2.4bis)
+- `POST /auth/forgot-password` Pub {email} → 200 SIEMPRE `{detail:"Si el email está registrado..."}` exista o no el email — front muestra éxito directo, no distingue casos (no revela registro).
+- `POST /auth/reset-password` Pub {token,password} → 200 `{detail:"Contraseña actualizada correctamente."}`; 400 `{detail:"Token inválido o expirado"}` si vencido(30min)/inexistente/ya usado → volver a pantalla "olvidé mi contraseña", no error genérico; 422 password ≥8 letra+número (misma regla Registro).
+- Token viaja como query param en el link del mail: `<FRONTEND_RESET_PASSWORD_URL>?token=...`. Un solo uso (se consume recién en el 200; un 422 no lo gasta, se puede reintentar).
+- Gap conocido: sin SMTP en dev, el link se loguea en consola del backend en vez de mandarse — QA manual requiere pedir el token de ahí.
+### FR8 Cambiar contraseña logueado (INTEGRACION §2.4ter, resuelto 2026-09-16)
+- `PATCH /auth/password` Bearer {password_actual,password_nueva} → 200 `MensajeResponse`; 401 si `password_actual` no coincide (reautenticación, NO es "sesión inválida" — el JWT sigue vigente); 400 si `password_nueva===password_actual`; 422 misma regla que Registro (≥8, letra+número).
+- Reemplaza la idea de reusar `forgot-password` desde Perfil (revertida 2026-09-16) — endpoint dedicado, un solo request, sin email ni token.
+- Implementado en Perfil vía `CambiarPasswordModal`. Requirió ajustar `apiClient` (`suppressUnauthorizedRedirect`) para que el 401 de este endpoint no dispare el logout global (ver `decisions.md` D015).
 
 ## 6. NFR y Reglas IA (REQUERIMIENTOS §8)
 Wrapper único baseURL+Authorization+parser ApiError+401 side-effect; TanStack Query keys endpoint+params invalidar mutations; forms 422→errors[]; ownership `usuario_id===usuario.id`; Pagination reutilizable; Auth guard redirect; env VITE_API_URL; No inventar endpoints; Qué NO hacer: no mandar usuario_id en 3 POSTs, no mandar rol registro, no parsear 204, no refresh.
+- **Sprint5 Perfil:** sin `DEMO_MODE`/`demo.ts`; solo `apiClient` + `useApiForm`/`useToast`; `PATCH /auth/me` con `auth:true` (solo nombre/apellido); carrera y email jamás editables; password **solo** vía `PATCH /auth/password` modal dedicado (TLS + bcrypt backend, nunca hash frontend).
 
 ## 7. Criterios Aceptación
 - Auth flujo completo + 401 interceptor + carrera select
 - 5 pantallas navegables con guards y paginación reutilizable
 - Ownership y 403/404/409/422 manejados (toast + field errors)
 - Wrapper único + fecha futura 422 + DELETE 204
+- Olvidé mi contraseña: link visible en Login → pantalla email → siempre estado de éxito (S5-13); pantalla nueva password (token por query param, mismo criterio de validación que Registro, confirmación, ojo mostrar/ocultar) (S5-14); token inválido/vencido vuelve a "olvidé mi contraseña" con mensaje claro, no error genérico (S5-15)
+- **Sprint5 Perfil (para Tester validar contra backend real):**
+  - [ ] Edita nombre/apellido vía `PATCH /auth/me` real y persiste. Email NO editable (readOnly, el backend lo ignora si se manda — D016).
+  - [ ] Carrera siempre readOnly (disabled, no request).
+  - [ ] 422 mapea a campo (nombre/apellido).
+  - [ ] Tras éxito, `useAuth().usuario` y `localStorage` actualizados sin reload (Inicio/avatar reflejan cambio).
+  - [ ] Modal "Cambiar contraseña" → `PATCH /auth/password` (D017), 3 inputs `password`, validación cliente igual a Registro, 401→"contraseña actual no coincide" sin desloguear (D015), 400→"debe ser distinta a la actual", 422→toast, éxito→toast + sesión intacta.
 
 ## 8. Fuera Alcance
 Refresh, logout servidor, edición recordatorio, escritura convenios/TT para estudiante.
+- **Sprint5 Perfil:** cambio de `carrera_id` (bloqueado). Cambio de contraseña antes iba por "Olvidé mi contraseña" (Int.4) pero ahora FR8 lo habilita desde Perfil vía endpoint dedicado.

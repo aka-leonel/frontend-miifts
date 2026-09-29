@@ -1,4 +1,5 @@
 {
+  "title": "MI_IFTS",
   "description": "An academic organizer for IFTS students in CABA, offering course tracking, reminders, and resources to enhance study efficiency and success.",
   "robots": {
     "index": false
