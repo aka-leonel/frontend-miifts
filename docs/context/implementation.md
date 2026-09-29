@@ -169,3 +169,38 @@ Dependencias: T2-MAT-02 bloquea T2-INI-01 (reuso widgets); T2-INI-01 depende de 
 ### 8.5 Orden de ejecución Developer
 T4-PERFIL-01 → T4-CONV-01 → T4-CONV-02 → T4-CLEAN-01 → T4-RESP-01 (+ T4-SERVICE-01 en paralelo a T4-CONV-02)
 Dependencias: T4-CONV-02 bloqueado por T4-CONV-01 (validar datos reales antes de borrar fallback); T4-CLEAN-01 independiente pero antes de T4-RESP-01 (evitar responsive sobre código muerto); T4-PERFIL-01 independiente al inicio.
+
+## 9. Plan Detallado — Panel Admin: Correlativas + Convenios (2026-09-28, ver decisions D014-D016, requirements §6b)
+
+### 9.1 Estado actual
+Carreras+Materias admin YA ABM completo y validado (`features/catalogo-admin/`, S4-10). Backend `dev/feature/admin-endpoints` corriendo en `localhost:8000` ya expone `POST/DELETE /materias/correlativas` y `POST/PUT/DELETE /convenios/`. Falta: tipado generado, UI de Correlativas, UI de Convenios admin, nav gateado por rol.
+
+### 9.2 Tareas delegables al Developer (orden estricto)
+
+#### T-ADM-01 · Tipado generado (0.5d) — bloquea el resto
+- Agregar devDependency `openapi-typescript`; script `"gen:api": "openapi-typescript %VITE_API_URL%/openapi.json -o src/api/schema.d.ts"` (Windows: usar `http://localhost:8000/openapi.json` literal si `%VITE_API_URL%` no expande en el shell del script; documentar en package.json el prerequisito "backend corriendo").
+- Correr `npm run gen:api` contra el backend real → generar `src/api/schema.d.ts`.
+- En `api/types.ts`: `import type { components } from "./schema.d.ts"; type S = components["schemas"];` y reemplazar/agregar SOLO: `CarreraCreate`, `CarreraUpdate`, `MateriaCreate`, `MateriaUpdate` (reemplazan las hand-written), `CorrelativaCreate` y `Convenio`/`ConvenioCreate` (nuevos) = `S['...']`. No tocar el resto del archivo.
+
+#### T-ADM-02 · Correlativas (1d) — depende T-ADM-01
+- `features/catalogo-admin/service.ts`: agregar `getCorrelativas(materiaId)`, `crearCorrelativa(body: CorrelativaCreate)`, `borrarCorrelativa(id)`.
+- `features/catalogo-admin/hooks.ts`: `useCorrelativas(materiaId)` (patrón `useAsync`), `useCrearCorrelativa`/`useBorrarCorrelativa` (patrón `useAsyncAction`).
+- `AdminCatalogoScreen.tsx`: al seleccionar una materia (click en la fila, igual que la selección de carrera), mostrar panel "Correlatividades de {materia}": lista (`requiere.nombre`) + botón borrar, y alta con 2 `<select>` nativos (no `FormModal`/`EntityForm`, no encaja el field cruzado) — materia fija = seleccionada, "requiere" = materias de la misma carrera excluyendo la propia. Errores: 404/409 → toast con `error.detail` (mismo patrón `ApiError` que carreras/materias).
+
+#### T-ADM-03 · Convenios admin (1d) — independiente de T-ADM-02, depende T-ADM-01
+- Nueva carpeta `features/convenios-admin/`: `service.ts` (crear/editar/borrar + listado paginado sobre `Convenio` crudo, NO reusar `features/convenios/service.ts`), `convenioSpec.ts` (`FormSpec<ConvenioForm>`: institucion, carrera_destino, descripcion, link_info type `"url"`, carrera_id `"select"` con opciones de `useCarreras`; PUT manda el mismo body completo que POST, no hay `ConvenioUpdate` parcial), `hooks.ts`, `ConveniosAdminScreen.tsx` (tabla + `FormModal` + `ConfirmDialog` + `Paginador`, mismo patrón visual que `AdminCatalogoScreen`).
+- Validación `link_info`: antes de llamar al service, si `new URL(value)` tira, lanzar `new ApiError(422, "...", {link_info: "URL inválida"})` para que `useApiForm` lo muestre en el campo (no llamar al backend con una URL rota).
+
+#### T-ADM-04 · Shell + nav (0.5d) — depende T-ADM-02 y T-ADM-03
+- Nuevo `features/admin/AdminScreen.tsx`: tabs internas "Catálogo" / "Convenios", renderiza `AdminCatalogoScreen` / `ConveniosAdminScreen`.
+- `App.tsx`: reemplazar `Screen "admin-catalogo"` por `"admin"` → `<AdminScreen/>` con guard `usuario?.rol==="admin"` (si no, fallback a materias, igual que hoy). `navItems`/`NavTab` agregan `"admin"` solo cuando `usuario?.rol==="admin"` (filtrar el array antes de pasarlo a `SidebarNav`/`BottomNav`). Quitar el botón "Admin catálogo" + prop `onAbrirAdmin` de `MisMateriasScreen` (un solo punto de entrada ahora, el nav).
+
+### 9.3 Criterios de aceptación para Tester
+1. `npm run gen:api` genera `schema.d.ts` sin error contra backend real; `api/types.ts` compila con los alias nuevos, `tsc --noEmit` 0 errores.
+2. Nav: item "Admin" visible solo con `usuario.rol==="admin"`, ausente para estudiante (login con user estudiante, verificar).
+3. Correlativas: crear con 2 selects (2do excluye la materia elegida), ver `requiere.nombre` en la lista, borrar refresca lista; 404/409 del backend se ven como toast con el mensaje real (no genérico).
+4. Convenios admin: crear/editar/borrar contra `POST/PUT/DELETE /convenios/`; `link_info` inválido (ej. `"no-es-url"`) bloquea el submit con error en el campo, sin request de red; distinto de la pantalla de estudiante (`/convenios` sigue siendo solo lectura, sin botones de alta/edición).
+5. `npm run build` limpio, 0 imports muertos (`onAbrirAdmin` ya no existe en `MisMateriasScreen`).
+
+### 9.4 Orden de ejecución Developer
+T-ADM-01 → (T-ADM-02 ∥ T-ADM-03) → T-ADM-04

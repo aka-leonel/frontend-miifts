@@ -40,3 +40,12 @@ AGENTS.md define context/ raíz; agents/*.md referencian docs/architecture.md; u
 
 ## D013 Sprint2 gaps (INTEGRACION §6)
 Resueltos: identidad token cursadas/recordatorios, escritura convenios/TT admin, detalles carrera/materia. Vigente: CORS si front !=5173 pedir CORS_ORIGINS.
+
+## D014 Ejecutar D010: openapi-typescript real (Panel Admin, 2026-09-28)
+Instalar `openapi-typescript` devDependency + script `gen:api` (`openapi-typescript $VITE_API_URL/openapi.json -o src/api/schema.d.ts`, backend debe estar corriendo). Alias en `api/types.ts` SOLO los tipos pedidos por el ticket (`CarreraCreate/Update`, `MateriaCreate/Update`, `CorrelativaCreate`, `ConvenioCreate`, `Convenio`) sourceados de `components["schemas"]`; el resto de `api/types.ts` queda hand-written como está (evita refactor no pedido — AGENTS.md "Avoid unnecessary refactoring").
+
+## D015 Admin: un solo nav item con tabs internas, no 4 rutas separadas
+El ticket pide "4 pantallas" (carreras, materias, correlativas, convenios) pero Carreras+Materias ya viven combinadas en `AdminCatalogoScreen` (S4-10, ya validado por Tester). Se mantiene esa combinación, se le agrega una sección de Correlativas (materia-scoped, encaja naturalmente junto al listado de materias), y Convenios se separa en su propia pantalla. Un único `AdminScreen` con 2 tabs (Catálogo / Convenios) se cuelga de un nuevo nav item "Admin" (rol-gated), reemplazando el botón inline que vivía en `MisMateriasScreen` (S4-10) — un solo punto de entrada en vez de dos. No hay React Router real en esta app (pese a lo que dice architecture.md §2/§6): `App.tsx` navega con un `switch` de `Screen` en memoria; `RutaAdmin`/`RutaProtegida` (`features/auth/`) existen pero no están wireados — el guard de rol real de esta app vive en el `switch` de `App.tsx` (ya el patrón usado por `admin-catalogo` en S4-10).
+
+## D016 Convenios admin = feature nueva, no reusar `features/convenios`
+`features/convenios` es de solo lectura para estudiante y mapea la respuesta a `ConvenioItem` (forma UI, pierde `id`/`carrera_id` crudos). El ticket pide explícitamente no reusar componentes de consulta para gestión. Nueva carpeta `features/convenios-admin/` con su propio `service.ts` (CRUD sobre la forma cruda del backend), `convenioSpec.ts`, `hooks.ts`, `ConveniosAdminScreen.tsx` — mismo patrón que `features/catalogo-admin/`.

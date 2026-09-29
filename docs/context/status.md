@@ -3,7 +3,7 @@
 > Owner: Planner | Actualizado: 2026-09-14
 
 ## Estado
-**COMPLETE** — Int.2 (MATERIAS+INICIO) + **Int.4 (PERFIL·CONVENIOS·UX S4-16..S4-20)** implementados y validados por Tester (2026-09-14). Int.2: build+tsc PASS. Int.4: build 250ms + tsc 0 + grep 0 hardcode/demo + responsive PASS (observación menor BottomNav). Fase 1 Auth: T1.2 Login real DONE; T1.1 Registro y T1.3 rehidratación siguen pendientes.
+**COMPLETE** (2026-09-28) — Panel Admin: Correlativas + Convenios (`implementation.md` §9, T-ADM-01..04). Validado en navegador contra backend real: correlativas (crear/borrar con selects cruzados), convenios (crear/editar/borrar, validación de URL client-side sin pegarle al backend), nav de admin reemplaza por completo al de estudiante (no lo agrega — corregido tras feedback directo: el admin no debe ver Materias/Recordatorios/Convenios de estudiante), login/rehidratación de admin aterriza directo en el panel. Listado de materias del catálogo agrupado por año + filtro por cuatrimestre (pedido de UX, listas largas). `tsc`+`build` verdes. Contexto previo: Int.2 (MATERIAS+INICIO) + Int.4 (PERFIL·CONVENIOS·UX) COMPLETE (2026-09-14). Fase 1 Auth: T1.2 Login real DONE; T1.1 Registro y T1.3 rehidratación siguen pendientes (fuera de este ticket).
 
 ## Qué se agregó (este update — Sprint 4, Integrante 2)
 - **S4-06** Shell responsive: `App.tsx` sacó el `maxWidth:430` fijo del shell raíz. Nuevo `SidebarNav` (desktop, `md:+`) reemplaza a `BottomNav` (que ahora solo se ve en mobile). Bug encontrado y corregido en el camino: `BottomNav` tenía `display:"flex"` en `style` inline, que anulaba el `display:none` de la clase `md:hidden` sin importar el viewport — se movió `display` a la clase (`className="flex md:hidden"`).

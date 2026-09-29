@@ -18,10 +18,8 @@ const chips: (EstadoUI | "Todas")[] = ["Todas", "cursando", "promocionada", "apr
 
 export default function MisMateriasScreen({
   onOpenMateria,
-  onAbrirAdmin,
 }: {
   onOpenMateria?: (id: number) => void;
-  onAbrirAdmin?: () => void;
 }) {
   const { pushToast } = useToast();
   const [page, setPage] = useState(1);
@@ -97,21 +95,9 @@ export default function MisMateriasScreen({
   return (
     <div className="flex-1 overflow-y-auto pb-24">
       <div className="px-6 pt-14">
-        <div className="mb-4 flex items-start justify-between gap-3">
-          <div>
-            <div className="text-2xl font-black tracking-[-0.04em] text-text">Mis Materias</div>
-            <div className="mt-1 text-sm text-muted">Tus cursadas y tu promedio</div>
-          </div>
-          {/* S4-10: ABM de catálogo, solo visible para admin. */}
-          {usuario.rol === "admin" && onAbrirAdmin ? (
-            <button
-              type="button"
-              onClick={onAbrirAdmin}
-              className="flex-shrink-0 rounded-lg border border-violet/60 bg-violet/10 px-3 py-1.5 text-xs font-semibold text-violet"
-            >
-              Admin catálogo
-            </button>
-          ) : null}
+        <div className="mb-4">
+          <div className="text-2xl font-black tracking-[-0.04em] text-text">Mis Materias</div>
+          <div className="mt-1 text-sm text-muted">Tus cursadas y tu promedio</div>
         </div>
 
         <PromedioCard promedio={promedio.data} loading={promedio.loading} />

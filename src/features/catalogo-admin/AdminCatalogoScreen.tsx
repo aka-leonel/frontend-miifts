@@ -10,10 +10,134 @@ import { useToast } from "../../hooks/useToast";
 import type { Carrera, Materia } from "../../api/types";
 import { useCarreras, useMateriasDeCarrera } from "../catalogo/hooks";
 import { carreraFormInitial, carreraSpec, type CarreraForm } from "./carreraSpec";
-import { useBorrarCarrera, useBorrarMateria } from "./hooks";
+import { useBorrarCarrera, useBorrarCorrelativa, useCorrelativas, useCrearCorrelativa, useBorrarMateria } from "./hooks";
 import { materiaFormInitial, materiaSpec, type MateriaForm } from "./materiaSpec";
 
-export default function AdminCatalogoScreen({ onVolver }: { onVolver: () => void }) {
+const selectClassName =
+  "w-full rounded-xl border border-border bg-bg px-3 py-2.5 text-sm text-text outline-none transition focus:border-violet";
+
+function CorrelativasPanel({ materias }: { materias: Materia[] }) {
+  const { pushToast } = useToast();
+  const [estaMateriaId, setEstaMateriaId] = useState<number | null>(null);
+  const [requiereId, setRequiereId] = useState<number | "">("");
+
+  const correlativasQuery = useCorrelativas(estaMateriaId);
+  const crear = useCrearCorrelativa(() => {
+    pushToast("Correlatividad creada.", "success");
+    setRequiereId("");
+    correlativasQuery.refetch();
+  });
+  const borrar = useBorrarCorrelativa(() => {
+    pushToast("Correlatividad eliminada.", "success");
+    correlativasQuery.refetch();
+  });
+
+  const opcionesRequiere = materias.filter((m) => m.id !== estaMateriaId);
+
+  async function handleCrear() {
+    if (estaMateriaId == null || requiereId === "") return;
+    try {
+      await crear.run({ materia_id: estaMateriaId, requiere_id: requiereId });
+    } catch (error) {
+      pushToast(error instanceof ApiError ? error.detail : "No se pudo crear la correlatividad.", "error");
+    }
+  }
+
+  async function handleBorrar(id: number) {
+    try {
+      await borrar.run(id);
+    } catch (error) {
+      pushToast(error instanceof ApiError ? error.detail : "No se pudo eliminar.", "error");
+    }
+  }
+
+  return (
+    <div>
+      <div className="mb-3 text-sm font-bold text-text">Correlatividades</div>
+
+      <div className="mb-4 grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <label className="block text-xs font-semibold uppercase tracking-[0.08em] text-muted">Esta materia</label>
+          <select
+            value={estaMateriaId ?? ""}
+            onChange={(e) => {
+              setEstaMateriaId(e.target.value ? Number(e.target.value) : null);
+              setRequiereId("");
+            }}
+            className={selectClassName}
+          >
+            <option value="">Seleccionar</option>
+            {materias.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.nombre}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="space-y-1.5">
+          <label className="block text-xs font-semibold uppercase tracking-[0.08em] text-muted">
+            Requiere aprobada/cursada
+          </label>
+          <select
+            value={requiereId}
+            disabled={estaMateriaId == null}
+            onChange={(e) => setRequiereId(e.target.value ? Number(e.target.value) : "")}
+            className={[selectClassName, "disabled:cursor-not-allowed disabled:opacity-50"].join(" ")}
+          >
+            <option value="">Seleccionar</option>
+            {opcionesRequiere.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.nombre}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => void handleCrear()}
+        disabled={estaMateriaId == null || requiereId === "" || crear.loading}
+        className="mb-4 rounded-lg border border-violet/60 bg-violet/10 px-3 py-1.5 text-xs font-semibold text-violet disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        {crear.loading ? "Agregando…" : "+ Agregar correlatividad"}
+      </button>
+
+      {estaMateriaId == null ? (
+        <div className="text-xs text-muted">Elegí una materia para ver sus correlatividades.</div>
+      ) : (
+        <ListState
+          loading={correlativasQuery.loading}
+          error={correlativasQuery.error}
+          items={correlativasQuery.data?.items ?? []}
+          emptyTitle="Sin correlatividades"
+          emptyDescription="Esta materia no requiere ninguna otra todavía."
+          onRetry={() => correlativasQuery.refetch()}
+        >
+          <div className="space-y-2">
+            {(correlativasQuery.data?.items ?? []).map((c) => (
+              <div
+                key={c.id}
+                className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3"
+              >
+                <span className="truncate text-sm text-text">{c.requiere?.nombre ?? `Materia #${c.requiere_id}`}</span>
+                <button
+                  type="button"
+                  onClick={() => void handleBorrar(c.id)}
+                  className="flex-shrink-0 rounded-lg border border-red-500/40 px-3 py-1 text-xs font-medium text-red-300"
+                >
+                  Borrar
+                </button>
+              </div>
+            ))}
+          </div>
+        </ListState>
+      )}
+    </div>
+  );
+}
+
+export default function AdminCatalogoScreen({ onVolver }: { onVolver?: () => void }) {
   const { pushToast } = useToast();
 
   const carrerasQuery = useCarreras({ per_page: 100 });
@@ -27,6 +151,22 @@ export default function AdminCatalogoScreen({ onVolver }: { onVolver: () => void
   const [aBorrarCarrera, setABorrarCarrera] = useState<Carrera | null>(null);
   const [modalMateria, setModalMateria] = useState<{ open: boolean; item: Materia | null }>({ open: false, item: null });
   const [aBorrarMateria, setABorrarMateria] = useState<Materia | null>(null);
+  const [filtroCuatrimestre, setFiltroCuatrimestre] = useState<0 | 1 | 2>(0);
+
+  const materiasFiltradas = (materiasQuery.data?.items ?? []).filter(
+    (m) => filtroCuatrimestre === 0 || m.cuatrimestre === filtroCuatrimestre,
+  );
+  const gruposPorAnio: [number, Materia[]][] = Object.entries(
+    materiasFiltradas.reduce<Record<number, Materia[]>>((acc, m) => {
+      (acc[m.anio] ??= []).push(m);
+      return acc;
+    }, {}),
+  )
+    .map(([anio, lista]): [number, Materia[]] => [
+      Number(anio),
+      [...lista].sort((a, b) => a.cuatrimestre - b.cuatrimestre || a.nombre.localeCompare(b.nombre)),
+    ])
+    .sort(([a], [b]) => a - b);
 
   const borrarCarrera = useBorrarCarrera(() => {
     pushToast("Carrera eliminada.", "success");
@@ -64,9 +204,11 @@ export default function AdminCatalogoScreen({ onVolver }: { onVolver: () => void
   return (
     <div className="flex-1 overflow-y-auto pb-24">
       <div className="px-6 pt-14">
-        <button type="button" onClick={onVolver} className="mb-4 text-sm text-muted transition hover:text-text">
-          ← Materias
-        </button>
+        {onVolver ? (
+          <button type="button" onClick={onVolver} className="mb-4 text-sm text-muted transition hover:text-text">
+            ← Materias
+          </button>
+        ) : null}
 
         <div className="mb-6">
           <div className="text-2xl font-black tracking-[-0.04em] text-text">Catálogo (Admin)</div>
@@ -163,43 +305,79 @@ export default function AdminCatalogoScreen({ onVolver }: { onVolver: () => void
               + Nueva
             </button>
           </div>
+
+          {/* Con muchas materias cargadas, la lista plana se hace difícil de
+              seguir — se filtra por cuatrimestre y se agrupa por año. */}
+          <div className="mb-3 flex gap-2">
+            {([0, 1, 2] as const).map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => setFiltroCuatrimestre(c)}
+                className={[
+                  "rounded-full border px-3 py-1 text-xs font-medium transition",
+                  filtroCuatrimestre === c
+                    ? "border-violet bg-violet text-white"
+                    : "border-border bg-card text-muted",
+                ].join(" ")}
+              >
+                {c === 0 ? "Todos" : `${c}º cuatrimestre`}
+              </button>
+            ))}
+          </div>
+
           <ListState
             loading={materiasQuery.loading}
             error={materiasQuery.error}
-            items={materiasQuery.data?.items ?? []}
+            items={materiasFiltradas}
             emptyTitle="Sin materias"
-            emptyDescription="Esta carrera todavía no tiene materias cargadas."
+            emptyDescription={
+              filtroCuatrimestre === 0
+                ? "Esta carrera todavía no tiene materias cargadas."
+                : "No hay materias de ese cuatrimestre."
+            }
             onRetry={() => materiasQuery.refetch()}
           >
-            <div className="space-y-2">
-              {(materiasQuery.data?.items ?? []).map((m) => (
-                <div key={m.id} className="rounded-2xl border border-border bg-card p-4">
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-semibold text-text">{m.nombre}</div>
-                    <div className="mt-1 text-xs text-muted">
-                      {m.codigo} · {m.anio}º año · {m.cuatrimestre}º cuatrimestre
-                    </div>
-                  </div>
-                  <div className="mt-3 flex gap-2 border-t border-border pt-3">
-                    <button
-                      type="button"
-                      onClick={() => setModalMateria({ open: true, item: m })}
-                      className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted transition hover:text-text"
-                    >
-                      Editar
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setABorrarMateria(m)}
-                      className="rounded-lg border border-red-500/40 px-3 py-1.5 text-xs font-medium text-red-300"
-                    >
-                      Borrar
-                    </button>
+            <div className="space-y-5">
+              {gruposPorAnio.map(([anio, materiasDelAnio]) => (
+                <div key={anio}>
+                  <div className="mb-2 text-xs font-bold uppercase tracking-[0.08em] text-muted">{anio}º año</div>
+                  <div className="space-y-2">
+                    {materiasDelAnio.map((m) => (
+                      <div key={m.id} className="rounded-2xl border border-border bg-card p-4">
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-semibold text-text">{m.nombre}</div>
+                          <div className="mt-1 text-xs text-muted">
+                            {m.codigo} · {m.cuatrimestre}º cuatrimestre
+                          </div>
+                        </div>
+                        <div className="mt-3 flex gap-2 border-t border-border pt-3">
+                          <button
+                            type="button"
+                            onClick={() => setModalMateria({ open: true, item: m })}
+                            className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted transition hover:text-text"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setABorrarMateria(m)}
+                            className="rounded-lg border border-red-500/40 px-3 py-1.5 text-xs font-medium text-red-300"
+                          >
+                            Borrar
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))}
             </div>
           </ListState>
+        </div>
+
+        <div className="mt-8 border-t border-border pt-6">
+          <CorrelativasPanel materias={materiasQuery.data?.items ?? []} />
         </div>
       </div>
 

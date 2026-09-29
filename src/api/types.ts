@@ -1,10 +1,12 @@
 // SEAM · trabajo de Integrante 1 (Fundaciones).
 //
-// Estos tipos van a ser GENERADOS con `npm run gen:api` (`openapi-typescript` contra
-// `/openapi.json`, ver INTEGRACION_FRONT.md §1.8) y luego alias-eados en este mismo
-// archivo con los MISMOS nombres. Acá están calcados a mano del contrato para que
-// las features ya compilen; cuando Int. 1 entregue el schema generado, solo se
-// reemplaza el contenido de este archivo SIN tocar ninguna feature.
+// La mayoría de estos tipos siguen calcados a mano del contrato. Los `*Create`/
+// `*Update` de catálogo/correlativas/convenios (Panel Admin, ver decisions D014)
+// ya vienen de `npm run gen:api` (`openapi-typescript` contra el backend real,
+// ver `schema.d.ts`) — no los edites acá, correr `gen:api` de nuevo y listo.
+import type { components } from "./schema";
+
+type S = components["schemas"];
 
 export type Rol = "estudiante" | "admin";
 
@@ -44,15 +46,8 @@ export interface Carrera {
   ifts_id: number;
 }
 
-// S4-10 (Admin catálogo): calcado de `CarreraCreate`/`CarreraUpdate` en
-// docs/openapi.json — el backend no acepta `descripcion` en este recurso.
-export type CarreraCreate = {
-  nombre: string;
-  duracion_cuatrimestres: number;
-  ifts_id: number;
-};
-
-export type CarreraUpdate = Partial<CarreraCreate>;
+export type CarreraCreate = S["CarreraCreate"];
+export type CarreraUpdate = S["CarreraUpdate"];
 
 export interface Materia {
   id: number;
@@ -63,17 +58,8 @@ export interface Materia {
   cuatrimestre: number;
 }
 
-// S4-10 (Admin catálogo): calcado de `MateriaCreate`/`MateriaUpdate` en
-// docs/openapi.json — `carrera_id` no se puede editar por PUT (fijo al crear).
-export type MateriaCreate = {
-  carrera_id: number;
-  nombre: string;
-  codigo: string;
-  anio: number;
-  cuatrimestre: number;
-};
-
-export type MateriaUpdate = Partial<Omit<MateriaCreate, "carrera_id">>;
+export type MateriaCreate = S["MateriaCreate"];
+export type MateriaUpdate = S["MateriaUpdate"];
 
 export interface Correlativa {
   id: number;
@@ -81,6 +67,8 @@ export interface Correlativa {
   requiere_id: number;
   requiere: Materia | null;
 }
+
+export type CorrelativaCreate = S["CorrelativaCreate"];
 
 export type EstadoCursada = "cursando" | "promocionada" | "aprobada" | "desaprobada" | "pendiente";
 
@@ -148,6 +136,11 @@ export type RecursoCreate = {
   tipo?: string | null;
   materia_id: number;
 };
+
+// Panel Admin (ver decisions D016): forma cruda del backend, sin mapear a la
+// forma UI que usa `features/convenios` (estudiante, solo lectura).
+export type Convenio = S["ConvenioResponse"];
+export type ConvenioCreate = S["ConvenioCreate"];
 
 export interface Token {
   access_token: string;

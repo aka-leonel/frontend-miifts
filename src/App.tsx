@@ -8,7 +8,8 @@ import { MateriaDetalleScreen as MateriaDetalleFeatureScreen } from "./features/
 import { RecordatoriosScreen as RecordatoriosFeatureScreen } from "./features/recordatorios";
 import PerfilFeatureScreen from "./features/perfil/PerfilScreen";
 import { useLogin } from "./features/auth/hooks";
-import AdminCatalogoScreen from "./features/catalogo-admin/AdminCatalogoScreen";
+import { getUsuarioGuardado } from "./auth/storage";
+import AdminScreen from "./features/admin/AdminScreen";
 import { ApiError } from "./lib/apiClient";
 import { useToast } from "./hooks/useToast";
 import { useAuth } from "./auth/AuthContext";
@@ -24,9 +25,9 @@ type Screen =
   | "recordatorios"
   | "convenios"
   | "perfil"
-  | "admin-catalogo";
+  | "admin";
 
-type NavTab = "inicio" | "materias" | "recordatorios" | "convenios" | "perfil";
+type NavTab = "inicio" | "materias" | "recordatorios" | "convenios" | "perfil" | "admin";
 
 // ─── Design tokens ─────────────────────────────────────────────────────────────
 const CARD = "#1A1B23";
@@ -59,7 +60,18 @@ const navItems: { key: NavTab; label: string; icon: React.ReactNode }[] = [
   },
 ];
 
-function BottomNav({ active, onNav }: { active: NavTab; onNav: (t: NavTab) => void }) {
+// Panel Admin (ver decisions D015): item de nav aparte, se agrega a
+// `navItems` solo cuando `usuario.rol==="admin"` (ver `useNavItems` más abajo)
+// — reemplaza al botón "Admin catálogo" que vivía dentro de MisMateriasScreen.
+const adminNavItem: { key: NavTab; label: string; icon: React.ReactNode } = {
+  key: "admin",
+  label: "Admin",
+  icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 2l7 3.5v6c0 5-3.4 8.7-7 10.5-3.6-1.8-7-5.5-7-10.5v-6L12 2z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /><path d="M9.5 12l2 2 3.5-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>,
+};
+
+type NavItem = { key: NavTab; label: string; icon: React.ReactNode };
+
+function BottomNav({ items, active, onNav }: { items: NavItem[]; active: NavTab; onNav: (t: NavTab) => void }) {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   useEffect(() => {
@@ -85,7 +97,7 @@ function BottomNav({ active, onNav }: { active: NavTab; onNav: (t: NavTab) => vo
         zIndex: 100 
       }}
     >
-      {navItems.map((item) => {
+      {items.map((item) => {
         const isActive = active === item.key;
         return (
           <button key={item.key} onClick={() => onNav(item.key)} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, background: "none", border: "none", color: isActive ? VIOLET : MUTED, cursor: "pointer", padding: "4px 8px", transition: "color 0.2s" }}>
@@ -101,7 +113,7 @@ function BottomNav({ active, onNav }: { active: NavTab; onNav: (t: NavTab) => vo
 // ─── Sidebar Nav (desktop, md+) ────────────────────────────────────────────────
 // S4-06: reemplaza al BottomNav desde `md:` para que el shell deje de forzar
 // el frame fijo de 430px también en pantallas grandes.
-function SidebarNav({ active, onNav }: { active: NavTab; onNav: (t: NavTab) => void }) {
+function SidebarNav({ items, active, onNav }: { items: NavItem[]; active: NavTab; onNav: (t: NavTab) => void }) {
   return (
     <div
       className="hidden md:flex md:w-64 md:flex-shrink-0 md:flex-col md:border-r md:py-8"
@@ -111,7 +123,7 @@ function SidebarNav({ active, onNav }: { active: NavTab; onNav: (t: NavTab) => v
         mi<span style={{ color: VIOLET }}>IFTS</span>
       </div>
       <nav className="flex flex-col gap-1 px-3">
-        {navItems.map((item) => {
+        {items.map((item) => {
           const isActive = active === item.key;
           return (
             <button
@@ -199,7 +211,12 @@ function LoginScreen({ onGo }: { onGo: (s: Screen) => void }) {
   const handleIngresar = async () => {
     try {
       await login.run({ email, password: pass });
-      onGo("inicio");
+      // `login.run()` puede devolver `usuario` desactualizado (closure vieja
+      // de `useAuth()` dentro de `useLogin`, ver features/auth/hooks.ts) —
+      // `getUsuarioGuardado()` lee el localStorage recién escrito por
+      // `auth.login()`, así que siempre refleja la sesión que acaba de entrar.
+      const usuarioLogueado = getUsuarioGuardado();
+      onGo(usuarioLogueado?.rol === "admin" ? "admin" : "inicio");
     } catch (err) {
       const msg = err instanceof ApiError ? err.detail : "No se pudo iniciar sesión.";
       pushToast(msg, "error");
@@ -453,6 +470,7 @@ const navToScreen: Record<NavTab, Screen> = {
   recordatorios: "recordatorios",
   convenios: "convenios",
   perfil: "perfil",
+  admin: "admin",
 };
 
 const screenToNav: Partial<Record<Screen, NavTab>> = {
@@ -462,12 +480,19 @@ const screenToNav: Partial<Record<Screen, NavTab>> = {
   recordatorios: "recordatorios",
   convenios: "convenios",
   perfil: "perfil",
-  "admin-catalogo": "materias",
+  admin: "admin",
 };
 
 export default function App() {
   const { token, usuario, logout } = useAuth();
-  const [screen, setScreen] = useState<Screen>(() => (token ? "inicio" : "login"));
+  // Admin aterriza directo en el panel, nunca en el dashboard de estudiante
+  // (ver decisions D015-REV1) — `usuario` ya está disponible acá de forma
+  // síncrona (AuthProvider lo inicializa leyendo localStorage), así que esto
+  // también decide bien la pantalla inicial al recargar la página logueado.
+  const [screen, setScreen] = useState<Screen>(() => {
+    if (!token) return "login";
+    return usuario?.rol === "admin" ? "admin" : "inicio";
+  });
   // No hay react-router en esta app todavía (el resto navega con este mismo
   // switch, no con URLs) — mientras tanto, la materia que se está viendo en
   // "detalle" se guarda acá y se pasa por prop.
@@ -482,6 +507,13 @@ export default function App() {
   const handleNav = (tab: NavTab) => setScreen(navToScreen[tab]);
   const showNav = !["login", "registro", "carrera"].includes(screen);
   const activeTab = screenToNav[screen];
+  // Panel Admin (D015-REV1): el admin NO ve el menú de estudiante (Materias
+  // con notas/promedio, Recordatorios, Convenios de consulta no le sirven de
+  // nada) — se reemplaza el nav entero por uno propio. Se deja "Perfil"
+  // porque es el único lugar con "Cerrar sesión". Es solo UX — el backend
+  // hace cumplir 401/403 igual si alguien fuerza el estado.
+  const perfilNavItem = navItems.find((item) => item.key === "perfil")!;
+  const visibleNavItems = usuario?.rol === "admin" ? [adminNavItem, perfilNavItem] : navItems;
 
   function abrirDetalle(materiaId: number) {
     setMateriaIdSeleccionada(materiaId);
@@ -495,12 +527,7 @@ export default function App() {
       case "carrera": return <CarreraScreen onGo={setScreen} />;
       case "inicio": return <InicioReal onOpenMateria={abrirDetalle} />;
       case "materias":
-        return (
-          <MisMateriasReal
-            onOpenMateria={abrirDetalle}
-            onAbrirAdmin={() => setScreen("admin-catalogo")}
-          />
-        );
+        return <MisMateriasReal onOpenMateria={abrirDetalle} />;
       case "detalle":
         if (materiaIdSeleccionada == null) {
           return <MisMateriasReal onOpenMateria={abrirDetalle} />;
@@ -519,15 +546,10 @@ export default function App() {
             }}
           />
         );
-      case "admin-catalogo":
-        // S4-10: guard de rol acá además del link condicional en
-        // MisMateriasScreen — nadie que no sea admin llega a esta pantalla
-        // aunque fuerce el estado.
-        return usuario?.rol === "admin" ? (
-          <AdminCatalogoScreen onVolver={() => setScreen("materias")} />
-        ) : (
-          <MisMateriasReal onOpenMateria={abrirDetalle} />
-        );
+      case "admin":
+        // D015: guard de rol acá además del nav gateado — nadie que no sea
+        // admin llega a esta pantalla aunque fuerce el estado.
+        return usuario?.rol === "admin" ? <AdminScreen /> : <MisMateriasReal onOpenMateria={abrirDetalle} />;
     }
   };
 
@@ -552,9 +574,9 @@ export default function App() {
 
   return (
     <div className="flex min-h-screen w-full bg-[#111218] text-[#E8E8F0] md:flex-row">
-      {activeTab ? <SidebarNav active={activeTab} onNav={handleNav} /> : null}
+      {activeTab ? <SidebarNav items={visibleNavItems} active={activeTab} onNav={handleNav} /> : null}
       <div className="flex flex-1 flex-col overflow-hidden">{renderScreen()}</div>
-      {activeTab ? <BottomNav active={activeTab} onNav={handleNav} /> : null}
+      {activeTab ? <BottomNav items={visibleNavItems} active={activeTab} onNav={handleNav} /> : null}
       <Toaster />
     </div>
   );
