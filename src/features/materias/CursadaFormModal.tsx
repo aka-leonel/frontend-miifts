@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Cursada, Materia } from "../../api/types";
 import { ConfirmDialog, FormModal } from "../../components";
+import AyudaParciales from "./AyudaParciales";
 import { materiaUsuarioInitial, materiaUsuarioSpec, type ModoCursada } from "./materiaUsuarioSpec";
 
 export type AccionCursada = "creada" | "actualizada" | "recursada";
@@ -79,14 +80,21 @@ export default function CursadaFormModal({
         onClose={cerrar}
         onSuccess={() => onSaved(!cursada ? "creada" : recursando ? "recursada" : "actualizada")}
         extra={
-          puedeRecursar ? (
-            <button
-              type="button"
-              onClick={() => setConfirmando(true)}
-              className="w-full rounded-xl border border-warning/50 bg-warning/10 px-4 py-2.5 text-sm font-semibold text-warning transition hover:bg-warning/20"
-            >
-              Recursar
-            </button>
+          modo === "notas" || puedeRecursar ? (
+            <div className="flex flex-col gap-3">
+              {/* La ayuda vive acá (junto a las notas que se están cargando) y no
+                  en el detalle de la materia, que ahora solo muestra el estado. */}
+              {modo === "notas" ? <AyudaParciales /> : null}
+              {puedeRecursar ? (
+                <button
+                  type="button"
+                  onClick={() => setConfirmando(true)}
+                  className="w-full rounded-xl border border-warning/50 bg-warning/10 px-4 py-2.5 text-sm font-semibold text-warning transition hover:bg-warning/20"
+                >
+                  Recursar
+                </button>
+              ) : null}
+            </div>
           ) : null
         }
       />

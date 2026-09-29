@@ -17,7 +17,6 @@ import { useToast } from "../../hooks/useToast";
 import { useMateriasDeCarrera } from "../catalogo/hooks";
 import { estadoBadgeClasses, estadoLabel } from "../materias/estado";
 import { useMisMaterias } from "../materias/hooks";
-import AyudaParciales from "../materias/AyudaParciales";
 import CursadaFormModal, { type AccionCursada } from "../materias/CursadaFormModal";
 import { RecordatorioCard } from "../recordatorios/RecordatorioCard";
 import { useBorrarRecordatorio, useRecordatorios } from "../recordatorios/hooks";
@@ -104,7 +103,7 @@ function MateriaDetalleContent({ usuario, materiaId, onVolver }: Props & { usuar
 
   if (materia.loading && !materia.data) {
     return (
-      <div className="px-6 pt-14">
+      <div className="mx-auto w-full max-w-lg px-4 pt-14 sm:max-w-2xl sm:px-6 lg:max-w-5xl">
         <div role="status" aria-label="Cargando materia" className="h-20 animate-pulse rounded-2xl border border-border bg-card" />
       </div>
     );
@@ -112,7 +111,7 @@ function MateriaDetalleContent({ usuario, materiaId, onVolver }: Props & { usuar
 
   if (materia.error || !materia.data) {
     return (
-      <div className="px-6 pt-14">
+      <div className="mx-auto w-full max-w-lg px-4 pt-14 sm:max-w-2xl sm:px-6 lg:max-w-5xl">
         <div role="alert" className="rounded-2xl border border-danger/40 bg-danger/10 p-6 text-center text-danger">
           No se pudo cargar la materia.
         </div>
@@ -128,7 +127,9 @@ function MateriaDetalleContent({ usuario, materiaId, onVolver }: Props & { usuar
 
   return (
     <div className="flex-1 overflow-y-auto pb-24">
-      <div className="px-6 pt-14">
+      {/* S5-10: mismo contenedor fluido que Mis Materias/Inicio/Convenios/
+          Recordatorios/Perfil. */}
+      <div className="mx-auto w-full max-w-lg px-4 pt-14 sm:max-w-2xl sm:px-6 lg:max-w-5xl">
         <button type="button" onClick={onVolver} className="mb-2 py-2 text-sm text-muted transition hover:text-text">
           ← Materias
         </button>
@@ -153,27 +154,9 @@ function MateriaDetalleContent({ usuario, materiaId, onVolver }: Props & { usuar
             </button>
           </div>
           {cursadaActual ? (
-            <div>
-              <span className={["rounded-full px-3 py-1 text-xs font-semibold capitalize", estadoBadgeClasses[estado]].join(" ")}>
-                {estado}
-              </span>
-              <div className="mb-2 mt-4 flex items-center gap-2">
-                <span className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">Notas</span>
-                <AyudaParciales />
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { etiqueta: "Nota 1", valor: cursadaActual.nota_parcial_1 },
-                  { etiqueta: "Nota 2", valor: cursadaActual.nota_parcial_2 },
-                  { etiqueta: "Final", valor: cursadaActual.nota_final },
-                ].map((n) => (
-                  <div key={n.etiqueta} className="rounded-xl border border-border bg-bg px-3 py-2.5 text-center">
-                    <div className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">{n.etiqueta}</div>
-                    <div className="mt-0.5 text-lg font-bold text-text">{n.valor ?? "—"}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <span className={["rounded-full px-3 py-1 text-xs font-semibold capitalize", estadoBadgeClasses[estado]].join(" ")}>
+              {estado}
+            </span>
           ) : (
             <p className="text-sm text-muted">Todavía no cargaste esta materia entre tus cursadas.</p>
           )}
