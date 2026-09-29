@@ -90,7 +90,10 @@ function MisMateriasContent({ usuario, onOpenMateria, onAbrirAdmin }: Props & { 
 
   return (
     <div className="flex-1 overflow-y-auto pb-24">
-      <div className="px-6 pt-14">
+      {/* S5-10: mismo contenedor fluido que Inicio/Convenios/Recordatorios/Perfil
+          — a esta pantalla le faltaba, así que las cards se estiraban a todo
+          el ancho de la pantalla en vez de mantener un máximo razonable. */}
+      <div className="mx-auto w-full max-w-lg px-4 pt-14 sm:max-w-2xl sm:px-6 lg:max-w-5xl">
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
             <h1 className="text-2xl font-black tracking-[-0.04em] text-text">Mis Materias</h1>
