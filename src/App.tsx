@@ -1,5 +1,7 @@
 import { useId, useState, useEffect } from "react";
 import { Toaster } from "./components";
+import { BadgeNotificaciones } from "./components/BadgeNotificaciones";
+import { usePush } from "./hooks/usePush";
 import { ConveniosScreen as ConveniosFeatureScreen } from "./features/convenios";
 import { getCarreras } from "./features/catalogo/service";
 import InicioReal from "./features/materias/InicioScreen";
@@ -45,7 +47,9 @@ const MUTED = "var(--c-muted)";
 const DANGER = "var(--c-danger)";
 
 // ─── Bottom Navbar ────────────────────────────────────────────────────────────
-const navItems: { key: NavTab; label: string; icon: React.ReactNode }[] = [
+// Función de `recordatoriosCount`: el ícono de "Recordat." lleva el badge de
+// notificaciones pendientes (ver src/hooks/usePush.ts) encima.
+const navItems = (recordatoriosCount: number): { key: NavTab; label: string; icon: React.ReactNode }[] => [
   {
     key: "inicio", label: "Inicio",
     icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /><path d="M9 21V12h6v9" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /></svg>,
@@ -56,7 +60,11 @@ const navItems: { key: NavTab; label: string; icon: React.ReactNode }[] = [
   },
   {
     key: "recordatorios", label: "Recordat.",
-    icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /><path d="M13.73 21a2 2 0 01-3.46 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>,
+    icon: (
+      <BadgeNotificaciones count={recordatoriosCount}>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /><path d="M13.73 21a2 2 0 01-3.46 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
+      </BadgeNotificaciones>
+    ),
   },
   {
     key: "convenios", label: "Convenios",
@@ -68,7 +76,7 @@ const navItems: { key: NavTab; label: string; icon: React.ReactNode }[] = [
   },
 ];
 
-function BottomNav({ active, onNav }: { active: NavTab; onNav: (t: NavTab) => void }) {
+function BottomNav({ active, onNav, recordatoriosCount }: { active: NavTab; onNav: (t: NavTab) => void; recordatoriosCount: number }) {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   useEffect(() => {
@@ -95,7 +103,7 @@ function BottomNav({ active, onNav }: { active: NavTab; onNav: (t: NavTab) => vo
         zIndex: 100 
       }}
     >
-      {navItems.map((item) => {
+      {navItems(recordatoriosCount).map((item) => {
         const isActive = active === item.key;
         return (
           <button key={item.key} type="button" onClick={() => onNav(item.key)} aria-current={isActive ? "page" : undefined} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, background: "none", border: "none", color: isActive ? VIOLET : MUTED, cursor: "pointer", padding: "4px 8px", minWidth: 44, minHeight: 44, transition: "color 0.2s" }}>
@@ -111,7 +119,7 @@ function BottomNav({ active, onNav }: { active: NavTab; onNav: (t: NavTab) => vo
 // ─── Sidebar Nav (desktop, md+) ────────────────────────────────────────────────
 // S4-06: reemplaza al BottomNav desde `md:` para que el shell deje de forzar
 // el frame fijo de 430px también en pantallas grandes.
-function SidebarNav({ active, onNav }: { active: NavTab; onNav: (t: NavTab) => void }) {
+function SidebarNav({ active, onNav, recordatoriosCount }: { active: NavTab; onNav: (t: NavTab) => void; recordatoriosCount: number }) {
   return (
     <aside
       className="hidden md:flex md:w-64 md:flex-shrink-0 md:flex-col md:border-r md:py-8"
@@ -121,7 +129,7 @@ function SidebarNav({ active, onNav }: { active: NavTab; onNav: (t: NavTab) => v
         mi<span style={{ color: VIOLET }}>IFTS</span>
       </div>
       <nav aria-label="Navegación principal" className="flex flex-col gap-1 px-3">
-        {navItems.map((item) => {
+        {navItems(recordatoriosCount).map((item) => {
           const isActive = active === item.key;
           return (
             <button
@@ -637,6 +645,9 @@ const PUBLIC_SCREENS: Screen[] = ["login", "registro", "olvide-password", "reset
 
 export default function App() {
   const auth = useAuth();
+  // Registra el Service Worker y, si ya hay sesión, trae el contador de
+  // recordatorios próximos para el badge del nav — ver src/hooks/usePush.ts.
+  const push = usePush();
   // S5-14 (INTEGRACION §2.4bis, D014): el link del mail llega como
   // `?token=...`. Sin react-router, se lee una única vez al montar — si hay
   // token, arranca directo en "reset-password" (tiene prioridad sobre la
@@ -736,9 +747,9 @@ export default function App() {
   return (
     <div className="flex min-h-screen w-full bg-bg text-text md:flex-row">
       <SkipLink />
-      {activeTab ? <SidebarNav active={activeTab} onNav={handleNav} /> : null}
+      {activeTab ? <SidebarNav active={activeTab} onNav={handleNav} recordatoriosCount={push.contadorPendientes} /> : null}
       <main id="contenido" tabIndex={-1} className="flex flex-1 flex-col overflow-hidden outline-none">{renderScreen()}</main>
-      {activeTab ? <BottomNav active={activeTab} onNav={handleNav} /> : null}
+      {activeTab ? <BottomNav active={activeTab} onNav={handleNav} recordatoriosCount={push.contadorPendientes} /> : null}
       <Toaster />
     </div>
   );
