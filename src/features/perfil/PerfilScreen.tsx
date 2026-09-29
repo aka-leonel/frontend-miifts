@@ -18,6 +18,7 @@ function iniciales(nombre: string, apellido?: string): string {
 export default function PerfilScreen({ onCerrarSesion }: { onCerrarSesion: () => void }) {
   const auth = useAuth();
   const me = useAuthMe();
+  const esAdmin = me.data?.rol === "admin";
   const carreras = useCarreras({ page: 1 });
   const misMaterias = useMisMaterias(1);
   const { fieldErrors, applyApiError, clearErrors, setFieldErrors } = useApiForm();
@@ -45,10 +46,7 @@ export default function PerfilScreen({ onCerrarSesion }: { onCerrarSesion: () =>
 
   const hasChanges = useMemo(() => {
     if (!me.data) return false;
-    return (
-      form.nombre.trim() !== (me.data.nombre ?? "") ||
-      form.apellido.trim() !== (me.data.apellido ?? "")
-    );
+    return form.nombre.trim() !== (me.data.nombre ?? "") || form.apellido.trim() !== (me.data.apellido ?? "");
   }, [form, me.data]);
 
   function handleLogout() {
@@ -155,60 +153,76 @@ export default function PerfilScreen({ onCerrarSesion }: { onCerrarSesion: () =>
         <div className="mb-8 flex justify-center">
           <div className="relative">
             <div className="flex h-[88px] w-[88px] items-center justify-center rounded-[28px] bg-gradient-to-br from-violet to-[#6B5CE7] text-3xl font-extrabold text-white">
-              {iniciales(form.nombre || me.data?.nombre || "?", form.apellido || me.data?.apellido)}
+              {esAdmin
+                ? iniciales(me.data?.nombre || "?", me.data?.apellido)
+                : iniciales(form.nombre || me.data?.nombre || "?", form.apellido || me.data?.apellido)}
             </div>
           </div>
         </div>
 
-        <div className="mb-6 flex flex-col gap-3.5">
-          <div>
-            <label className="mb-1.5 block text-[11px] font-semibold text-muted">NOMBRE</label>
-            <input
-              value={form.nombre}
-              onChange={(e) => setForm((p) => ({ ...p, nombre: e.target.value }))}
-              placeholder="Nombre"
-              className={`w-full rounded-xl border bg-card px-4 py-3.5 text-[15px] text-text outline-none ${fieldErrors.nombre ? "border-red-500" : "border-border focus:border-violet"}`}
-            />
-            {fieldErrors.nombre && <span className="mt-1 block text-xs text-red-400">{fieldErrors.nombre}</span>}
+        {esAdmin ? (
+          // Cuenta de admin: nada de identidad editable acá — ni nombre,
+          // ni apellido, ni carrera (un admin no está anotado a una carrera
+          // puntual). Solo email de referencia + cambiar contraseña.
+          <div className="mb-6 flex flex-col gap-3.5">
+            <div>
+              <div className="mb-1 text-[11px] font-semibold text-muted">EMAIL</div>
+              <div className="text-[15px] text-text">{me.data?.email ?? ""}</div>
+            </div>
           </div>
-          <div>
-            <label className="mb-1.5 block text-[11px] font-semibold text-muted">APELLIDO</label>
-            <input
-              value={form.apellido}
-              onChange={(e) => setForm((p) => ({ ...p, apellido: e.target.value }))}
-              placeholder="Apellido"
-              className={`w-full rounded-xl border bg-card px-4 py-3.5 text-[15px] text-text outline-none ${fieldErrors.apellido ? "border-red-500" : "border-border focus:border-violet"}`}
-            />
-            {fieldErrors.apellido && <span className="mt-1 block text-xs text-red-400">{fieldErrors.apellido}</span>}
-          </div>
-          <div>
-            <label className="mb-1.5 block text-[11px] font-semibold text-muted">EMAIL</label>
-            <input
-              value={me.data?.email ?? ""}
-              readOnly
-              disabled
-              className="w-full cursor-not-allowed rounded-xl border border-border bg-card px-4 py-3.5 text-[15px] text-muted opacity-60 outline-none"
-            />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-[11px] font-semibold text-muted">CARRERA</label>
-            <input
-              value={carreras.loading ? "Cargando..." : carreraNombre}
-              readOnly
-              disabled
-              className="w-full cursor-not-allowed rounded-xl border border-border bg-card px-4 py-3.5 text-[15px] text-muted opacity-60 outline-none"
-            />
-          </div>
-        </div>
+        ) : (
+          <>
+            <div className="mb-6 flex flex-col gap-3.5">
+              <div>
+                <label className="mb-1.5 block text-[11px] font-semibold text-muted">NOMBRE</label>
+                <input
+                  value={form.nombre}
+                  onChange={(e) => setForm((p) => ({ ...p, nombre: e.target.value }))}
+                  placeholder="Nombre"
+                  className={`w-full rounded-xl border bg-card px-4 py-3.5 text-[15px] text-text outline-none ${fieldErrors.nombre ? "border-red-500" : "border-border focus:border-violet"}`}
+                />
+                {fieldErrors.nombre && <span className="mt-1 block text-xs text-red-400">{fieldErrors.nombre}</span>}
+              </div>
+              <div>
+                <label className="mb-1.5 block text-[11px] font-semibold text-muted">APELLIDO</label>
+                <input
+                  value={form.apellido}
+                  onChange={(e) => setForm((p) => ({ ...p, apellido: e.target.value }))}
+                  placeholder="Apellido"
+                  className={`w-full rounded-xl border bg-card px-4 py-3.5 text-[15px] text-text outline-none ${fieldErrors.apellido ? "border-red-500" : "border-border focus:border-violet"}`}
+                />
+                {fieldErrors.apellido && <span className="mt-1 block text-xs text-red-400">{fieldErrors.apellido}</span>}
+              </div>
+              <div>
+                <label className="mb-1.5 block text-[11px] font-semibold text-muted">EMAIL</label>
+                <input
+                  value={me.data?.email ?? ""}
+                  readOnly
+                  disabled
+                  className="w-full cursor-not-allowed rounded-xl border border-border bg-card px-4 py-3.5 text-[15px] text-muted opacity-60 outline-none"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-[11px] font-semibold text-muted">CARRERA</label>
+                <input
+                  value={carreras.loading ? "Cargando..." : carreraNombre}
+                  readOnly
+                  disabled
+                  className="w-full cursor-not-allowed rounded-xl border border-border bg-card px-4 py-3.5 text-[15px] text-muted opacity-60 outline-none"
+                />
+              </div>
+            </div>
 
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={saving || !hasChanges}
-          className="mb-3 w-full rounded-xl bg-violet px-6 py-[14px] text-[15px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {saving ? "Guardando..." : "Guardar cambios"}
-        </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving || !hasChanges}
+              className="mb-3 w-full rounded-xl bg-violet px-6 py-[14px] text-[15px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {saving ? "Guardando..." : "Guardar cambios"}
+            </button>
+          </>
+        )}
 
         <button
           type="button"
@@ -218,18 +232,20 @@ export default function PerfilScreen({ onCerrarSesion }: { onCerrarSesion: () =>
           Cambiar contraseña
         </button>
 
-        <div className="mb-6 rounded-2xl border border-border bg-card p-4">
-          <div className="mb-1 text-sm font-semibold text-text">
-            Tu progreso con <span className="text-lime">Byte</span>
+        {!esAdmin ? (
+          <div className="mb-6 rounded-2xl border border-border bg-card p-4">
+            <div className="mb-1 text-sm font-semibold text-text">
+              Tu progreso con <span className="text-lime">Byte</span>
+            </div>
+            <div className="mb-2.5 text-xs text-muted">
+              {aprobadas} de {total} materias aprobadas
+            </div>
+            <div className="h-1.5 overflow-hidden rounded-full bg-[#2A2B36]">
+              <div className="h-full rounded-full bg-gradient-to-r from-violet to-lime" style={{ width: `${pct}%` }} />
+            </div>
+            <div className="mt-1 text-[11px] text-muted">{pct}% del plan completado</div>
           </div>
-          <div className="mb-2.5 text-xs text-muted">
-            {aprobadas} de {total} materias aprobadas
-          </div>
-          <div className="h-1.5 overflow-hidden rounded-full bg-[#2A2B36]">
-            <div className="h-full rounded-full bg-gradient-to-r from-violet to-lime" style={{ width: `${pct}%` }} />
-          </div>
-          <div className="mt-1 text-[11px] text-muted">{pct}% del plan completado</div>
-        </div>
+        ) : null}
 
         <button
           type="button"

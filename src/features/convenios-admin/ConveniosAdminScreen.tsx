@@ -53,7 +53,7 @@ export default function ConveniosAdminScreen() {
           <button
             type="button"
             onClick={() => setModal({ open: true, item: null })}
-            className="flex-shrink-0 rounded-lg border border-violet/60 bg-violet/10 px-3 py-1.5 text-xs font-semibold text-violet"
+            className="flex-shrink-0 rounded-full bg-green px-3 py-1.5 text-xs font-semibold text-white"
           >
             + Nuevo
           </button>

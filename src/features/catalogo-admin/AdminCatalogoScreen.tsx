@@ -3,7 +3,7 @@
 // S4-10 (Integrante 2, opcional) — ABM real de carreras y materias, sin
 // mocks. Acceso restringido a `usuario.rol === "admin"` (el guard vive en
 // App.tsx, no acá: esta pantalla asume que ya se verificó el rol).
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ApiError } from "../../api/client";
 import { ConfirmDialog, FormModal, ListState } from "../../components";
 import { useToast } from "../../hooks/useToast";
@@ -15,6 +15,51 @@ import { materiaFormInitial, materiaSpec, type MateriaForm } from "./materiaSpec
 
 const selectClassName =
   "w-full rounded-xl border border-border bg-bg px-3 py-2.5 text-sm text-text outline-none transition focus:border-violet";
+
+const searchInputClassName =
+  "w-full max-w-md rounded-xl border border-border bg-bg px-3 py-2 text-sm text-text outline-none transition focus:border-violet placeholder:text-muted";
+
+const nuevoButtonClassName = "flex-shrink-0 rounded-full bg-green px-3 py-1.5 text-xs font-semibold text-white";
+
+function MateriaCard({
+  materia,
+  mostrarAnio,
+  onEditar,
+  onBorrar,
+}: {
+  materia: Materia;
+  mostrarAnio: boolean;
+  onEditar: () => void;
+  onBorrar: () => void;
+}) {
+  return (
+    <div className="rounded-2xl border border-border bg-card p-4">
+      <div className="min-w-0">
+        <div className="truncate text-sm font-semibold text-text">{materia.nombre}</div>
+        <div className="mt-1 text-xs text-muted">
+          {materia.codigo}
+          {mostrarAnio ? ` · ${materia.anio}º año` : ""} · {materia.cuatrimestre}º cuatrimestre
+        </div>
+      </div>
+      <div className="mt-3 flex gap-2 border-t border-border pt-3">
+        <button
+          type="button"
+          onClick={onEditar}
+          className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted transition hover:text-text"
+        >
+          Editar
+        </button>
+        <button
+          type="button"
+          onClick={onBorrar}
+          className="rounded-lg border border-red-500/40 px-3 py-1.5 text-xs font-medium text-red-300"
+        >
+          Borrar
+        </button>
+      </div>
+    </div>
+  );
+}
 
 function CorrelativasPanel({ materias }: { materias: Materia[] }) {
   const { pushToast } = useToast();
@@ -142,31 +187,66 @@ export default function AdminCatalogoScreen({ onVolver }: { onVolver?: () => voi
 
   const carrerasQuery = useCarreras({ per_page: 100 });
   const carrerasList = carrerasQuery.data?.items ?? [];
+  const [busquedaCarrera, setBusquedaCarrera] = useState("");
+  const qCarrera = busquedaCarrera.trim().toLowerCase();
+  const carrerasFiltradas = qCarrera
+    ? carrerasList.filter((c) => c.nombre.toLowerCase().includes(qCarrera))
+    : carrerasList;
 
   const [carreraSeleccionada, setCarreraSeleccionada] = useState<number | null>(null);
   const carreraId = carreraSeleccionada ?? carrerasList[0]?.id ?? 0;
   const materiasQuery = useMateriasDeCarrera(carreraId);
+  const materiasCarrera = materiasQuery.data?.items ?? [];
 
   const [modalCarrera, setModalCarrera] = useState<{ open: boolean; item: Carrera | null }>({ open: false, item: null });
   const [aBorrarCarrera, setABorrarCarrera] = useState<Carrera | null>(null);
   const [modalMateria, setModalMateria] = useState<{ open: boolean; item: Materia | null }>({ open: false, item: null });
   const [aBorrarMateria, setABorrarMateria] = useState<Materia | null>(null);
-  const [filtroCuatrimestre, setFiltroCuatrimestre] = useState<0 | 1 | 2>(0);
+  const [filtroAnio, setFiltroAnio] = useState<number | "todas">(1);
+  const [busquedaMateria, setBusquedaMateria] = useState("");
 
-  const materiasFiltradas = (materiasQuery.data?.items ?? []).filter(
-    (m) => filtroCuatrimestre === 0 || m.cuatrimestre === filtroCuatrimestre,
-  );
-  const gruposPorAnio: [number, Materia[]][] = Object.entries(
-    materiasFiltradas.reduce<Record<number, Materia[]>>((acc, m) => {
-      (acc[m.anio] ??= []).push(m);
-      return acc;
-    }, {}),
-  )
-    .map(([anio, lista]): [number, Materia[]] => [
-      Number(anio),
-      [...lista].sort((a, b) => a.cuatrimestre - b.cuatrimestre || a.nombre.localeCompare(b.nombre)),
-    ])
-    .sort(([a], [b]) => a - b);
+  // Al cambiar de carrera, el año elegido puede no existir ahí (carreras con
+  // distinta duración) — volver siempre al arranque ("1º año") evita quedar
+  // en un filtro que no tiene sentido para la carrera nueva.
+  useEffect(() => {
+    setFiltroAnio(1);
+    setBusquedaMateria("");
+  }, [carreraId]);
+
+  const aniosDisponibles = [...new Set(materiasCarrera.map((m) => m.anio))].sort((a, b) => a - b);
+
+  const qMateria = busquedaMateria.trim().toLowerCase();
+  const buscandoMateria = qMateria.length > 0;
+
+  const materiasFiltradas = materiasCarrera.filter((m) => {
+    if (buscandoMateria) {
+      return m.nombre.toLowerCase().includes(qMateria) || m.codigo.toLowerCase().includes(qMateria);
+    }
+    return filtroAnio === "todas" || m.anio === filtroAnio;
+  });
+
+  // La búsqueda cruza todos los años (para encontrar una materia puntual sin
+  // depender del filtro activo) y el filtro "Todas" también junta varios años
+  // — en ambos casos conviene agrupar por año para no perder de vista dónde
+  // está cada una. Con un año puntual elegido (y sin búsqueda), alcanza con
+  // una lista simple.
+  const mostrarAgrupado = filtroAnio === "todas" || buscandoMateria;
+  const gruposPorAnio: [number, Materia[]][] = mostrarAgrupado
+    ? Object.entries(
+        materiasFiltradas.reduce<Record<number, Materia[]>>((acc, m) => {
+          (acc[m.anio] ??= []).push(m);
+          return acc;
+        }, {}),
+      )
+        .map(([anio, lista]): [number, Materia[]] => [
+          Number(anio),
+          [...lista].sort((a, b) => a.cuatrimestre - b.cuatrimestre || a.nombre.localeCompare(b.nombre)),
+        ])
+        .sort(([a], [b]) => a - b)
+    : [];
+  const listaPlana = mostrarAgrupado
+    ? []
+    : [...materiasFiltradas].sort((a, b) => a.cuatrimestre - b.cuatrimestre || a.nombre.localeCompare(b.nombre));
 
   const borrarCarrera = useBorrarCarrera(() => {
     pushToast("Carrera eliminada.", "success");
@@ -221,21 +301,30 @@ export default function AdminCatalogoScreen({ onVolver }: { onVolver?: () => voi
             <button
               type="button"
               onClick={() => setModalCarrera({ open: true, item: null })}
-              className="text-xs font-semibold text-violet"
+              className={nuevoButtonClassName}
             >
               + Nueva
             </button>
           </div>
+
+          <input
+            type="text"
+            value={busquedaCarrera}
+            onChange={(e) => setBusquedaCarrera(e.target.value)}
+            placeholder="Buscar carrera por nombre…"
+            className={[searchInputClassName, "mb-3"].join(" ")}
+          />
+
           <ListState
             loading={carrerasQuery.loading}
             error={carrerasQuery.error}
-            items={carrerasList}
-            emptyTitle="Sin carreras"
-            emptyDescription="Tocá + Nueva para cargar la primera."
+            items={carrerasFiltradas}
+            emptyTitle={qCarrera ? "Sin resultados" : "Sin carreras"}
+            emptyDescription={qCarrera ? "Ninguna carrera coincide con la búsqueda." : "Tocá + Nueva para cargar la primera."}
             onRetry={() => carrerasQuery.refetch()}
           >
             <div className="space-y-2">
-              {carrerasList.map((c) => {
+              {carrerasFiltradas.map((c) => {
                 const activa = c.id === carreraId;
                 return (
                   <div
@@ -300,31 +389,52 @@ export default function AdminCatalogoScreen({ onVolver }: { onVolver?: () => voi
               type="button"
               disabled={!carreraId}
               onClick={() => setModalMateria({ open: true, item: null })}
-              className="text-xs font-semibold text-violet disabled:opacity-40"
+              className={[nuevoButtonClassName, "disabled:cursor-not-allowed disabled:opacity-40"].join(" ")}
             >
               + Nueva
             </button>
           </div>
 
+          <input
+            type="text"
+            value={busquedaMateria}
+            onChange={(e) => setBusquedaMateria(e.target.value)}
+            placeholder="Buscar materia por nombre o código…"
+            className={[searchInputClassName, "mb-3"].join(" ")}
+          />
+
           {/* Con muchas materias cargadas, la lista plana se hace difícil de
-              seguir — se filtra por cuatrimestre y se agrupa por año. */}
-          <div className="mb-3 flex gap-2">
-            {([0, 1, 2] as const).map((c) => (
+              seguir — el año más chico va primero y activo por defecto; el
+              resto queda oculto hasta elegir "Todas". Buscando texto, el
+              filtro de año se ignora (para encontrar una materia puntual sin
+              importar en qué año esté). */}
+          {!buscandoMateria ? (
+            <div className="mb-3 flex flex-wrap gap-2">
+              {aniosDisponibles.map((anio) => (
+                <button
+                  key={anio}
+                  type="button"
+                  onClick={() => setFiltroAnio(anio)}
+                  className={[
+                    "rounded-full border px-3 py-1 text-xs font-medium transition",
+                    filtroAnio === anio ? "border-violet bg-violet text-white" : "border-border bg-card text-muted",
+                  ].join(" ")}
+                >
+                  {anio}º año
+                </button>
+              ))}
               <button
-                key={c}
                 type="button"
-                onClick={() => setFiltroCuatrimestre(c)}
+                onClick={() => setFiltroAnio("todas")}
                 className={[
                   "rounded-full border px-3 py-1 text-xs font-medium transition",
-                  filtroCuatrimestre === c
-                    ? "border-violet bg-violet text-white"
-                    : "border-border bg-card text-muted",
+                  filtroAnio === "todas" ? "border-violet bg-violet text-white" : "border-border bg-card text-muted",
                 ].join(" ")}
               >
-                {c === 0 ? "Todos" : `${c}º cuatrimestre`}
+                Todas
               </button>
-            ))}
-          </div>
+            </div>
+          ) : null}
 
           <ListState
             loading={materiasQuery.loading}
@@ -332,47 +442,46 @@ export default function AdminCatalogoScreen({ onVolver }: { onVolver?: () => voi
             items={materiasFiltradas}
             emptyTitle="Sin materias"
             emptyDescription={
-              filtroCuatrimestre === 0
-                ? "Esta carrera todavía no tiene materias cargadas."
-                : "No hay materias de ese cuatrimestre."
+              buscandoMateria
+                ? "Ninguna materia coincide con la búsqueda."
+                : filtroAnio === "todas"
+                  ? "Esta carrera todavía no tiene materias cargadas."
+                  : "No hay materias de ese año."
             }
             onRetry={() => materiasQuery.refetch()}
           >
-            <div className="space-y-5">
-              {gruposPorAnio.map(([anio, materiasDelAnio]) => (
-                <div key={anio}>
-                  <div className="mb-2 text-xs font-bold uppercase tracking-[0.08em] text-muted">{anio}º año</div>
-                  <div className="space-y-2">
-                    {materiasDelAnio.map((m) => (
-                      <div key={m.id} className="rounded-2xl border border-border bg-card p-4">
-                        <div className="min-w-0">
-                          <div className="truncate text-sm font-semibold text-text">{m.nombre}</div>
-                          <div className="mt-1 text-xs text-muted">
-                            {m.codigo} · {m.cuatrimestre}º cuatrimestre
-                          </div>
-                        </div>
-                        <div className="mt-3 flex gap-2 border-t border-border pt-3">
-                          <button
-                            type="button"
-                            onClick={() => setModalMateria({ open: true, item: m })}
-                            className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted transition hover:text-text"
-                          >
-                            Editar
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setABorrarMateria(m)}
-                            className="rounded-lg border border-red-500/40 px-3 py-1.5 text-xs font-medium text-red-300"
-                          >
-                            Borrar
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+            {mostrarAgrupado ? (
+              <div className="space-y-5">
+                {gruposPorAnio.map(([anio, materiasDelAnio]) => (
+                  <div key={anio}>
+                    <div className="mb-2 text-xs font-bold uppercase tracking-[0.08em] text-muted">{anio}º año</div>
+                    <div className="space-y-2">
+                      {materiasDelAnio.map((m) => (
+                        <MateriaCard
+                          key={m.id}
+                          materia={m}
+                          mostrarAnio={false}
+                          onEditar={() => setModalMateria({ open: true, item: m })}
+                          onBorrar={() => setABorrarMateria(m)}
+                        />
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {listaPlana.map((m) => (
+                  <MateriaCard
+                    key={m.id}
+                    materia={m}
+                    mostrarAnio={false}
+                    onEditar={() => setModalMateria({ open: true, item: m })}
+                    onBorrar={() => setABorrarMateria(m)}
+                  />
+                ))}
+              </div>
+            )}
           </ListState>
         </div>
 
