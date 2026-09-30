@@ -283,7 +283,10 @@ export default function AdminCatalogoScreen({ onVolver }: { onVolver?: () => voi
 
   return (
     <div className="flex-1 overflow-y-auto pb-24">
-      <div className="px-6 pt-14">
+      {/* Mismo contenedor fluido que el resto de las pantallas (Perfil,
+          Convenios-Admin, Mis Materias, etc.) — le faltaba, así que quedaba
+          estirada a todo el ancho en vez de tener un máximo razonable. */}
+      <div className="mx-auto w-full max-w-lg px-4 pt-14 sm:max-w-2xl sm:px-6 lg:max-w-5xl">
         {onVolver ? (
           <button type="button" onClick={onVolver} className="mb-2 py-2 text-sm text-muted transition hover:text-text">
             ← Materias
