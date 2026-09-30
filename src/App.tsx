@@ -1,5 +1,7 @@
-import { useState, useEffect } from "react";
+import { useId, useState, useEffect } from "react";
 import { Toaster } from "./components";
+import { BadgeNotificaciones } from "./components/BadgeNotificaciones";
+import { usePush } from "./hooks/usePush";
 import { ConveniosScreen as ConveniosFeatureScreen } from "./features/convenios";
 import { getCarreras } from "./features/catalogo/service";
 import InicioReal from "./features/materias/InicioScreen";
@@ -8,9 +10,10 @@ import { MateriaDetalleScreen as MateriaDetalleFeatureScreen } from "./features/
 import { RecordatoriosScreen as RecordatoriosFeatureScreen } from "./features/recordatorios";
 import PerfilFeatureScreen from "./features/perfil/PerfilScreen";
 import { useLogin } from "./features/auth/hooks";
+import { getUsuarioGuardado } from "./auth/storage";
+import AdminScreen from "./features/admin/AdminScreen";
 import { haySesion } from "./features/auth/service";
 import { forgotPasswordRequest, resetPasswordRequest } from "./auth/api";
-import AdminCatalogoScreen from "./features/catalogo-admin/AdminCatalogoScreen";
 import { ApiError } from "./lib/apiClient";
 import { useToast } from "./hooks/useToast";
 import { useAuth } from "./auth/AuthContext";
@@ -28,19 +31,26 @@ type Screen =
   | "recordatorios"
   | "convenios"
   | "perfil"
-  | "admin-catalogo";
+  | "admin";
 
-type NavTab = "inicio" | "materias" | "recordatorios" | "convenios" | "perfil";
+type NavTab = "inicio" | "materias" | "recordatorios" | "convenios" | "perfil" | "admin";
 
 // ─── Design tokens ─────────────────────────────────────────────────────────────
-const CARD = "#1A1B23";
-const BORDER = "#2A2B36";
-const VIOLET = "#8C7DFF";
-const TEXT = "#E8E8F0";
-const MUTED = "#9A9AB0";
+// Colores como variables CSS del tema (src/index.css): cambian solas con el tema
+// elegido en Perfil → Accesibilidad. No poner hex acá.
+const CARD = "var(--c-card)";
+const BORDER = "var(--c-border)";
+const VIOLET = "var(--c-violet)"; // acento para texto/bordes
+const PRIMARY = "var(--c-primary)"; // fondo de botones principales
+const ON_PRIMARY = "var(--c-on-primary)";
+const TEXT = "var(--c-text)";
+const MUTED = "var(--c-muted)";
+const DANGER = "var(--c-danger)";
 
 // ─── Bottom Navbar ────────────────────────────────────────────────────────────
-const navItems: { key: NavTab; label: string; icon: React.ReactNode }[] = [
+// Función de `recordatoriosCount`: el ícono de "Recordat." lleva el badge de
+// notificaciones pendientes (ver src/hooks/usePush.ts) encima.
+const navItems = (recordatoriosCount: number): { key: NavTab; label: string; icon: React.ReactNode }[] => [
   {
     key: "inicio", label: "Inicio",
     icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /><path d="M9 21V12h6v9" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /></svg>,
@@ -51,7 +61,11 @@ const navItems: { key: NavTab; label: string; icon: React.ReactNode }[] = [
   },
   {
     key: "recordatorios", label: "Recordat.",
-    icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /><path d="M13.73 21a2 2 0 01-3.46 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>,
+    icon: (
+      <BadgeNotificaciones count={recordatoriosCount}>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /><path d="M13.73 21a2 2 0 01-3.46 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
+      </BadgeNotificaciones>
+    ),
   },
   {
     key: "convenios", label: "Convenios",
@@ -63,7 +77,22 @@ const navItems: { key: NavTab; label: string; icon: React.ReactNode }[] = [
   },
 ];
 
-function BottomNav({ active, onNav }: { active: NavTab; onNav: (t: NavTab) => void }) {
+// Panel Admin (ver decisions D015): item de nav aparte, se agrega al array de
+// navegación solo cuando `usuario.rol==="admin"` (ver `visibleNavItems` en
+// App()) — reemplaza al botón "Admin catálogo" que vivía dentro de
+// MisMateriasScreen.
+const adminNavItem: { key: NavTab; label: string; icon: React.ReactNode } = {
+  key: "admin",
+  label: "Admin",
+  icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 2l7 3.5v6c0 5-3.4 8.7-7 10.5-3.6-1.8-7-5.5-7-10.5v-6L12 2z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /><path d="M9.5 12l2 2 3.5-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>,
+};
+
+type NavItem = { key: NavTab; label: string; icon: React.ReactNode };
+
+// `items` ya viene resuelto desde App() (con el badge de recordatorios
+// metido adentro por `navItems(recordatoriosCount)`, o reemplazado entero
+// por el nav de admin) — acá solo se renderiza.
+function BottomNav({ items, active, onNav }: { items: NavItem[]; active: NavTab; onNav: (t: NavTab) => void }) {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   useEffect(() => {
@@ -75,7 +104,8 @@ function BottomNav({ active, onNav }: { active: NavTab; onNav: (t: NavTab) => vo
   if (!isMobile) return null;
 
   return (
-    <div
+    <nav
+      aria-label="Navegación principal"
       className="w-full"
       style={{ 
         position: "fixed", 
@@ -89,52 +119,53 @@ function BottomNav({ active, onNav }: { active: NavTab; onNav: (t: NavTab) => vo
         zIndex: 100 
       }}
     >
-      {navItems.map((item) => {
+      {items.map((item) => {
         const isActive = active === item.key;
         return (
-          <button key={item.key} onClick={() => onNav(item.key)} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, background: "none", border: "none", color: isActive ? VIOLET : MUTED, cursor: "pointer", padding: "4px 8px", transition: "color 0.2s" }}>
-            {item.icon}
-            <span style={{ fontSize: 10, fontWeight: isActive ? 600 : 400 }}>{item.label}</span>
+          <button key={item.key} type="button" onClick={() => onNav(item.key)} aria-current={isActive ? "page" : undefined} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, background: "none", border: "none", color: isActive ? VIOLET : MUTED, cursor: "pointer", padding: "4px 8px", minWidth: 44, minHeight: 44, transition: "color 0.2s" }}>
+            <span aria-hidden="true" style={{ display: "flex" }}>{item.icon}</span>
+            <span style={{ fontSize: "0.75rem", fontWeight: isActive ? 600 : 400 }}>{item.label}</span>
           </button>
         );
       })}
-    </div>
+    </nav>
   );
 }
 
 // ─── Sidebar Nav (desktop, md+) ────────────────────────────────────────────────
 // S4-06: reemplaza al BottomNav desde `md:` para que el shell deje de forzar
 // el frame fijo de 430px también en pantallas grandes.
-function SidebarNav({ active, onNav }: { active: NavTab; onNav: (t: NavTab) => void }) {
+function SidebarNav({ items, active, onNav }: { items: NavItem[]; active: NavTab; onNav: (t: NavTab) => void }) {
   return (
-    <div
+    <aside
       className="hidden md:flex md:w-64 md:flex-shrink-0 md:flex-col md:border-r md:py-8"
       style={{ borderColor: BORDER, background: CARD }}
     >
-      <div className="mb-8 px-6 text-xl font-black" style={{ color: TEXT, letterSpacing: -0.4 }}>
+      <div className="mb-8 px-6 text-xl font-black" aria-hidden="true" style={{ color: TEXT, letterSpacing: -0.4 }}>
         mi<span style={{ color: VIOLET }}>IFTS</span>
       </div>
-      <nav className="flex flex-col gap-1 px-3">
-        {navItems.map((item) => {
+      <nav aria-label="Navegación principal" className="flex flex-col gap-1 px-3">
+        {items.map((item) => {
           const isActive = active === item.key;
           return (
             <button
               key={item.key}
               type="button"
               onClick={() => onNav(item.key)}
+              aria-current={isActive ? "page" : undefined}
               className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition"
               style={{
-                background: isActive ? "rgba(140,125,255,0.12)" : "transparent",
+                background: isActive ? "color-mix(in srgb, var(--c-violet) 14%, transparent)" : "transparent",
                 color: isActive ? VIOLET : MUTED,
               }}
             >
-              {item.icon}
+              <span aria-hidden="true" className="flex">{item.icon}</span>
               {item.label}
             </button>
           );
         })}
       </nav>
-    </div>
+    </aside>
   );
 }
 
@@ -156,14 +187,17 @@ function EyeIcon({ off }: { off?: boolean }) {
   );
 }
 
-function Input({ placeholder, type = "text", value, onChange }: { placeholder: string; type?: string; value: string; onChange: (v: string) => void }) {
+function Input({ placeholder, type = "text", value, onChange, autoComplete, label, invalid, describedBy }: { placeholder: string; type?: string; value: string; onChange: (v: string) => void; autoComplete?: string; label?: string; invalid?: boolean; describedBy?: string }) {
   const [visible, setVisible] = useState(false);
+  const id = useId();
   const isPassword = type === "password";
   const resolvedType = isPassword && visible ? "text" : type;
   return (
     <div style={{ position: "relative" }}>
-      <input type={resolvedType} placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)}
-        style={{ width: "100%", background: CARD, border: `0.5px solid ${BORDER}`, borderRadius: 10, padding: isPassword ? "14px 44px 14px 16px" : "14px 16px", color: TEXT, fontSize: 15, outline: "none" }}
+      <label htmlFor={id} className="sr-only">{label ?? placeholder}</label>
+      <input id={id} type={resolvedType} placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)}
+        autoComplete={autoComplete} aria-invalid={invalid || undefined} aria-describedby={describedBy}
+        style={{ width: "100%", background: CARD, border: `1px solid ${BORDER}`, borderRadius: 10, padding: isPassword ? "14px 48px 14px 16px" : "14px 16px", color: TEXT, fontSize: "1rem" }}
         onFocus={(e) => (e.target.style.borderColor = VIOLET)}
         onBlur={(e) => (e.target.style.borderColor = BORDER)}
       />
@@ -172,9 +206,10 @@ function Input({ placeholder, type = "text", value, onChange }: { placeholder: s
           type="button"
           onClick={() => setVisible((v) => !v)}
           aria-label={visible ? "Ocultar contraseña" : "Mostrar contraseña"}
-          style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", padding: 0, cursor: "pointer", color: MUTED, display: "flex", alignItems: "center" }}
+          aria-pressed={visible}
+          style={{ position: "absolute", right: 4, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", width: 40, height: 40, cursor: "pointer", color: MUTED, display: "flex", alignItems: "center", justifyContent: "center" }}
         >
-          <EyeIcon off={visible} />
+          <span aria-hidden="true" style={{ display: "flex" }}><EyeIcon off={visible} /></span>
         </button>
       ) : null}
     </div>
@@ -183,7 +218,7 @@ function Input({ placeholder, type = "text", value, onChange }: { placeholder: s
 
 function PrimaryButton({ children, onClick, fullWidth = true, disabled = false }: { children: React.ReactNode; onClick: () => void; fullWidth?: boolean; disabled?: boolean }) {
   return (
-    <button onClick={onClick} disabled={disabled} style={{ width: fullWidth ? "100%" : "auto", background: VIOLET, border: "none", borderRadius: 10, padding: "15px 24px", color: "#fff", fontSize: 15, fontWeight: 600, cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.55 : 1 }}>
+    <button type="button" onClick={onClick} disabled={disabled} style={{ width: fullWidth ? "100%" : "auto", background: PRIMARY, border: "none", borderRadius: 10, padding: "15px 24px", color: ON_PRIMARY, fontSize: "1rem", fontWeight: 600, cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.6 : 1 }}>
       {children}
     </button>
   );
@@ -203,7 +238,12 @@ function LoginScreen({ onGo }: { onGo: (s: Screen) => void }) {
   const handleIngresar = async () => {
     try {
       await login.run({ email, password: pass });
-      onGo("inicio");
+      // `login.run()` puede devolver `usuario` desactualizado (closure vieja
+      // de `useAuth()` dentro de `useLogin`, ver features/auth/hooks.ts) —
+      // `getUsuarioGuardado()` lee el localStorage recién escrito por
+      // `auth.login()`, así que siempre refleja la sesión que acaba de entrar.
+      const usuarioLogueado = getUsuarioGuardado();
+      onGo(usuarioLogueado?.rol === "admin" ? "admin" : "inicio");
     } catch (err) {
       const msg = err instanceof ApiError ? err.detail : "No se pudo iniciar sesión.";
       pushToast(msg, "error");
@@ -214,25 +254,25 @@ function LoginScreen({ onGo }: { onGo: (s: Screen) => void }) {
     <ScreenWrap>
       <div style={{ padding: "60px 28px 0", display: "flex", flexDirection: "column" }}>
         <div style={{ marginBottom: 48, textAlign: "center" }}>
-          <div style={{ width: 72, height: 72, borderRadius: 20, background: `linear-gradient(135deg, ${VIOLET} 0%, #6B5CE7 100%)`, display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
-            <svg width="36" height="36" viewBox="0 0 36 36" fill="none"><path d="M8 28V14l10-8 10 8v14H22v-8h-8v8H8z" fill="white" /></svg>
+          <div style={{ width: 72, height: 72, borderRadius: 20, background: `${PRIMARY}`, display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+            <svg aria-hidden="true" width="36" height="36" viewBox="0 0 36 36" fill="none"><path d="M8 28V14l10-8 10 8v14H22v-8h-8v8H8z" fill="var(--c-on-primary)" /></svg>
           </div>
-          <div style={{ fontSize: 26, fontWeight: 800, color: TEXT, letterSpacing: -0.5 }}>mi<span style={{ color: VIOLET }}>IFTS</span></div>
-          <div style={{ color: MUTED, fontSize: 13, marginTop: 4 }}>Tu organizador académico</div>
+          <h1 style={{ fontSize: "1.625rem", fontWeight: 800, color: TEXT, letterSpacing: -0.5 }}>mi<span style={{ color: VIOLET }}>IFTS</span></h1>
+          <div style={{ color: MUTED, fontSize: "0.8125rem", marginTop: 4 }}>Tu organizador académico</div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <Input placeholder="Email institucional" type="email" value={email} onChange={setEmail} />
-          <Input placeholder="Contraseña" type="password" value={pass} onChange={setPass} />
+          <Input autoComplete="email" placeholder="Email institucional" type="email" value={email} onChange={setEmail} />
+          <Input autoComplete="current-password" placeholder="Contraseña" type="password" value={pass} onChange={setPass} />
         </div>
         <div style={{ marginTop: 24 }}>
           <PrimaryButton onClick={handleIngresar}>{login.loading ? "Ingresando…" : "Ingresar"}</PrimaryButton>
         </div>
         <p style={{ textAlign: "center", marginTop: 16 }}>
-          <button onClick={() => onGo("olvide-password")} style={{ background: "none", border: "none", color: MUTED, cursor: "pointer", fontSize: 13 }}>¿Olvidaste tu contraseña?</button>
+          <button type="button" onClick={() => onGo("olvide-password")} style={{ background: "none", border: "none", color: MUTED, cursor: "pointer", fontSize: "0.875rem", padding: "6px 8px", minHeight: 32 }}>¿Olvidaste tu contraseña?</button>
         </p>
-        <p style={{ textAlign: "center", marginTop: 8, color: MUTED, fontSize: 14 }}>
+        <p style={{ textAlign: "center", marginTop: 8, color: MUTED, fontSize: "0.875rem" }}>
           ¿No tenés cuenta?{" "}
-          <button onClick={() => onGo("registro")} style={{ background: "none", border: "none", color: VIOLET, fontWeight: 600, cursor: "pointer", fontSize: 14 }}>Registrate</button>
+          <button type="button" onClick={() => onGo("registro")} style={{ background: "none", border: "none", color: VIOLET, fontWeight: 600, cursor: "pointer", fontSize: "0.875rem", padding: "6px 4px", minHeight: 32, textDecoration: "underline" }}>Registrate</button>
         </p>
       </div>
     </ScreenWrap>
@@ -292,28 +332,28 @@ function RegistroScreen({ onGo }: { onGo: (s: Screen) => void }) {
   return (
     <ScreenWrap>
       <div style={{ padding: "56px 28px 0" }}>
-        <button onClick={() => onGo("login")} style={{ background: "none", border: "none", color: MUTED, cursor: "pointer", marginBottom: 24, padding: 0, display: "flex", alignItems: "center", gap: 6 }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M5 12l7 7M5 12l7-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        <button type="button" onClick={() => onGo("login")} style={{ background: "none", border: "none", color: MUTED, cursor: "pointer", marginBottom: 16, padding: "6px 0", minHeight: 32, display: "flex", alignItems: "center", gap: 6 }}>
+          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M5 12l7 7M5 12l7-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
           Volver
         </button>
         <div style={{ marginBottom: 32 }}>
-          <div style={{ fontSize: 24, fontWeight: 800, color: TEXT, letterSpacing: -0.4, marginBottom: 4 }}>Crear cuenta</div>
-          <div style={{ color: MUTED, fontSize: 14 }}>Completá tus datos para empezar</div>
+          <h1 style={{ fontSize: "1.5rem", fontWeight: 800, color: TEXT, letterSpacing: -0.4, marginBottom: 4 }}>Crear cuenta</h1>
+          <div style={{ color: MUTED, fontSize: "0.875rem" }}>Completá tus datos para empezar</div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <Input placeholder="Nombre" value={nombre} onChange={setNombre} />
-          <Input placeholder="Apellido" value={apellido} onChange={setApellido} />
-          <Input placeholder="Email institucional" type="email" value={email} onChange={setEmail} />
+          <Input autoComplete="given-name" placeholder="Nombre" value={nombre} onChange={setNombre} />
+          <Input autoComplete="family-name" placeholder="Apellido" value={apellido} onChange={setApellido} />
+          <Input autoComplete="email" placeholder="Email institucional" type="email" value={email} onChange={setEmail} />
           <div>
-            <Input placeholder="Contraseña" type="password" value={pass} onChange={setPass} />
-            <div style={{ color: passwordDebil ? "#F87171" : MUTED, fontSize: 12, marginTop: 6 }}>
+            <Input autoComplete="new-password" placeholder="Contraseña" type="password" value={pass} onChange={setPass} />
+            <div style={{ color: passwordDebil ? DANGER : MUTED, fontSize: "0.75rem", marginTop: 6 }}>
               Mínimo 8 caracteres, con al menos una letra y un número.
             </div>
           </div>
           <div>
-            <Input placeholder="Repetí tu contraseña" type="password" value={pass2} onChange={setPass2} />
+            <Input autoComplete="new-password" placeholder="Repetí tu contraseña" type="password" value={pass2} onChange={setPass2} />
             {passwordsNoCoinciden ? (
-              <div style={{ color: "#F87171", fontSize: 12, marginTop: 6 }}>Las contraseñas no coinciden.</div>
+              <div role="alert" style={{ color: DANGER, fontSize: "0.75rem", marginTop: 6 }}>Las contraseñas no coinciden.</div>
             ) : null}
           </div>
         </div>
@@ -322,8 +362,8 @@ function RegistroScreen({ onGo }: { onGo: (s: Screen) => void }) {
             Continuar
           </PrimaryButton>
         </div>
-        <p style={{ color: MUTED, fontSize: 12, textAlign: "center", marginTop: 20, lineHeight: 1.5 }}>
-          Al registrarte aceptás los <span style={{ color: VIOLET }}>términos y condiciones</span>
+        <p style={{ color: MUTED, fontSize: "0.75rem", textAlign: "center", marginTop: 20, lineHeight: 1.5 }}>
+          Al registrarte aceptás los <span style={{ color: TEXT, fontWeight: 600 }}>términos y condiciones</span>
         </p>
       </div>
     </ScreenWrap>
@@ -357,21 +397,21 @@ function OlvidePasswordScreen({ onGo }: { onGo: (s: Screen) => void }) {
   return (
     <ScreenWrap>
       <div style={{ padding: "56px 28px 0" }}>
-        <button onClick={() => onGo("login")} style={{ background: "none", border: "none", color: MUTED, cursor: "pointer", marginBottom: 24, padding: 0, display: "flex", alignItems: "center", gap: 6 }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M5 12l7 7M5 12l7-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        <button type="button" onClick={() => onGo("login")} style={{ background: "none", border: "none", color: MUTED, cursor: "pointer", marginBottom: 16, padding: "6px 0", minHeight: 32, display: "flex", alignItems: "center", gap: 6 }}>
+          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M5 12l7 7M5 12l7-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
           Volver
         </button>
         <div style={{ marginBottom: 32 }}>
-          <div style={{ fontSize: 24, fontWeight: 800, color: TEXT, letterSpacing: -0.4, marginBottom: 4 }}>¿Olvidaste tu contraseña?</div>
-          <div style={{ color: MUTED, fontSize: 14 }}>Ingresá tu email y te mandamos instrucciones para restablecerla.</div>
+          <h1 style={{ fontSize: "1.5rem", fontWeight: 800, color: TEXT, letterSpacing: -0.4, marginBottom: 4 }}>¿Olvidaste tu contraseña?</h1>
+          <div style={{ color: MUTED, fontSize: "0.875rem" }}>Ingresá tu email y te mandamos instrucciones para restablecerla.</div>
         </div>
         {enviado ? (
-          <div style={{ background: CARD, border: `0.5px solid ${BORDER}`, borderRadius: 12, padding: 20, color: TEXT, fontSize: 14, lineHeight: 1.5 }}>
+          <div style={{ background: CARD, border: `0.5px solid ${BORDER}`, borderRadius: 12, padding: 20, color: TEXT, fontSize: "0.875rem", lineHeight: 1.5 }}>
             Si el email está registrado, vas a recibir un correo con instrucciones para restablecer tu contraseña. Revisá tu bandeja de entrada (y spam).
           </div>
         ) : (
           <>
-            <Input placeholder="Email institucional" type="email" value={email} onChange={setEmail} />
+            <Input autoComplete="email" placeholder="Email institucional" type="email" value={email} onChange={setEmail} />
             <div style={{ marginTop: 24 }}>
               <PrimaryButton onClick={handleEnviar} disabled={loading || !email.trim()}>
                 {loading ? "Enviando…" : "Enviar instrucciones"}
@@ -436,20 +476,20 @@ function ResetPasswordScreen({ token, onGo }: { token: string; onGo: (s: Screen)
     <ScreenWrap>
       <div style={{ padding: "56px 28px 0" }}>
         <div style={{ marginBottom: 32 }}>
-          <div style={{ fontSize: 24, fontWeight: 800, color: TEXT, letterSpacing: -0.4, marginBottom: 4 }}>Elegí tu nueva contraseña</div>
-          <div style={{ color: MUTED, fontSize: 14 }}>Completá y confirmá tu nueva contraseña.</div>
+          <h1 style={{ fontSize: "1.5rem", fontWeight: 800, color: TEXT, letterSpacing: -0.4, marginBottom: 4 }}>Elegí tu nueva contraseña</h1>
+          <div style={{ color: MUTED, fontSize: "0.875rem" }}>Completá y confirmá tu nueva contraseña.</div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <div>
-            <Input placeholder="Contraseña nueva" type="password" value={pass} onChange={setPass} />
-            <div style={{ color: passwordDebil ? "#F87171" : MUTED, fontSize: 12, marginTop: 6 }}>
+            <Input autoComplete="new-password" placeholder="Contraseña nueva" type="password" value={pass} onChange={setPass} />
+            <div style={{ color: passwordDebil ? DANGER : MUTED, fontSize: "0.75rem", marginTop: 6 }}>
               Mínimo 8 caracteres, con al menos una letra y un número.
             </div>
           </div>
           <div>
-            <Input placeholder="Repetí tu contraseña" type="password" value={pass2} onChange={setPass2} />
+            <Input autoComplete="new-password" placeholder="Repetí tu contraseña" type="password" value={pass2} onChange={setPass2} />
             {passwordsNoCoinciden ? (
-              <div style={{ color: "#F87171", fontSize: 12, marginTop: 6 }}>Las contraseñas no coinciden.</div>
+              <div role="alert" style={{ color: DANGER, fontSize: "0.75rem", marginTop: 6 }}>Las contraseñas no coinciden.</div>
             ) : null}
           </div>
         </div>
@@ -541,19 +581,19 @@ function CarreraScreen({ onGo }: { onGo: (s: Screen) => void }) {
     <ScreenWrap>
       <div style={{ padding: "56px 24px 0" }}>
         <div style={{ marginBottom: 32, textAlign: "center" }}>
-          <div style={{ fontSize: 22, fontWeight: 800, color: TEXT, letterSpacing: -0.3 }}>¿Qué estudiás?</div>
-          <div style={{ color: MUTED, fontSize: 14, marginTop: 6 }}>Seleccioná tu carrera en el IFTS</div>
+          <h1 style={{ fontSize: "1.375rem", fontWeight: 800, color: TEXT, letterSpacing: -0.3 }}>¿Qué estudiás?</h1>
+          <div style={{ color: MUTED, fontSize: "0.875rem", marginTop: 6 }}>Seleccioná tu carrera en el IFTS</div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 32 }}>
           {loadingCarreras ? (
-            <div style={{ color: MUTED, textAlign: "center", padding: "12px 0" }}>Cargando carreras…</div>
+            <div role="status" style={{ color: MUTED, textAlign: "center", padding: "12px 0" }}>Cargando carreras…</div>
           ) : carrerasList.length === 0 ? (
             <div style={{ color: MUTED, textAlign: "center", padding: "12px 0" }}>No hay carreras disponibles.</div>
           ) : (
             carrerasList.map((c) => (
-              <button key={c.id} onClick={() => setSelectedId(c.id)} style={{ background: selectedId === c.id ? "rgba(140,125,255,0.12)" : CARD, border: `0.5px solid ${selectedId === c.id ? VIOLET : BORDER}`, borderRadius: 14, padding: "16px 18px", textAlign: "left", cursor: "pointer", transition: "all 0.2s" }}>
-                <div style={{ color: TEXT, fontWeight: 600, fontSize: 14, marginBottom: 4 }}>{c.nombre}</div>
-                <div style={{ color: MUTED, fontSize: 12 }}>Seleccione esta carrera</div>
+              <button key={c.id} type="button" aria-pressed={selectedId === c.id} onClick={() => setSelectedId(c.id)} style={{ background: selectedId === c.id ? "color-mix(in srgb, var(--c-violet) 14%, transparent)" : CARD, border: `0.5px solid ${selectedId === c.id ? VIOLET : BORDER}`, borderRadius: 14, padding: "16px 18px", textAlign: "left", cursor: "pointer", transition: "all 0.2s" }}>
+                <div style={{ color: TEXT, fontWeight: 600, fontSize: "0.875rem", marginBottom: 4 }}>{c.nombre}</div>
+                <div style={{ color: MUTED, fontSize: "0.75rem" }}>Seleccione esta carrera</div>
               </button>
             ))
           )}
@@ -586,6 +626,22 @@ function CarreraScreen({ onGo }: { onGo: (s: Screen) => void }) {
 // ─── Screen 9: Mi Perfil ──────────────────────────────────────────────────────
 // Reemplazada por PerfilFeatureScreen (Integrante 4, ver imports arriba).
 
+// Primer elemento enfocable de la página: permite saltear la navegación con el teclado.
+function SkipLink() {
+  return (
+    <a
+      href="#contenido"
+      onClick={(e) => {
+        e.preventDefault();
+        document.getElementById("contenido")?.focus();
+      }}
+      className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[400] focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-on-primary"
+    >
+      Saltar al contenido
+    </a>
+  );
+}
+
 // ─── App root ─────────────────────────────────────────────────────────────────
 const navToScreen: Record<NavTab, Screen> = {
   inicio: "inicio",
@@ -593,6 +649,7 @@ const navToScreen: Record<NavTab, Screen> = {
   recordatorios: "recordatorios",
   convenios: "convenios",
   perfil: "perfil",
+  admin: "admin",
 };
 
 const screenToNav: Partial<Record<Screen, NavTab>> = {
@@ -602,7 +659,7 @@ const screenToNav: Partial<Record<Screen, NavTab>> = {
   recordatorios: "recordatorios",
   convenios: "convenios",
   perfil: "perfil",
-  "admin-catalogo": "materias",
+  admin: "admin",
 };
 
 // Pantallas que no requieren sesión (no deben forzar redirect a login).
@@ -610,6 +667,9 @@ const PUBLIC_SCREENS: Screen[] = ["login", "registro", "olvide-password", "reset
 
 export default function App() {
   const auth = useAuth();
+  // Registra el Service Worker y, si ya hay sesión, trae el contador de
+  // recordatorios próximos para el badge del nav — ver src/hooks/usePush.ts.
+  const push = usePush();
   // S5-14 (INTEGRACION §2.4bis, D014): el link del mail llega como
   // `?token=...`. Sin react-router, se lee una única vez al montar — si hay
   // token, arranca directo en "reset-password" (tiene prioridad sobre la
@@ -617,9 +677,14 @@ export default function App() {
   const [resetToken] = useState<string | null>(() =>
     new URLSearchParams(window.location.search).get("token")
   );
+  // Admin aterriza directo en el panel, nunca en el dashboard de estudiante
+  // (ver decisions D019) — `auth.usuario` ya está disponible acá de forma
+  // síncrona (AuthProvider lo inicializa leyendo localStorage), así que esto
+  // también decide bien la pantalla inicial al recargar la página logueado.
   const [screen, setScreen] = useState<Screen>(() => {
     if (resetToken) return "reset-password";
-    return haySesion() ? "inicio" : "login";
+    if (!haySesion()) return "login";
+    return auth.usuario?.rol === "admin" ? "admin" : "inicio";
   });
   // No hay react-router en esta app todavía (el resto navega con este mismo
   // switch, no con URLs) — mientras tanto, la materia que se está viendo en
@@ -643,6 +708,17 @@ export default function App() {
   const handleNav = (tab: NavTab) => setScreen(navToScreen[tab]);
   const showNav = !PUBLIC_SCREENS.includes(screen);
   const activeTab = screenToNav[screen];
+  // Panel Admin (D015-REV1): el admin NO ve el menú de estudiante (Materias
+  // con notas/promedio, Recordatorios, Convenios de consulta no le sirven de
+  // nada) — se reemplaza el nav entero por uno propio. Se deja "Perfil"
+  // porque es el único lugar con "Cerrar sesión". Es solo UX — el backend
+  // hace cumplir 401/403 igual si alguien fuerza el estado.
+  // navItems(...) ya trae el badge de notificaciones metido en el ícono de
+  // "Recordat." (ver src/hooks/usePush.ts) — se resuelve acá, antes de decidir
+  // si el admin ve este set completo o el propio.
+  const navItemsConBadge = navItems(push.contadorPendientes);
+  const perfilNavItem = navItemsConBadge.find((item) => item.key === "perfil")!;
+  const visibleNavItems = auth.usuario?.rol === "admin" ? [adminNavItem, perfilNavItem] : navItemsConBadge;
 
   function abrirDetalle(materiaId: number) {
     setMateriaIdSeleccionada(materiaId);
@@ -658,12 +734,7 @@ export default function App() {
       case "carrera": return <CarreraScreen onGo={setScreen} />;
       case "inicio": return <InicioReal onOpenMateria={abrirDetalle} />;
       case "materias":
-        return (
-          <MisMateriasReal
-            onOpenMateria={abrirDetalle}
-            onAbrirAdmin={() => setScreen("admin-catalogo")}
-          />
-        );
+        return <MisMateriasReal onOpenMateria={abrirDetalle} />;
       case "detalle":
         if (materiaIdSeleccionada == null) {
           return <MisMateriasReal onOpenMateria={abrirDetalle} />;
@@ -674,15 +745,10 @@ export default function App() {
       case "recordatorios": return <RecordatoriosFeatureScreen />;
       case "convenios": return <ConveniosFeatureScreen />;
       case "perfil": return <PerfilFeatureScreen onCerrarSesion={() => setScreen("login")} />;
-      case "admin-catalogo":
-        // S4-10: guard de rol acá además del link condicional en
-        // MisMateriasScreen — nadie que no sea admin llega a esta pantalla
-        // aunque fuerce el estado.
-        return auth.usuario?.rol === "admin" ? (
-          <AdminCatalogoScreen onVolver={() => setScreen("materias")} />
-        ) : (
-          <MisMateriasReal onOpenMateria={abrirDetalle} />
-        );
+      case "admin":
+        // D019: guard de rol acá además del nav gateado — nadie que no sea
+        // admin llega a esta pantalla aunque fuerce el estado.
+        return auth.usuario?.rol === "admin" ? <AdminScreen /> : <MisMateriasReal onOpenMateria={abrirDetalle} />;
     }
   };
 
@@ -698,18 +764,20 @@ export default function App() {
   // el resto en blanco, el fondo del <body> sin pintar).
   if (!showNav) {
     return (
-      <div className="flex min-h-screen w-full items-center justify-center bg-[#111218] text-[#E8E8F0]">
-        <div className="flex w-full max-w-[430px] flex-col">{renderScreen()}</div>
+      <div className="flex min-h-screen w-full items-center justify-center bg-bg text-text">
+        <SkipLink />
+        <main id="contenido" tabIndex={-1} className="flex w-full max-w-[430px] flex-col outline-none">{renderScreen()}</main>
         <Toaster />
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen w-full bg-[#111218] text-[#E8E8F0] md:flex-row">
-      {activeTab ? <SidebarNav active={activeTab} onNav={handleNav} /> : null}
-      <div className="flex flex-1 flex-col overflow-hidden">{renderScreen()}</div>
-      {activeTab ? <BottomNav active={activeTab} onNav={handleNav} /> : null}
+    <div className="flex min-h-screen w-full bg-bg text-text md:flex-row">
+      <SkipLink />
+      {activeTab ? <SidebarNav items={visibleNavItems} active={activeTab} onNav={handleNav} /> : null}
+      <main id="contenido" tabIndex={-1} className="flex flex-1 flex-col overflow-hidden outline-none">{renderScreen()}</main>
+      {activeTab ? <BottomNav items={visibleNavItems} active={activeTab} onNav={handleNav} /> : null}
       <Toaster />
     </div>
   );

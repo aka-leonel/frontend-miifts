@@ -11,7 +11,7 @@ describe("apiClient.ts", () => {
     localStorage.setItem("miifts_token", "my-secret-token");
 
     const mockResponse = { ok: true, status: 200, text: async () => JSON.stringify({ data: "success" }) };
-    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(mockResponse as Response);
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(mockResponse as Response);
 
     const result = await apiClient<{ data: string }>("/test-path");
 
@@ -26,7 +26,7 @@ describe("apiClient.ts", () => {
 
   it("should set Content-Type to application/json when body is provided", async () => {
     const mockResponse = { ok: true, status: 200, text: async () => JSON.stringify({ ok: true }) };
-    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(mockResponse as Response);
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(mockResponse as Response);
 
     await apiClient("/submit", { method: "POST", body: { name: "test" } });
 
@@ -38,7 +38,7 @@ describe("apiClient.ts", () => {
 
   it("should handle 204 No Content correctly", async () => {
     const mockResponse = { ok: true, status: 204, text: async () => "" };
-    vi.spyOn(global, "fetch").mockResolvedValue(mockResponse as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(mockResponse as Response);
 
     const result = await apiClient<void>("/no-content");
     expect(result).toBeUndefined();
@@ -58,7 +58,7 @@ describe("apiClient.ts", () => {
       status: 422,
       text: async () => JSON.stringify(errorPayload),
     };
-    vi.spyOn(global, "fetch").mockResolvedValue(mockResponse as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(mockResponse as Response);
 
     let errorThrown: ApiError | null = null;
     try {
@@ -87,7 +87,7 @@ describe("apiClient.ts", () => {
       status: 401,
       text: async () => JSON.stringify({ detail: "No autorizado" }),
     };
-    vi.spyOn(global, "fetch").mockResolvedValue(mockResponse as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(mockResponse as Response);
 
     await expect(apiClient("/protected")).rejects.toThrow(ApiError);
     expect(unauthorizedFn).toHaveBeenCalledTimes(1);
@@ -104,7 +104,7 @@ describe("apiClient.ts", () => {
       status: 401,
       text: async () => JSON.stringify({ detail: "Password actual incorrecta" }),
     };
-    vi.spyOn(global, "fetch").mockResolvedValue(mockResponse as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(mockResponse as Response);
 
     await expect(
       apiClient("/auth/password", { suppressUnauthorizedRedirect: true })

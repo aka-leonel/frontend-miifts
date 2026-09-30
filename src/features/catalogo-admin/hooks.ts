@@ -1,6 +1,27 @@
+import { useCallback, useEffect, useState } from "react";
 import { useAsyncAction } from "../../hooks/useAsyncQuery";
-import { borrarCarrera, borrarMateria, crearCarrera, crearMateria, editarCarrera, editarMateria } from "./service";
-import type { Carrera, CarreraCreate, CarreraUpdate, Materia, MateriaCreate, MateriaUpdate } from "../../api/types";
+import {
+  borrarCarrera,
+  borrarCorrelativa,
+  borrarMateria,
+  crearCarrera,
+  crearCorrelativa,
+  crearMateria,
+  editarCarrera,
+  editarMateria,
+  getCorrelativas,
+} from "./service";
+import type {
+  Carrera,
+  CarreraCreate,
+  CarreraUpdate,
+  Correlativa,
+  CorrelativaCreate,
+  Materia,
+  MateriaCreate,
+  MateriaUpdate,
+  Paginated,
+} from "../../api/types";
 
 type Refresh = () => Promise<void> | void;
 
@@ -55,6 +76,62 @@ export function useEditarMateria(onSuccess?: Refresh) {
 
 export function useBorrarMateria(onSuccess?: Refresh) {
   const action = useAsyncAction<[number], void>((id) => borrarMateria(id));
+  const run = async (id: number) => {
+    await action.run(id);
+    await onSuccess?.();
+  };
+  return { ...action, run };
+}
+
+// A diferencia de `useAsync`, acepta `materiaId: null` y no dispara ningún
+// fetch en ese caso (no hay "materia_id=0" válido en el backend) — el panel
+// de correlativas empieza sin materia elegida.
+export function useCorrelativas(materiaId: number | null) {
+  const [state, setState] = useState<{ data: Paginated<Correlativa> | null; loading: boolean; error: unknown }>({
+    data: null,
+    loading: false,
+    error: null,
+  });
+
+  const load = useCallback(() => {
+    if (materiaId == null) {
+      setState({ data: null, loading: false, error: null });
+      return () => {};
+    }
+
+    let active = true;
+    setState((current) => ({ ...current, loading: true, error: null }));
+
+    getCorrelativas(materiaId)
+      .then((data) => {
+        if (active) setState({ data, loading: false, error: null });
+      })
+      .catch((error) => {
+        if (active) setState({ data: null, loading: false, error });
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [materiaId]);
+
+  useEffect(() => load(), [load]);
+
+  return { ...state, refetch: load };
+}
+
+export function useCrearCorrelativa(onSuccess?: Refresh) {
+  const action = useAsyncAction<[CorrelativaCreate], Correlativa>((body) => crearCorrelativa(body));
+  const run = async (body: CorrelativaCreate) => {
+    const result = await action.run(body);
+    await onSuccess?.();
+    return result;
+  };
+  return { ...action, run };
+}
+
+export function useBorrarCorrelativa(onSuccess?: Refresh) {
+  const action = useAsyncAction<[number], void>((id) => borrarCorrelativa(id));
   const run = async (id: number) => {
     await action.run(id);
     await onSuccess?.();

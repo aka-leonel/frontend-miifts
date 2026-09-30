@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "format": "oxfmt",
     "test": "vitest",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "gen:api": "openapi-typescript http://localhost:8000/openapi.json -o src/api/schema.d.ts"
   },
   "dependencies": {
     "react": "^19.0.0",
@@ -26,6 +27,7 @@
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^6.0.0",
     "jsdom": "^29.1.1",
+    "openapi-typescript": "^7.13.0",
     "oxfmt": "^0.2.0",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.7.0",

@@ -51,3 +51,10 @@ Identidad token cursadas/recordatorios, escritura convenios/TT protegida, detall
 
 ## 9. Diagrama
 User→Router(Guard)→Page→Service→ApiClient→FastAPI; 401→AuthContext clear→/login
+
+## 10. Panel Admin (2026-09-28, ver decisions D014-D016)
+- `App.tsx` no usa React Router para navegar entre pantallas (`RutaAdmin`/`RutaProtegida` en `features/auth/` están sin wirear): es un `switch(screen)` en memoria. El nav (`SidebarNav`/`BottomNav`, `navItems`) ahora filtra un item extra `"admin"` cuando `usuario?.rol==="admin"`.
+- `features/admin/AdminScreen.tsx`: shell con tabs internas Catálogo/Convenios, sin URL propia.
+- `features/catalogo-admin/`: ya tenía Carreras+Materias (S4-10); se agrega sección Correlativas (`correlativaSpec.ts`/`service.ts` ampliados) scoped a la materia seleccionada.
+- `features/convenios-admin/` (nuevo): CRUD de Convenios contra la forma cruda del backend (`institucion,carrera_destino,descripcion,link_info,carrera_id`), independiente de `features/convenios` (lectura estudiante).
+- `api/schema.d.ts` (generado, `npm run gen:api`): fuente de los tipos `*Create`/`*Update` listados en D014; el resto de `api/types.ts` sigue hand-written.

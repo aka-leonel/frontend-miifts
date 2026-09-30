@@ -7,15 +7,15 @@ import type { Recordatorio } from "../../api/types";
 const DOT_CLASS: Record<string, string> = {
   parcial: "bg-violet",
   tp: "bg-lime",
-  final: "bg-green",
-  otro: "bg-fuchsia-400",
+  final: "bg-success",
+  otro: "bg-pink",
 };
 
 const CHIP_CLASS: Record<string, string> = {
   parcial: "bg-violet/20 text-violet",
   tp: "bg-lime/20 text-lime",
-  final: "bg-green/20 text-green",
-  otro: "bg-fuchsia-400/20 text-fuchsia-300",
+  final: "bg-success/20 text-success",
+  otro: "bg-pink/20 text-pink",
 };
 
 const TIPO_LABEL: Record<string, string> = {
@@ -43,11 +43,11 @@ export function RecordatorioCard({ recordatorio: r, onEdit, onDelete, disabled }
 
   return (
     <div className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4">
-      <span className={["h-2.5 w-2.5 flex-shrink-0 rounded-full", DOT_CLASS[r.tipo] ?? "bg-muted"].join(" ")} />
+      <span aria-hidden="true" className={["h-2.5 w-2.5 flex-shrink-0 rounded-full", DOT_CLASS[r.tipo] ?? "bg-muted"].join(" ")} />
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-semibold text-text">{r.titulo}</div>
         <div className="mt-1 text-xs text-muted">
-          <span className={["mr-1.5 rounded-full px-2 py-0.5 text-[11px]", CHIP_CLASS[r.tipo] ?? "bg-muted/20 text-muted"].join(" ")}>
+          <span className={["mr-1.5 rounded-full px-2 py-0.5 text-xs", CHIP_CLASS[r.tipo] ?? "bg-muted/20 text-muted"].join(" ")}>
             {TIPO_LABEL[r.tipo] ?? r.tipo}
           </span>
           {formatearFecha(r.fecha)}
@@ -59,7 +59,8 @@ export function RecordatorioCard({ recordatorio: r, onEdit, onDelete, disabled }
             <button
               type="button"
               onClick={onEdit}
-              className="rounded-lg border border-border px-2.5 py-1 text-xs font-medium text-muted transition hover:text-text"
+              aria-label={`Editar recordatorio ${r.titulo}`}
+              className="rounded-lg border border-border px-2.5 py-2 text-xs font-medium text-muted transition hover:text-text"
             >
               Editar
             </button>
@@ -69,7 +70,8 @@ export function RecordatorioCard({ recordatorio: r, onEdit, onDelete, disabled }
               type="button"
               onClick={onDelete}
               disabled={disabled}
-              className="rounded-lg border border-red-500/40 px-2.5 py-1 text-xs font-medium text-red-300 disabled:opacity-50"
+              aria-label={`Borrar recordatorio ${r.titulo}`}
+              className="rounded-lg border border-danger/40 px-2.5 py-2 text-xs font-medium text-danger disabled:opacity-50"
             >
               Borrar
             </button>

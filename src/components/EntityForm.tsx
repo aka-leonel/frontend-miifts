@@ -1,4 +1,4 @@
-import { type ChangeEvent, type ReactNode, useMemo } from "react";
+import { type ChangeEvent, type ReactNode, useId, useMemo } from "react";
 
 export type FormFieldType = "text" | "number" | "select" | "switch" | "datetime" | "url";
 
@@ -40,7 +40,7 @@ export type EntityFormProps<T extends Record<string, unknown>> = {
 };
 
 const fieldClassName =
-  "w-full rounded-xl border border-border bg-bg px-3 py-2.5 text-sm text-text outline-none transition focus:border-violet placeholder:text-muted";
+  "w-full rounded-xl border border-border bg-bg px-3 py-2.5 text-sm text-text transition focus:border-violet placeholder:text-muted";
 
 function renderField<T extends Record<string, unknown>>(
   field: FormFieldSpec,
@@ -48,43 +48,67 @@ function renderField<T extends Record<string, unknown>>(
   errors: Record<string, string> | undefined,
   onChange: (name: keyof T, value: unknown) => void,
   isEditing: boolean,
+  prefix: string,
 ) {
-  const id = field.name;
+  const key = field.name;
+  const id = `${prefix}-${field.name}`;
+  const errorId = `${id}-error`;
+  const hintId = `${id}-hint`;
   const hasError = Boolean(errors?.[field.name]);
+  // El error y la ayuda se leen junto con el campo.
+  const describedBy = [hasError ? errorId : "", field.hint ? hintId : ""].filter(Boolean).join(" ") || undefined;
+  const requiredProps = field.required ? { "aria-required": true as const } : {};
+  const errorProps = { "aria-invalid": hasError || undefined, "aria-describedby": describedBy };
+  const labelEl = (
+    <label htmlFor={id} className="block text-xs font-semibold uppercase tracking-[0.08em] text-muted">
+      {field.label}
+    </label>
+  );
+  const errorEl = hasError ? (
+    <span id={errorId} role="alert" className="block text-xs text-danger">
+      {errors?.[field.name]}
+    </span>
+  ) : null;
 
   if (field.type === "switch") {
     return (
-      <label key={id} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-bg px-3 py-3 text-sm text-text">
-        <span>{field.label}</span>
+      <div key={key} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-bg px-3 py-3 text-sm text-text">
+        <span id={`${id}-label`}>{field.label}</span>
         <button
           type="button"
-          aria-pressed={Boolean(value)}
+          id={id}
+          role="switch"
+          aria-checked={Boolean(value)}
+          aria-labelledby={`${id}-label`}
           onClick={() => onChange(field.name as keyof T, !value)}
           className={[
-            "relative h-6 w-11 rounded-full border transition",
-            value ? "border-violet bg-violet" : "border-border bg-[#2A2B36]",
+            "relative h-6 w-11 flex-shrink-0 rounded-full border transition",
+            value ? "border-primary bg-primary" : "border-border bg-surface2",
           ].join(" ")}
         >
           <span
             className={[
-              "absolute top-1 h-4 w-4 rounded-full bg-white transition",
-              value ? "left-6" : "left-1",
+              "absolute top-1 h-4 w-4 rounded-full transition",
+              value ? "left-6 bg-on-primary" : "left-1 bg-muted",
             ].join(" ")}
           />
         </button>
-      </label>
+      </div>
     );
   }
 
   if (field.type === "select") {
     return (
-      <div key={id} className="space-y-1.5">
-        <label className="block text-xs font-semibold uppercase tracking-[0.08em] text-muted">{field.label}</label>
+      <div key={key} className="space-y-1.5">
+        {labelEl}
         <select
+          id={id}
+          {...requiredProps}
+          {...errorProps}
           value={String(value ?? "")}
           disabled={field.lockOnEdit && isEditing}
           onChange={(event: ChangeEvent<HTMLSelectElement>) => onChange(field.name as keyof T, event.target.value)}
-          className={[fieldClassName, hasError ? "border-red-500" : ""].join(" ")}
+          className={[fieldClassName, hasError ? "border-danger" : ""].join(" ")}
         >
           <option value="">Seleccionar</option>
           {(field.options ?? []).map((option) => (
@@ -93,42 +117,53 @@ function renderField<T extends Record<string, unknown>>(
             </option>
           ))}
         </select>
-        {hasError ? <span className="text-xs text-red-300">{errors?.[field.name]}</span> : null}
+        {errorEl}
       </div>
     );
   }
 
   if (field.type === "number") {
     return (
-      <div key={id} className="space-y-1.5">
-        <label className="block text-xs font-semibold uppercase tracking-[0.08em] text-muted">{field.label}</label>
+      <div key={key} className="space-y-1.5">
+        {labelEl}
         <input
+          id={id}
+          {...requiredProps}
+          {...errorProps}
           type="number"
+          inputMode="decimal"
           min={field.min}
           max={field.max}
           value={String(value ?? "")}
           disabled={field.readOnly}
           onChange={(event) => onChange(field.name as keyof T, event.target.value)}
-          className={[fieldClassName, hasError ? "border-red-500" : "", field.readOnly ? "cursor-not-allowed opacity-70" : ""].join(" ")}
+          className={[fieldClassName, hasError ? "border-danger" : "", field.readOnly ? "cursor-not-allowed opacity-70" : ""].join(" ")}
           placeholder={field.placeholder}
         />
-        {field.hint ? <span className="text-xs text-muted">{field.hint}</span> : null}
-        {hasError ? <span className="text-xs text-red-300">{errors?.[field.name]}</span> : null}
+        {field.hint ? (
+          <span id={hintId} className="block text-xs text-muted">
+            {field.hint}
+          </span>
+        ) : null}
+        {errorEl}
       </div>
     );
   }
 
   return (
-    <div key={id} className="space-y-1.5">
-      <label className="block text-xs font-semibold uppercase tracking-[0.08em] text-muted">{field.label}</label>
+    <div key={key} className="space-y-1.5">
+      {labelEl}
       <input
+        id={id}
+        {...requiredProps}
+        {...errorProps}
         type={field.type === "datetime" ? "datetime-local" : field.type === "url" ? "url" : "text"}
         value={String(value ?? "")}
         onChange={(event) => onChange(field.name as keyof T, event.target.value)}
-        className={[fieldClassName, hasError ? "border-red-500" : ""].join(" ")}
+        className={[fieldClassName, hasError ? "border-danger" : ""].join(" ")}
         placeholder={field.placeholder}
       />
-      {hasError ? <span className="text-xs text-red-300">{errors?.[field.name]}</span> : null}
+      {errorEl}
     </div>
   );
 }
@@ -143,9 +178,10 @@ export default function EntityForm<T extends Record<string, unknown>>({
   children,
   isEditing = false,
 }: EntityFormProps<T>) {
+  const prefix = useId();
   const renderedFields = useMemo(
-    () => fields.map((field) => renderField(field, values[field.name], errors, onChange, isEditing)),
-    [fields, values, errors, onChange, isEditing],
+    () => fields.map((field) => renderField(field, values[field.name], errors, onChange, isEditing, prefix)),
+    [fields, values, errors, onChange, isEditing, prefix],
   );
 
   return (
@@ -155,7 +191,7 @@ export default function EntityForm<T extends Record<string, unknown>>({
       {showSubmitButton ? (
         <button
           type="button"
-          className="w-full rounded-xl bg-violet px-4 py-3 text-sm font-semibold text-white shadow-[0_10px_25px_rgba(140,125,255,0.35)] transition hover:opacity-95"
+          className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-on-primary shadow-[0_10px_25px_rgba(140,125,255,0.35)] transition hover:opacity-95"
         >
           {submitLabel}
         </button>

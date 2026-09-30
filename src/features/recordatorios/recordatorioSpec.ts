@@ -49,11 +49,26 @@ export function recordatorioSpec(materiaId?: number): FormSpec<RecordatorioForm>
   };
 }
 
+// El input datetime-local no lleva timezone: su `.value` es la hora de pared
+// tal como se tipeó (ej. "2026-10-01T02:30"), sin info de zona. El backend
+// tampoco es timezone-aware (`fecha = Column(DateTime, ...)`, sin
+// `timezone=True`, sqlite no guarda offset) — no hace ninguna conversión.
+//
+// Antes esto se mandaba con `new Date(values.fecha).toISOString()`, que
+// interpreta el string como hora LOCAL y lo pasa a UTC (le suma las 3h de
+// Argentina). El backend guarda esos números tal cual, sin marca de zona, y
+// al mostrarlo el front los vuelve a leer como si ya fueran hora local — de
+// ahí el corrimiento de +3h. La fecha tiene que viajar intacta en los dos
+// sentidos (mismo criterio que `recordatorioFormInitial` ya usaba al revés).
+function normalizarFecha(valor: string): string {
+  // "YYYY-MM-DDTHH:mm" (el input no manda segundos) -> completar con ":00".
+  return valor.length === 16 ? `${valor}:00` : valor;
+}
+
 function crear(values: RecordatorioForm, materiaId?: number): Promise<Recordatorio> {
   return createRecordatorio({
     titulo: values.titulo,
-    // datetime-local no lleva timezone; se interpreta como hora local.
-    fecha: new Date(values.fecha).toISOString(),
+    fecha: normalizarFecha(values.fecha),
     tipo: values.tipo,
     materia_id: materiaId ?? null,
   } satisfies RecordatorioCreate);
@@ -62,10 +77,9 @@ function crear(values: RecordatorioForm, materiaId?: number): Promise<Recordator
 function actualizar(id: number, values: RecordatorioForm, materiaId?: number): Promise<Recordatorio> {
   // PATCH parcial: no se manda materia_id en la agenda global para no
   // desvincular un recordatorio creado desde el detalle de materia.
-  // datetime-local no lleva timezone; se interpreta como hora local.
   return updateRecordatorio(id, {
     titulo: values.titulo,
-    fecha: new Date(values.fecha).toISOString(),
+    fecha: normalizarFecha(values.fecha),
     tipo: values.tipo,
     ...(materiaId !== undefined ? { materia_id: materiaId } : {}),
   });

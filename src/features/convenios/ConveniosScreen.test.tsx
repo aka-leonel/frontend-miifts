@@ -87,7 +87,9 @@ describe("ConveniosScreen", () => {
 
     render(<ConveniosScreen />);
 
-    const masInfoButton = screen.getByRole("button", { name: "Más info" });
+    // El botón tiene aria-label con el nombre del convenio (accesibilidad),
+    // así que el nombre accesible ya no es el texto visible "Más info" a secas.
+    const masInfoButton = screen.getByRole("button", { name: /Más información sobre/i });
     await userEvent.click(masInfoButton);
 
     expect(window.open).toHaveBeenCalledWith("https://example.com/info", "_blank", "noopener,noreferrer");

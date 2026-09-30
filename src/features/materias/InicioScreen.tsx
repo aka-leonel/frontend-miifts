@@ -1,7 +1,8 @@
 import { useRecordatorios } from "../recordatorios/hooks";
 import { useAuth } from "../../auth/AuthContext";
-import { estadoLabel } from "./estado";
-import { useMisMaterias, usePromedio } from "./hooks";
+import type { Usuario } from "../../api/types";
+import { nombreDeCursada } from "./estado";
+import { useMisMaterias, useProgresoCarrera, usePromedio } from "./hooks";
 import ByteWidget from "./ByteWidget";
 import PromedioCard from "./PromedioCard";
 
@@ -12,26 +13,34 @@ function hoyISO(): string {
 const dotByTipo: Record<string, string> = {
   parcial: "bg-violet",
   tp: "bg-lime",
-  final: "bg-green",
-  otro: "bg-fuchsia-400",
+  final: "bg-success",
+  otro: "bg-pink",
 };
 
-export default function InicioScreen({ onOpenMateria }: { onOpenMateria?: (id: number) => void }) {
+type Props = { onOpenMateria?: (id: number) => void };
+
+// Guard de sesión en el wrapper: los hooks del componente de abajo tienen que
+// llamarse siempre en el mismo orden (ver nota en MisMateriasScreen).
+export default function InicioScreen(props: Props) {
   const { usuario } = useAuth();
   if (!usuario) {
     return <div className="p-6 text-sm text-muted">Tu sesión ya no es válida.</div>;
   }
+  return <InicioContent usuario={usuario} {...props} />;
+}
 
+function InicioContent({ usuario, onOpenMateria }: Props & { usuario: Usuario }) {
   const lista = useMisMaterias(1);
   const promedio = usePromedio();
   const recordatorios = useRecordatorios({ desde: hoyISO(), per_page: 3 });
-
-  const items = lista.data?.items ?? [];
-  // El backend ahora deriva 5 estados (cursando/promocionada/aprobada/
-  // desaprobada/pendiente, ver feature/estados-materia) — "promocionada"
-  // también es una materia aprobada (exime el final por parciales ≥7).
-  const aprobadas = items.filter((c) => ["aprobada", "promocionada"].includes(estadoLabel(c))).length;
-  const total = lista.data?.total ?? 0;
+  // Progreso sobre el TOTAL de materias de la carrera (no sobre las cursadas
+  // cargadas ni las que están en curso). "promocionada" también cuenta como
+  // aprobada (exime el final por parciales ≥7).
+  const { aprobadas, total } = useProgresoCarrera(usuario.carrera_id);
+  // Las que se están cursando primero (sort estable: el resto mantiene su orden).
+  const items = [...(lista.data?.items ?? [])].sort(
+    (a, b) => Number(b.estado === "cursando") - Number(a.estado === "cursando"),
+  );
 
   return (
     <div className="flex-1 overflow-y-auto pb-24">
@@ -39,9 +48,9 @@ export default function InicioScreen({ onOpenMateria }: { onOpenMateria?: (id: n
         <div className="mb-6 flex items-start justify-between gap-4">
           <div>
             <div className="text-sm text-muted">Bienvenida de vuelta</div>
-            <div className="text-2xl font-black tracking-[-0.04em] text-text">Hola, {usuario.nombre.split(" ")[0]} 👋</div>
+            <h1 className="text-2xl font-black tracking-[-0.04em] text-text">Hola, {usuario.nombre.split(" ")[0]} 👋</h1>
           </div>
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet to-[#6B5CE7] text-sm font-bold text-white">
+          <div aria-hidden="true" className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-sm font-bold text-on-primary">
             {usuario.nombre.slice(0, 2).toUpperCase()}
           </div>
         </div>
@@ -53,11 +62,11 @@ export default function InicioScreen({ onOpenMateria }: { onOpenMateria?: (id: n
 
         <div className="mb-6">
           <div className="mb-3 flex items-center justify-between">
-            <div className="text-sm font-bold text-text">Próximos</div>
+            <h2 className="text-sm font-bold text-text">Próximos</h2>
             <span className="text-xs text-muted">{recordatorios.data?.total ?? 0} recordatorios</span>
           </div>
           {recordatorios.loading && !recordatorios.data ? (
-            <div className="grid gap-2 sm:grid-cols-2">
+            <div role="status" aria-label="Cargando recordatorios" className="grid gap-2 sm:grid-cols-2">
               <div className="h-16 animate-pulse rounded-2xl border border-border bg-card" />
               <div className="h-16 animate-pulse rounded-2xl border border-border bg-card" />
             </div>
@@ -75,7 +84,7 @@ export default function InicioScreen({ onOpenMateria }: { onOpenMateria?: (id: n
                   onClick={() => r.materia_id && onOpenMateria?.(r.materia_id)}
                   className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 text-left"
                 >
-                  <span className={["h-2 w-2 flex-shrink-0 rounded-full", dotByTipo[r.tipo] ?? "bg-muted"].join(" ")} />
+                  <span aria-hidden="true" className={["h-2 w-2 flex-shrink-0 rounded-full", dotByTipo[r.tipo] ?? "bg-muted"].join(" ")} />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-medium text-text">{r.titulo}</span>
                     <span className="text-xs text-muted">{new Date(r.fecha).toLocaleDateString("es-AR")} · {r.tipo}</span>
@@ -87,9 +96,9 @@ export default function InicioScreen({ onOpenMateria }: { onOpenMateria?: (id: n
         </div>
 
         <div>
-          <div className="mb-3 text-sm font-bold text-text">Mis materias</div>
+          <h2 className="mb-3 text-sm font-bold text-text">Mis materias</h2>
           {lista.loading && !lista.data ? (
-            <div className="h-20 animate-pulse rounded-2xl border border-border bg-card" />
+            <div role="status" aria-label="Cargando materias" className="h-20 animate-pulse rounded-2xl border border-border bg-card" />
           ) : items.length === 0 ? (
             <div className="rounded-2xl border border-border bg-card p-6 text-center text-sm text-muted">Todavía no cargaste materias.</div>
           ) : (
@@ -101,7 +110,7 @@ export default function InicioScreen({ onOpenMateria }: { onOpenMateria?: (id: n
                   onClick={() => onOpenMateria?.(c.materia_id)}
                   className="rounded-2xl border border-border bg-card p-4 text-left"
                 >
-                  <div className="truncate text-sm font-semibold text-text">{c.materia?.nombre ?? `Materia #${c.materia_id}`}</div>
+                  <div className="truncate text-sm font-semibold text-text">{nombreDeCursada(c)}</div>
                   <div className="mt-1 text-xs capitalize text-muted">{c.estado}</div>
                   {c.nota_final != null ? <div className="mt-2 text-xs font-bold text-violet">Nota {c.nota_final}</div> : null}
                 </button>

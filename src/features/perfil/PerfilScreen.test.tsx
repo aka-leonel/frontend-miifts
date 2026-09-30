@@ -19,7 +19,7 @@ vi.mock("../catalogo/hooks", () => ({
 }));
 
 vi.mock("../materias/hooks", () => ({
-  useMisMaterias: vi.fn(),
+  useProgresoCarrera: vi.fn(),
 }));
 
 describe("PerfilScreen", () => {
@@ -28,8 +28,9 @@ describe("PerfilScreen", () => {
     email: "juan.perez@ifts.edu.ar",
     nombre: "Juan",
     apellido: "Pérez",
-    rol: "alumno" as const,
+    rol: "estudiante" as const,
     carrera_id: 1,
+    fecha_registro: "2026-01-01T00:00:00",
   };
 
   const mockMeQuery = {
@@ -41,26 +42,22 @@ describe("PerfilScreen", () => {
 
   const mockCarrerasQuery = {
     data: {
-      items: [{ id: 1, nombre: "Desarrollo de Software" }],
+      items: [{ id: 1, nombre: "Desarrollo de Software", duracion_cuatrimestres: 6, ifts_id: 1 }],
+      total: 1,
       page: 1,
-      totalPages: 1,
+      per_page: 100,
+      total_pages: 1,
     },
     loading: false,
     error: null,
+    refetch: vi.fn(),
   };
 
-  const mockMateriasQuery = {
-    data: {
-      items: [
-        { id: 1, materia_id: 1, estado: "aprobada", nota_final: 8 },
-        { id: 2, materia_id: 2, estado: "cursando", nota_final: null },
-      ],
-      total: 2,
-      page: 1,
-      totalPages: 1,
-    },
+  const mockProgreso = {
+    aprobadas: 1,
+    total: 2,
     loading: false,
-    error: null,
+    refetch: vi.fn(),
   };
 
   const mockAuthContext = {
@@ -68,9 +65,11 @@ describe("PerfilScreen", () => {
     token: "token-123",
     cargando: false,
     verificandoSesion: false,
+    expirandoPronto: false,
     login: vi.fn(),
     registro: vi.fn(),
     logout: vi.fn(),
+    actualizarUsuario: vi.fn(),
     actualizarPerfil: vi.fn(),
     cambiarPassword: vi.fn(),
   };
@@ -80,7 +79,7 @@ describe("PerfilScreen", () => {
     vi.mocked(AuthContext.useAuth).mockReturnValue(mockAuthContext);
     vi.mocked(perfilHooks.useAuthMe).mockReturnValue(mockMeQuery);
     vi.mocked(catalogoHooks.useCarreras).mockReturnValue(mockCarrerasQuery);
-    vi.mocked(materiasHooks.useMisMaterias).mockReturnValue(mockMateriasQuery);
+    vi.mocked(materiasHooks.useProgresoCarrera).mockReturnValue(mockProgreso);
   });
 
   it("should render user profile information and academic stats correctly", () => {

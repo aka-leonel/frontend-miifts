@@ -12,11 +12,12 @@ import { ApiError } from "../../api/client";
 import { useAuth } from "../../auth/AuthContext";
 import type { Recordatorio, Recurso } from "../../api/types";
 import { ConfirmDialog, FormModal, ListState } from "../../components";
+import type { Usuario } from "../../api/types";
 import { useToast } from "../../hooks/useToast";
 import { useMateriasDeCarrera } from "../catalogo/hooks";
 import { estadoBadgeClasses, estadoLabel } from "../materias/estado";
 import { useMisMaterias } from "../materias/hooks";
-import { materiaUsuarioInitial, materiaUsuarioSpec } from "../materias/materiaUsuarioSpec";
+import CursadaFormModal, { type AccionCursada } from "../materias/CursadaFormModal";
 import { RecordatorioCard } from "../recordatorios/RecordatorioCard";
 import { useBorrarRecordatorio, useRecordatorios } from "../recordatorios/hooks";
 import { recordatorioFormInitial, recordatorioSpec } from "../recordatorios/recordatorioSpec";
@@ -31,19 +32,27 @@ interface Props {
   onVolver: () => void;
 }
 
-export function MateriaDetalleScreen({ materiaId, onVolver }: Props) {
+// Guard de sesión en el wrapper: los hooks del componente de abajo tienen que
+// llamarse siempre en el mismo orden (un `return` antes de ellos rompe las
+// reglas de hooks si la sesión cae con esta pantalla abierta).
+export function MateriaDetalleScreen(props: Props) {
   const { usuario } = useAuth();
-  const { pushToast } = useToast();
 
   if (!usuario) {
     return <div className="p-6 text-sm text-muted">Tu sesión ya no es válida.</div>;
   }
 
+  return <MateriaDetalleContent usuario={usuario} {...props} />;
+}
+
+function MateriaDetalleContent({ usuario, materiaId, onVolver }: Props & { usuario: Usuario }) {
+  const { pushToast } = useToast();
+
   const materia = useMateria(materiaId);
   const correlativas = useCorrelativas(materiaId);
   const recursos = useRecursosDeMateria(materiaId);
   const materiasDeMiCarrera = useMateriasDeCarrera(usuario.carrera_id);
-  const misMaterias = useMisMaterias(1);
+  const misMaterias = useMisMaterias(1, 100);
   const recordatoriosParams = useMemo(() => ({ materia_id: materiaId, per_page: 50 }), [materiaId]);
   const recordatorios = useRecordatorios(recordatoriosParams);
 
@@ -94,19 +103,19 @@ export function MateriaDetalleScreen({ materiaId, onVolver }: Props) {
 
   if (materia.loading && !materia.data) {
     return (
-      <div className="px-6 pt-14">
-        <div className="h-20 animate-pulse rounded-2xl border border-border bg-card" />
+      <div className="mx-auto w-full max-w-lg px-4 pt-14 sm:max-w-2xl sm:px-6 lg:max-w-5xl">
+        <div role="status" aria-label="Cargando materia" className="h-20 animate-pulse rounded-2xl border border-border bg-card" />
       </div>
     );
   }
 
   if (materia.error || !materia.data) {
     return (
-      <div className="px-6 pt-14">
-        <div className="rounded-2xl border border-red-500/40 bg-red-500/10 p-6 text-center text-red-100">
+      <div className="mx-auto w-full max-w-lg px-4 pt-14 sm:max-w-2xl sm:px-6 lg:max-w-5xl">
+        <div role="alert" className="rounded-2xl border border-danger/40 bg-danger/10 p-6 text-center text-danger">
           No se pudo cargar la materia.
         </div>
-        <button type="button" onClick={onVolver} className="mt-4 text-sm text-violet">
+        <button type="button" onClick={onVolver} className="mt-4 py-2 text-sm text-violet">
           ← Volver
         </button>
       </div>
@@ -118,12 +127,14 @@ export function MateriaDetalleScreen({ materiaId, onVolver }: Props) {
 
   return (
     <div className="flex-1 overflow-y-auto pb-24">
-      <div className="px-6 pt-14">
-        <button type="button" onClick={onVolver} className="mb-4 text-sm text-muted transition hover:text-text">
+      {/* S5-10: mismo contenedor fluido que Mis Materias/Inicio/Convenios/
+          Recordatorios/Perfil. */}
+      <div className="mx-auto w-full max-w-lg px-4 pt-14 sm:max-w-2xl sm:px-6 lg:max-w-5xl">
+        <button type="button" onClick={onVolver} className="mb-2 py-2 text-sm text-muted transition hover:text-text">
           ← Materias
         </button>
 
-        <div className="mb-2 text-2xl font-black tracking-[-0.04em] text-text">{m.nombre}</div>
+        <h1 className="mb-2 text-2xl font-black tracking-[-0.04em] text-text">{m.nombre}</h1>
         <div className="mb-6 flex flex-wrap items-center gap-2">
           <span className="rounded-full bg-surface2 px-2 py-1 text-xs text-muted">{m.codigo}</span>
           <span className="text-xs text-muted">
@@ -133,33 +144,26 @@ export function MateriaDetalleScreen({ materiaId, onVolver }: Props) {
 
         <div className="mb-6 rounded-2xl border border-border bg-card p-4">
           <div className="mb-2 flex items-center justify-between">
-            <span className="text-sm font-bold text-text">Tu cursada</span>
+            <h2 className="text-sm font-bold text-text">Tu cursada</h2>
             <button
               type="button"
               onClick={() => setModalNotas(true)}
-              className="rounded-lg border border-violet/60 bg-violet/10 px-3 py-1.5 text-xs font-semibold text-violet"
+              className="rounded-lg border border-violet/60 bg-violet/10 px-3 py-2 text-xs font-semibold text-violet"
             >
               {cursadaActual ? "Editar notas" : "Agregar cursada"}
             </button>
           </div>
           {cursadaActual ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className={["rounded-full px-3 py-1 text-xs font-semibold capitalize", estadoBadgeClasses[estado]].join(" ")}>
-                {estado}
-              </span>
-              {cursadaActual.nota_final != null ? (
-                <span className="rounded-full bg-surface2 px-2 py-1 text-xs text-muted">
-                  Final: {cursadaActual.nota_final}
-                </span>
-              ) : null}
-            </div>
+            <span className={["rounded-full px-3 py-1 text-xs font-semibold capitalize", estadoBadgeClasses[estado]].join(" ")}>
+              {estado}
+            </span>
           ) : (
             <p className="text-sm text-muted">Todavía no cargaste esta materia entre tus cursadas.</p>
           )}
         </div>
 
         <div className="mb-6">
-          <div className="mb-3 text-sm font-bold text-text">Correlativas</div>
+          <h2 className="mb-3 text-sm font-bold text-text">Correlativas</h2>
           <ListState
             loading={correlativas.loading}
             error={correlativas.error}
@@ -178,11 +182,11 @@ export function MateriaDetalleScreen({ materiaId, onVolver }: Props) {
 
         <div className="mb-6">
           <div className="mb-3 flex items-center justify-between">
-            <span className="text-sm font-bold text-text">Recursos</span>
+            <h2 className="text-sm font-bold text-text">Recursos</h2>
             <button
               type="button"
               onClick={() => setModalRecurso({ open: true, item: null })}
-              className="text-xs font-semibold text-violet"
+              className="px-2 py-2 text-xs font-semibold text-violet"
             >
               + Agregar
             </button>
@@ -214,11 +218,11 @@ export function MateriaDetalleScreen({ materiaId, onVolver }: Props) {
 
         <div>
           <div className="mb-3 flex items-center justify-between">
-            <span className="text-sm font-bold text-text">Recordatorios</span>
+            <h2 className="text-sm font-bold text-text">Recordatorios</h2>
             <button
               type="button"
               onClick={() => setModalRecordatorio({ open: true, item: null })}
-              className="text-xs font-semibold text-violet"
+              className="px-2 py-2 text-xs font-semibold text-violet"
             >
               + Agregar
             </button>
@@ -246,14 +250,22 @@ export function MateriaDetalleScreen({ materiaId, onVolver }: Props) {
         </div>
       </div>
 
-      <FormModal
+      <CursadaFormModal
         open={modalNotas}
-        item={cursadaActual ?? undefined}
-        spec={materiaUsuarioSpec({ materias: materiasDeMiCarrera.data?.items ?? [], cursadaActual })}
-        initialValues={materiaUsuarioInitial(cursadaActual ?? { materia_id: materiaId })}
+        cursada={cursadaActual}
+        materias={materiasDeMiCarrera.data?.items ?? []}
+        edicion="notas"
+        materiaIdFija={materiaId}
         onClose={() => setModalNotas(false)}
-        onSuccess={() => {
-          pushToast(cursadaActual ? "Cursada actualizada." : "Cursada agregada.", "success");
+        onSaved={(accion: AccionCursada) => {
+          pushToast(
+            accion === "creada"
+              ? "Cursada agregada."
+              : accion === "recursada"
+                ? "Recursando: se borraron las notas viejas y pasó a cursando."
+                : "Cursada actualizada.",
+            "success",
+          );
           misMaterias.refetch();
         }}
       />

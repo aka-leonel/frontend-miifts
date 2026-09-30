@@ -305,3 +305,40 @@ Dependencias: T5-PERFIL-01 bloquea 02/03/04; 02 y 03 pueden ir en paralelo tras 
 > Auditoría 2026-09-16 (paralela a §9.6): se detectó el mismo gap — el frontend de este plan asumía `POST /auth/change-password` (`CHANGE_PASSWORD_PATH` en `src/auth/api.ts`), pero el backend real (`backend-ifts/app/features/auth/router.py`) **nunca expuso ese endpoint**. En su momento se escaló a 3 opciones para el Architect (A: crear endpoint dedicado en backend, B: reusar `forgot-password` sin pedir la actual, C: ocultar el botón hasta Sprint 6).
 >
 > **Resolución:** se tomó la opción A — el backend entregó `PATCH /auth/password` (INTEGRACION §2.4ter). La implementación final quedó en `CambiarPasswordModal.tsx` contra ese endpoint real (§9.6, D017), no contra `CHANGE_PASSWORD_PATH`/`/auth/change-password` (nunca llegó a existir, se descartó al mergear). Sin acción pendiente.
+
+## 12. Plan Detallado — Panel Admin: Correlativas + Convenios (2026-09-28, ver decisions D018-D020, requirements §6b) — COMPLETE
+
+### 12.1 Estado actual
+Carreras+Materias admin YA ABM completo y validado (`features/catalogo-admin/`, S4-10). Backend `dev/feature/admin-endpoints` corriendo en `localhost:8000` ya expone `POST/DELETE /materias/correlativas` y `POST/PUT/DELETE /convenios/`. Faltaba: tipado generado, UI de Correlativas, UI de Convenios admin, nav gateado por rol — las 4 se implementaron y validaron en vivo.
+
+### 12.2 Tareas del Developer (todas DONE)
+
+#### T-ADM-01 · Tipado generado (0.5d) — bloquea el resto
+- Agregar devDependency `openapi-typescript`; script `"gen:api": "openapi-typescript http://localhost:8000/openapi.json -o src/api/schema.d.ts"` (backend debe estar corriendo).
+- Correr `npm run gen:api` contra el backend real → generar `src/api/schema.d.ts`.
+- En `api/types.ts`: `import type { components } from "./schema"; type S = components["schemas"];` y reemplazar/agregar SOLO: `CarreraCreate`, `CarreraUpdate`, `MateriaCreate`, `MateriaUpdate` (reemplazan las hand-written), `CorrelativaCreate` y `Convenio`/`ConvenioCreate` (nuevos) = `S['...']`. No se tocó el resto del archivo.
+
+#### T-ADM-02 · Correlativas (1d) — depende T-ADM-01
+- `features/catalogo-admin/service.ts`: `getCorrelativas(materiaId)`, `crearCorrelativa(body: CorrelativaCreate)`, `borrarCorrelativa(id)`.
+- `features/catalogo-admin/hooks.ts`: `useCorrelativas(materiaId)` (variante de `useAsync` que no fetchea con `materiaId==null`), `useCrearCorrelativa`/`useBorrarCorrelativa` (patrón `useAsyncAction`).
+- `AdminCatalogoScreen.tsx`: panel "Correlatividades" con 2 `<select>` nativos (no `FormModal`/`EntityForm`, no encaja el field cruzado) — "esta materia" y "requiere aprobada/cursada" (excluye la elegida en el primero), lista + borrar. Errores: 404/409 → toast con `error.detail`.
+
+#### T-ADM-03 · Convenios admin (1d) — independiente de T-ADM-02, depende T-ADM-01
+- Nueva carpeta `features/convenios-admin/`: `service.ts` (crear/editar/borrar + listado paginado sobre `Convenio` crudo, NO reusa `features/convenios/service.ts`), `convenioSpec.ts` (`FormSpec<ConvenioForm>`: institucion, carrera_destino, descripcion, link_info type `"url"`, carrera_id `"select"` con opciones de `useCarreras`; PUT manda el mismo body completo que POST, no hay `ConvenioUpdate` parcial), `hooks.ts`, `ConveniosAdminScreen.tsx`.
+- Validación `link_info`: antes de llamar al service, si `new URL(value)` tira (o el protocolo no es http/https), se lanza `new ApiError(422, "...", {link_info: "..."})` para que `useApiForm` lo muestre en el campo — validado en vivo, no llega a pegarle al backend con una URL rota.
+
+#### T-ADM-04 · Shell + nav (0.5d) — depende T-ADM-02 y T-ADM-03, revisado tras feedback (ver D019)
+- `features/admin/AdminScreen.tsx`: tabs internas "Catálogo" / "Convenios".
+- `App.tsx`: `Screen "admin"` → `<AdminScreen/>` con guard `usuario?.rol==="admin"`. **Revisión post-feedback:** el nav de admin no se agrega al lado del de estudiante, lo REEMPLAZA (`visibleNavItems = rol==="admin" ? [adminNavItem, perfilNavItem] : navItems`); login y rehidratación de sesión aterrizan directo en `"admin"` para ese rol (`getUsuarioGuardado()` tras login, estado inicial de `screen` en mount). Se quitó el botón "Admin catálogo" + prop `onAbrirAdmin` de `MisMateriasScreen`.
+- UX adicional pedida tras la primera pasada: listado de materias del catálogo agrupado por año con chips de filtro por cuatrimestre (evita lista plana larga difícil de seguir).
+
+### 12.3 Validación (Tester, en vivo contra backend real — Chrome)
+1. `npm run gen:api` + `tsc --noEmit` + `npm run build`: verdes.
+2. Nav: logueado como `admin@miifts.ar` ve solo Admin+Perfil y aterriza en el panel; logueado como `test@miifts.ar` (estudiante) ve su nav completo de siempre, sin "Admin".
+3. Correlativas: creada y borrada contra `POST/DELETE /materias/correlativas` real; 2do select excluye la materia elegida en el 1ro.
+4. Convenios admin: creado y borrado contra `POST/DELETE /convenios/` real; URL inválida (`"no-es-una-url"`) bloqueada en el cliente con mensaje en el campo, sin request de red.
+5. `MisMateriasScreen` sin `onAbrirAdmin` ni botón muerto.
+
+### 12.4 Pendiente de UX (feedback 2026-09-28, no implementado todavía)
+- Filtro de materias: reordenar para que el primer chip activo por defecto sea el más granular (no "Todos"), y confirmar si el eje correcto es año o cuatrimestre.
+- Agregar input de búsqueda en Carreras y en Materias (catálogo puede crecer y cuesta encontrar una materia puntual para editar).

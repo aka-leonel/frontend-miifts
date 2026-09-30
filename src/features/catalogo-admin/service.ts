@@ -3,7 +3,17 @@
 // el propio ticket pide "sin mocks", y solo lo usa `usuario.rol === "admin"`,
 // que siempre está logueado contra el backend real.
 import { apiClient } from "../../api/client";
-import type { Carrera, CarreraCreate, CarreraUpdate, Materia, MateriaCreate, MateriaUpdate } from "../../api/types";
+import type {
+  Carrera,
+  CarreraCreate,
+  CarreraUpdate,
+  Correlativa,
+  CorrelativaCreate,
+  Materia,
+  MateriaCreate,
+  MateriaUpdate,
+  Paginated,
+} from "../../api/types";
 
 export async function crearCarrera(body: CarreraCreate): Promise<Carrera> {
   return apiClient<Carrera>("/materias/carreras", { method: "POST", body });
@@ -27,4 +37,16 @@ export async function editarMateria(id: number, body: MateriaUpdate): Promise<Ma
 
 export async function borrarMateria(id: number): Promise<void> {
   return apiClient<void>(`/materias/${id}`, { method: "DELETE" });
+}
+
+export async function getCorrelativas(materiaId: number): Promise<Paginated<Correlativa>> {
+  return apiClient<Paginated<Correlativa>>(`/materias/correlativas/${materiaId}?per_page=100`);
+}
+
+export async function crearCorrelativa(body: CorrelativaCreate): Promise<Correlativa> {
+  return apiClient<Correlativa>("/materias/correlativas", { method: "POST", body });
+}
+
+export async function borrarCorrelativa(id: number): Promise<void> {
+  return apiClient<void>(`/materias/correlativas/${id}`, { method: "DELETE" });
 }

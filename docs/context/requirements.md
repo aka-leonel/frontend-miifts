@@ -80,6 +80,13 @@ Paginated<T>, ApiError, Rol, Usuario {id,nombre,apellido,email,carrera_id,fecha_
 Wrapper único baseURL+Authorization+parser ApiError+401 side-effect; TanStack Query keys endpoint+params invalidar mutations; forms 422→errors[]; ownership `usuario_id===usuario.id`; Pagination reutilizable; Auth guard redirect; env VITE_API_URL; No inventar endpoints; Qué NO hacer: no mandar usuario_id en 3 POSTs, no mandar rol registro, no parsear 204, no refresh.
 - **Sprint5 Perfil:** sin `DEMO_MODE`/`demo.ts`; solo `apiClient` + `useApiForm`/`useToast`; `PATCH /auth/me` con `auth:true` (solo nombre/apellido); carrera y email jamás editables; password **solo** vía `PATCH /auth/password` modal dedicado (TLS + bcrypt backend, nunca hash frontend).
 
+## 6b. FR7 Panel Admin — Correlativas + Convenios (escritura) [nuevo, backend `dev/feature/admin-endpoints`]
+Carreras y Materias ABM ya implementadas (S4-10). Falta:
+- Correlativas: `GET /materias/correlativas/{materia_id}` (incluye `requiere`), `POST /materias/correlativas` Admin `{materia_id,requiere_id}` 404 si alguna materia no existe / 409 duplicada o generaría ciclo, `DELETE /materias/correlativas/{correlativa_id}` Admin. UI: elegir materia → ver/crear/borrar sus correlativas con 2 selects (materias de la misma carrera), 2do select excluye la propia materia.
+- Convenios admin: `POST/PUT/DELETE /convenios/{id}` Admin (PUT reemplaza el registro completo, no hay `ConvenioUpdate` parcial — mismo body que `ConvenioCreate`). `link_info` es URL: validar formato client-side antes de enviar. Pantalla separada de la vista de estudiante (`features/convenios`, solo lectura) — no reusar sus componentes.
+- Acceso: sección visible en el nav solo si `usuario.rol==="admin"`; los 401/403 reales los hace el backend, esto es solo UX.
+- Tipado: regenerar `src/api/schema.d.ts` vía `npm run gen:api` (backend corriendo) y alias-ear en `api/types.ts`: `CarreraCreate/Update`, `MateriaCreate/Update`, `CorrelativaCreate`, `ConvenioCreate` (+`Convenio` para la entidad completa) desde el schema generado — ejecuta la decisión ya tomada en D010.
+
 ## 7. Criterios Aceptación
 - Auth flujo completo + 401 interceptor + carrera select
 - 5 pantallas navegables con guards y paginación reutilizable

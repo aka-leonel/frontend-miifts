@@ -26,8 +26,9 @@ describe("storage.ts", () => {
       email: "test@ifts.edu.ar",
       nombre: "Juan",
       apellido: "Pérez",
-      rol: "alumno",
+      rol: "estudiante",
       carrera_id: 1,
+      fecha_registro: "2026-01-01T00:00:00",
     };
 
     expect(getUsuarioGuardado()).toBeNull();
@@ -46,8 +47,10 @@ describe("storage.ts", () => {
       id: 1,
       email: "test@ifts.edu.ar",
       nombre: "Juan",
-      rol: "alumno",
+      apellido: "Pérez",
+      rol: "estudiante",
       carrera_id: 1,
+      fecha_registro: "2026-01-01T00:00:00",
     });
 
     clearSesion();
