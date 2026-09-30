@@ -301,7 +301,7 @@ export default function AdminCatalogoScreen({ onVolver }: { onVolver?: () => voi
             <button
               type="button"
               onClick={() => setModalCarrera({ open: true, item: null })}
-              className="px-2 py-2 text-xs font-semibold text-violet"
+              className="flex-shrink-0 rounded-full bg-success-solid px-3 py-2 text-xs font-semibold text-on-solid"
             >
               + Nueva
             </button>
@@ -396,7 +396,7 @@ export default function AdminCatalogoScreen({ onVolver }: { onVolver?: () => voi
               type="button"
               disabled={!carreraId}
               onClick={() => setModalMateria({ open: true, item: null })}
-              className="px-2 py-2 text-xs font-semibold text-violet disabled:opacity-40"
+              className="flex-shrink-0 rounded-full bg-success-solid px-3 py-2 text-xs font-semibold text-on-solid disabled:cursor-not-allowed disabled:opacity-40"
             >
               + Nueva
             </button>
