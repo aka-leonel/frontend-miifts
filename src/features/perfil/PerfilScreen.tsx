@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
 import { useCarreras } from "../catalogo/hooks";
-import { useMisMaterias } from "../materias/hooks";
+import { useProgresoCarrera } from "../materias/hooks";
+import AccesibilidadPanel from "./AccesibilidadPanel";
 import CambiarPasswordModal from "./CambiarPasswordModal";
 import { useAuthMe } from "./hooks";
 import { useApiForm } from "../../hooks/useApiForm";
@@ -20,7 +21,8 @@ export default function PerfilScreen({ onCerrarSesion }: { onCerrarSesion: () =>
   const me = useAuthMe();
   const esAdmin = me.data?.rol === "admin";
   const carreras = useCarreras({ page: 1 });
-  const misMaterias = useMisMaterias(1);
+  // Progreso sobre el TOTAL de materias de la carrera (mismo criterio que Inicio/Materias).
+  const { aprobadas, total } = useProgresoCarrera(auth.usuario?.carrera_id ?? 0);
   const { fieldErrors, applyApiError, clearErrors, setFieldErrors } = useApiForm();
   const { pushToast } = useToast();
   // Solo nombre/apellido: `PerfilUpdate` (backend auth/schema.py) dice
@@ -37,8 +39,6 @@ export default function PerfilScreen({ onCerrarSesion }: { onCerrarSesion: () =>
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [me.data]);
 
-  const aprobadas = (misMaterias.data?.items ?? []).filter((c) => c.estado === "aprobada").length;
-  const total = misMaterias.data?.total ?? 0;
   const pct = total > 0 ? Math.round((aprobadas / total) * 100) : 0;
   const carreraNombre =
     (carreras.data?.items ?? []).find((c) => c.id === me.data?.carrera_id)?.nombre ??
@@ -94,7 +94,7 @@ export default function PerfilScreen({ onCerrarSesion }: { onCerrarSesion: () =>
     return (
       <div className="flex-1 overflow-y-auto pb-24">
         <div className="mx-auto w-full max-w-lg px-4 pt-14 sm:px-6 md:max-w-2xl">
-          <div className="h-8 w-32 animate-pulse rounded-lg bg-surface2" />
+          <div role="status" aria-label="Cargando perfil" className="h-8 w-32 animate-pulse rounded-lg bg-surface2" />
           <div className="mt-8 flex justify-center">
             <div className="h-[88px] w-[88px] animate-pulse rounded-[28px] bg-surface2" />
           </div>
@@ -113,24 +113,24 @@ export default function PerfilScreen({ onCerrarSesion }: { onCerrarSesion: () =>
       <div className="flex-1 overflow-y-auto pb-24">
         <div className="mx-auto w-full max-w-lg px-4 pt-14 sm:px-6 md:max-w-2xl">
           <div className="mb-7">
-            <div className="text-2xl font-black tracking-[-0.04em] text-text">Mi Perfil</div>
+            <h1 className="text-2xl font-black tracking-[-0.04em] text-text">Mi Perfil</h1>
             <div className="mt-1 text-sm text-muted">Configurá tu cuenta</div>
           </div>
           <div className="rounded-2xl border border-border bg-card p-6 text-center">
-            <div className="text-sm font-semibold text-text">No se pudo cargar tu perfil</div>
+            <div role="alert" className="text-sm font-semibold text-text">No se pudo cargar tu perfil</div>
             <div className="mt-1 text-xs text-muted">{String((me.error as Error)?.message ?? me.error)}</div>
             <div className="mt-4 flex justify-center gap-3">
               <button
                 type="button"
                 onClick={() => me.refetch()}
-                className="rounded-xl bg-violet px-4 py-2 text-sm font-semibold text-white"
+                className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-on-primary"
               >
                 Reintentar
               </button>
               <button
                 type="button"
                 onClick={handleLogout}
-                className="rounded-xl border border-[#FF6B6B]/40 bg-[#FF6B6B]/10 px-4 py-2 text-sm font-semibold text-[#FF6B6B]"
+                className="rounded-xl border border-danger/40 bg-danger/10 px-4 py-2 text-sm font-semibold text-danger"
               >
                 Cerrar sesión
               </button>
@@ -146,13 +146,13 @@ export default function PerfilScreen({ onCerrarSesion }: { onCerrarSesion: () =>
     <div className="flex-1 overflow-y-auto pb-24">
       <div className="mx-auto w-full max-w-lg px-4 pt-14 sm:px-6 md:max-w-2xl">
         <div className="mb-7">
-          <div className="text-2xl font-black tracking-[-0.04em] text-text">Mi Perfil</div>
+          <h1 className="text-2xl font-black tracking-[-0.04em] text-text">Mi Perfil</h1>
           <div className="mt-1 text-sm text-muted">Configurá tu cuenta</div>
         </div>
 
         <div className="mb-8 flex justify-center">
           <div className="relative">
-            <div className="flex h-[88px] w-[88px] items-center justify-center rounded-[28px] bg-gradient-to-br from-violet to-[#6B5CE7] text-3xl font-extrabold text-white">
+            <div aria-hidden="true" className="flex h-[88px] w-[88px] items-center justify-center rounded-[28px] bg-primary text-3xl font-extrabold text-on-primary">
               {esAdmin
                 ? iniciales(me.data?.nombre || "?", me.data?.apellido)
                 : iniciales(form.nombre || me.data?.nombre || "?", form.apellido || me.data?.apellido)}
@@ -166,49 +166,65 @@ export default function PerfilScreen({ onCerrarSesion }: { onCerrarSesion: () =>
           // puntual). Solo email de referencia + cambiar contraseña.
           <div className="mb-6 flex flex-col gap-3.5">
             <div>
-              <div className="mb-1 text-[11px] font-semibold text-muted">EMAIL</div>
-              <div className="text-[15px] text-text">{me.data?.email ?? ""}</div>
+              <label htmlFor="perfil-email" className="mb-1.5 block text-xs font-semibold text-muted">EMAIL</label>
+              <input
+                id="perfil-email"
+                value={me.data?.email ?? ""}
+                readOnly
+                disabled
+                className="w-full cursor-not-allowed rounded-xl border border-border bg-card px-4 py-3.5 text-[0.9375rem] text-muted opacity-70"
+              />
             </div>
           </div>
         ) : (
           <>
             <div className="mb-6 flex flex-col gap-3.5">
               <div>
-                <label className="mb-1.5 block text-[11px] font-semibold text-muted">NOMBRE</label>
+                <label htmlFor="perfil-nombre" className="mb-1.5 block text-xs font-semibold text-muted">NOMBRE</label>
                 <input
+                  id="perfil-nombre"
+                  autoComplete="given-name"
+                  aria-invalid={fieldErrors.nombre ? true : undefined}
+                  aria-describedby={fieldErrors.nombre ? "perfil-nombre-error" : undefined}
                   value={form.nombre}
                   onChange={(e) => setForm((p) => ({ ...p, nombre: e.target.value }))}
                   placeholder="Nombre"
-                  className={`w-full rounded-xl border bg-card px-4 py-3.5 text-[15px] text-text outline-none ${fieldErrors.nombre ? "border-red-500" : "border-border focus:border-violet"}`}
+                  className={`w-full rounded-xl border bg-card px-4 py-3.5 text-[0.9375rem] text-text ${fieldErrors.nombre ? "border-danger" : "border-border focus:border-violet"}`}
                 />
-                {fieldErrors.nombre && <span className="mt-1 block text-xs text-red-400">{fieldErrors.nombre}</span>}
+                {fieldErrors.nombre && <span id="perfil-nombre-error" role="alert" className="mt-1 block text-xs text-danger">{fieldErrors.nombre}</span>}
               </div>
               <div>
-                <label className="mb-1.5 block text-[11px] font-semibold text-muted">APELLIDO</label>
+                <label htmlFor="perfil-apellido" className="mb-1.5 block text-xs font-semibold text-muted">APELLIDO</label>
                 <input
+                  id="perfil-apellido"
+                  autoComplete="family-name"
+                  aria-invalid={fieldErrors.apellido ? true : undefined}
+                  aria-describedby={fieldErrors.apellido ? "perfil-apellido-error" : undefined}
                   value={form.apellido}
                   onChange={(e) => setForm((p) => ({ ...p, apellido: e.target.value }))}
                   placeholder="Apellido"
-                  className={`w-full rounded-xl border bg-card px-4 py-3.5 text-[15px] text-text outline-none ${fieldErrors.apellido ? "border-red-500" : "border-border focus:border-violet"}`}
+                  className={`w-full rounded-xl border bg-card px-4 py-3.5 text-[0.9375rem] text-text ${fieldErrors.apellido ? "border-danger" : "border-border focus:border-violet"}`}
                 />
-                {fieldErrors.apellido && <span className="mt-1 block text-xs text-red-400">{fieldErrors.apellido}</span>}
+                {fieldErrors.apellido && <span id="perfil-apellido-error" role="alert" className="mt-1 block text-xs text-danger">{fieldErrors.apellido}</span>}
               </div>
               <div>
-                <label className="mb-1.5 block text-[11px] font-semibold text-muted">EMAIL</label>
+                <label htmlFor="perfil-email" className="mb-1.5 block text-xs font-semibold text-muted">EMAIL</label>
                 <input
+                  id="perfil-email"
                   value={me.data?.email ?? ""}
                   readOnly
                   disabled
-                  className="w-full cursor-not-allowed rounded-xl border border-border bg-card px-4 py-3.5 text-[15px] text-muted opacity-60 outline-none"
+                  className="w-full cursor-not-allowed rounded-xl border border-border bg-card px-4 py-3.5 text-[0.9375rem] text-muted opacity-70"
                 />
               </div>
               <div>
-                <label className="mb-1.5 block text-[11px] font-semibold text-muted">CARRERA</label>
+                <label htmlFor="perfil-carrera" className="mb-1.5 block text-xs font-semibold text-muted">CARRERA</label>
                 <input
+                  id="perfil-carrera"
                   value={carreras.loading ? "Cargando..." : carreraNombre}
                   readOnly
                   disabled
-                  className="w-full cursor-not-allowed rounded-xl border border-border bg-card px-4 py-3.5 text-[15px] text-muted opacity-60 outline-none"
+                  className="w-full cursor-not-allowed rounded-xl border border-border bg-card px-4 py-3.5 text-[0.9375rem] text-muted opacity-70"
                 />
               </div>
             </div>
@@ -217,7 +233,7 @@ export default function PerfilScreen({ onCerrarSesion }: { onCerrarSesion: () =>
               type="button"
               onClick={handleSave}
               disabled={saving || !hasChanges}
-              className="mb-3 w-full rounded-xl bg-violet px-6 py-[14px] text-[15px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+              className="mb-3 w-full rounded-xl bg-primary px-6 py-[14px] text-[0.9375rem] font-semibold text-on-primary disabled:cursor-not-allowed disabled:opacity-50"
             >
               {saving ? "Guardando..." : "Guardar cambios"}
             </button>
@@ -227,30 +243,32 @@ export default function PerfilScreen({ onCerrarSesion }: { onCerrarSesion: () =>
         <button
           type="button"
           onClick={() => setCambiarPasswordOpen(true)}
-          className="mb-7 w-full rounded-xl border border-border bg-card px-6 py-[14px] text-[15px] font-semibold text-text"
+          className="mb-7 w-full rounded-xl border border-border bg-card px-6 py-[14px] text-[0.9375rem] font-semibold text-text"
         >
           Cambiar contraseña
         </button>
 
         {!esAdmin ? (
           <div className="mb-6 rounded-2xl border border-border bg-card p-4">
-            <div className="mb-1 text-sm font-semibold text-text">
+            <h2 className="mb-1 text-sm font-semibold text-text">
               Tu progreso con <span className="text-lime">Byte</span>
-            </div>
+            </h2>
             <div className="mb-2.5 text-xs text-muted">
               {aprobadas} de {total} materias aprobadas
             </div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-[#2A2B36]">
+            <div role="progressbar" aria-label="Progreso de la carrera" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} className="h-2 overflow-hidden rounded-full bg-surface2">
               <div className="h-full rounded-full bg-gradient-to-r from-violet to-lime" style={{ width: `${pct}%` }} />
             </div>
-            <div className="mt-1 text-[11px] text-muted">{pct}% del plan completado</div>
+            <div className="mt-1 text-xs text-muted">{pct}% del plan completado</div>
           </div>
         ) : null}
+
+        <AccesibilidadPanel />
 
         <button
           type="button"
           onClick={handleLogout}
-          className="w-full rounded-xl border border-[#FF6B6B]/40 bg-[#FF6B6B]/10 px-6 py-[15px] text-[15px] font-semibold text-[#FF6B6B]"
+          className="w-full rounded-xl border border-danger/40 bg-danger/10 px-6 py-[15px] text-[0.9375rem] font-semibold text-danger"
         >
           Cerrar sesión
         </button>

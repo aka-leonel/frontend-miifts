@@ -13,10 +13,26 @@ export type MateriaUsuarioForm = {
   examen_final?: string | number | null;
 };
 
+/**
+ * Qué muestra/hace el formulario de cursada:
+ *  - "alta":     agregar materia. Solo MATERIA y "ESTÁS CURSANDO" (las notas se
+ *                cargan después, al entrar a la materia).
+ *  - "estado":   editar desde la lista de materias. Solo MATERIA y "ESTÁS CURSANDO".
+ *  - "notas":    editar desde el detalle de la materia. Suma NOTA 1, NOTA 2 y FINAL.
+ *  - "recursar": la materia estaba desaprobada y se vuelve a cursar: se ponen las
+ *                notas viejas en null y pasa a cursando.
+ */
+export type ModoCursada = "alta" | "estado" | "notas" | "recursar";
+
 function toNota(value: unknown): number | null | undefined {
   if (value === "" || value == null) return undefined;
   const parsed = Number(value);
   return Number.isNaN(parsed) ? undefined : parsed;
+}
+
+// En un PATCH, dejar el campo vacío = borrar la nota (null), no "no tocarla".
+function toNotaPatch(value: unknown): number | null {
+  return toNota(value) ?? null;
 }
 
 /**
@@ -28,11 +44,19 @@ function toNota(value: unknown): number | null | undefined {
  * pasa a mostrar el `nota_final` calculado en modo lectura — no se manda
  * `examen_final` en ese PATCH, porque no hay examen que editar.
  */
-export function materiaUsuarioSpec(options: { materias: Materia[]; cursadaActual?: Cursada | null }): FormSpec<MateriaUsuarioForm> {
+export function materiaUsuarioSpec(options: {
+  materias: Materia[];
+  cursadaActual?: Cursada | null;
+  modo?: ModoCursada;
+}): FormSpec<MateriaUsuarioForm> {
+  const modo: ModoCursada = options.modo ?? (options.cursadaActual ? "notas" : "alta");
   const promocionada = options.cursadaActual?.estado === "promocionada";
+  const conNotas = modo === "notas";
+
+  const titulo = modo === "alta" ? "Agregar materia" : modo === "recursar" ? "Recursar materia" : "Editar materia";
 
   return {
-    title: (item) => (item?.materia_id ? "Editar materia" : "Agregar materia"),
+    title: () => titulo,
     fields: [
       {
         name: "materia_id",
@@ -45,39 +69,54 @@ export function materiaUsuarioSpec(options: { materias: Materia[]; cursadaActual
           label: `${materia.codigo} · ${materia.nombre}`,
         })),
       },
-      { name: "cursando", label: "¿La estás cursando?", type: "switch" },
-      { name: "nota_parcial_1", label: "1er parcial (1–10)", type: "number", min: 1, max: 10 },
-      { name: "nota_parcial_2", label: "2do parcial (1–10)", type: "number", min: 1, max: 10 },
-      promocionada
-        ? {
-            name: "examen_final",
-            label: "Final (promoción)",
-            type: "number",
-            min: 1,
-            max: 10,
-            readOnly: true,
-            hint: "Promocionaste: es el promedio de los parciales, no un examen rendido.",
-          }
-        : { name: "examen_final", label: "Final (1–10)", type: "number", min: 1, max: 10 },
+      { name: "cursando", label: "Estás cursando", type: "switch" },
+      ...(conNotas
+        ? [
+            { name: "nota_parcial_1", label: "Nota 1 (1–10)", type: "number" as const, min: 1, max: 10 },
+            { name: "nota_parcial_2", label: "Nota 2 (1–10)", type: "number" as const, min: 1, max: 10 },
+            promocionada
+              ? {
+                  name: "examen_final",
+                  label: "Final (promoción)",
+                  type: "number" as const,
+                  min: 1,
+                  max: 10,
+                  readOnly: true,
+                  hint: "Promocionaste: es el promedio de los parciales, no un examen rendido.",
+                }
+              : { name: "examen_final", label: "Final (1–10)", type: "number" as const, min: 1, max: 10 },
+          ]
+        : []),
     ],
     submit: {
+      // Alta: solo la materia y si la está cursando; las notas vienen después.
       create: (values) =>
         createCursada({
           materia_id: Number(values.materia_id),
           cursando: values.cursando,
-          nota_parcial_1: toNota(values.nota_parcial_1),
-          nota_parcial_2: toNota(values.nota_parcial_2),
-          examen_final: toNota(values.examen_final),
         }),
       // PATCH es "parcial": no se re-envía materia_id (se invalida con lockOnEdit).
-      // Si promocionó, tampoco se envía examen_final: es de solo lectura acá.
-      update: (id, values) =>
-        updateCursada(Number(id), {
-          cursando: values.cursando,
-          nota_parcial_1: toNota(values.nota_parcial_1),
-          nota_parcial_2: toNota(values.nota_parcial_2),
-          ...(promocionada ? {} : { examen_final: toNota(values.examen_final) }),
-        }),
+      update: (id, values) => {
+        if (modo === "recursar") {
+          // Recursar: notas viejas afuera, pasa a cursando.
+          return updateCursada(Number(id), {
+            cursando: values.cursando,
+            nota_parcial_1: null,
+            nota_parcial_2: null,
+            examen_final: null,
+          });
+        }
+        if (modo === "notas") {
+          return updateCursada(Number(id), {
+            cursando: values.cursando,
+            nota_parcial_1: toNotaPatch(values.nota_parcial_1),
+            nota_parcial_2: toNotaPatch(values.nota_parcial_2),
+            // Si promocionó, no se envía examen_final: es de solo lectura acá.
+            ...(promocionada ? {} : { examen_final: toNotaPatch(values.examen_final) }),
+          });
+        }
+        return updateCursada(Number(id), { cursando: values.cursando });
+      },
     },
     onError: { 409: "toast", 422: "fields" },
     invalidates: () => [["mis-materias"], ["promedio"]],

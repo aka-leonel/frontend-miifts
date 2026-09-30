@@ -26,6 +26,7 @@ export default function AdminScreen() {
           <button
             key={option.key}
             type="button"
+            aria-pressed={tab === option.key}
             onClick={() => setTab(option.key)}
             className={[
               "rounded-t-lg px-4 py-2 text-sm font-medium transition",

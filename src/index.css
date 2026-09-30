@@ -1,22 +1,200 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 @import 'tailwindcss';
 
+/*
+ * Sistema de temas (accesibilidad).
+ *
+ * Todos los colores de la app salen de variables `--c-*`. Las preferencias del
+ * usuario (Perfil → Accesibilidad, ver src/lib/preferencias.ts) se guardan como
+ * atributos en <html> y cada bloque de abajo pisa las variables que necesita:
+ *
+ *   data-tema="oscuro|claro"        (por defecto oscuro, el diseño original)
+ *   data-contraste="alto"           (más contraste de texto/bordes)
+ *   data-daltonismo="si"            (estados en azul/naranja/amarillo, no rojo/verde)
+ *   data-fuente="grande|muy-grande" (escala el tamaño del texto)
+ *   data-animaciones="reducidas"    (sin movimiento)
+ *
+ * Reglas para elegir un color: el texto normal necesita >= 4.5:1 contra su fondo
+ * (WCAG 2.1 AA, 1.4.3). Las variables `*-solid` son fondos LLENOS con texto
+ * `--c-on-solid` encima (toasts de mobile); `--c-primary` es el fondo de los
+ * botones principales con `--c-on-primary` encima.
+ */
+
+/* ── Oscuro (por defecto) ───────────────────────────────────────────────── */
+:root {
+  color-scheme: dark;
+
+  --c-bg: #111218;
+  --c-card: #1a1b23;
+  --c-surface2: #2a2b36;
+  --c-border: #2a2b36;
+  --c-text: #e8e8f0;
+  --c-muted: #a4a4bb;
+
+  --c-violet: #a99dff;      /* acento para texto, bordes y tintes */
+  --c-primary: #6b5ce7;     /* fondo de botones principales */
+  --c-on-primary: #ffffff;
+
+  --c-lime: #cfff5e;
+  --c-success: #4ade80;
+  --c-danger: #ff8a8a;
+  --c-warning: #fbbf24;
+  --c-pink: #f0abfc;
+
+  --c-success-solid: #15803d;
+  --c-danger-solid: #b91c1c;
+  --c-on-solid: #ffffff;
+}
+
+/* ── Claro ──────────────────────────────────────────────────────────────── */
+:root[data-tema="claro"] {
+  color-scheme: light;
+
+  --c-bg: #f4f4f9;
+  --c-card: #ffffff;
+  --c-surface2: #e8e8f1;
+  --c-border: #d3d3e2;
+  --c-text: #16171f;
+  --c-muted: #565769;
+
+  --c-violet: #5340d1;
+  --c-primary: #5340d1;
+  --c-on-primary: #ffffff;
+
+  --c-lime: #3f6212;
+  --c-success: #157a3c;
+  --c-danger: #b42318;
+  --c-warning: #92400e;
+  --c-pink: #a21caf;
+
+  --c-success-solid: #157a3c;
+  --c-danger-solid: #b42318;
+  --c-on-solid: #ffffff;
+}
+
+/* ── Daltonismo: los estados dejan de depender de rojo vs verde ─────────────
+ * Paleta Okabe-Ito (segura para deuteranopía/protanopía/tritanopía): éxito en
+ * azul, error en naranja, aviso en amarillo. Además los toasts y estados llevan
+ * ícono y texto, así que el color nunca es la única señal. */
+:root[data-daltonismo="si"] {
+  --c-success: #56b4e9;
+  --c-danger: #ffa62b;
+  --c-warning: #f0e442;
+  --c-pink: #e6a0c9;
+  --c-lime: #e8e26b;
+
+  --c-success-solid: #0369a1;
+  --c-danger-solid: #a34a00;
+}
+:root[data-daltonismo="si"][data-tema="claro"] {
+  --c-success: #0066a8;
+  --c-danger: #a34a00;
+  --c-warning: #6f5f00;
+  --c-pink: #8f3a6a;
+  --c-lime: #5c5500;
+
+  --c-success-solid: #0066a8;
+  --c-danger-solid: #a34a00;
+}
+
+/* ── Alto contraste ─────────────────────────────────────────────────────── */
+:root[data-contraste="alto"][data-tema="oscuro"] {
+  --c-bg: #000000;
+  --c-card: #000000;
+  --c-surface2: #1c1c1c;
+  --c-border: #ffffff;
+  --c-text: #ffffff;
+  --c-muted: #e6e6e6;
+
+  --c-violet: #ffe14d;
+  --c-primary: #ffe14d;
+  --c-on-primary: #000000;
+
+  --c-lime: #b8ff3d;
+  --c-success: #5cff9a;
+  --c-danger: #ff9b9b;
+  --c-warning: #ffd84d;
+  --c-pink: #ffaaf7;
+
+  --c-success-solid: #5cff9a;
+  --c-danger-solid: #ff9b9b;
+  --c-on-solid: #000000;
+}
+:root[data-contraste="alto"][data-tema="claro"] {
+  --c-bg: #ffffff;
+  --c-card: #ffffff;
+  --c-surface2: #ececec;
+  --c-border: #000000;
+  --c-text: #000000;
+  --c-muted: #1f1f1f;
+
+  --c-violet: #1a0dab;
+  --c-primary: #1a0dab;
+  --c-on-primary: #ffffff;
+
+  --c-lime: #2b4a00;
+  --c-success: #005a1f;
+  --c-danger: #9c0000;
+  --c-warning: #663300;
+  --c-pink: #74006b;
+
+  --c-success-solid: #005a1f;
+  --c-danger-solid: #9c0000;
+  --c-on-solid: #ffffff;
+}
+/* Alto contraste + daltonismo: mantiene el brillo alto y cambia el tono. */
+:root[data-contraste="alto"][data-daltonismo="si"][data-tema="oscuro"] {
+  --c-success: #7fd0ff;
+  --c-danger: #ffb347;
+  --c-warning: #fff36b;
+  --c-success-solid: #7fd0ff;
+  --c-danger-solid: #ffb347;
+}
+:root[data-contraste="alto"][data-daltonismo="si"][data-tema="claro"] {
+  --c-success: #004a80;
+  --c-danger: #7a3600;
+  --c-warning: #524600;
+  --c-success-solid: #004a80;
+  --c-danger-solid: #7a3600;
+}
+
+/* Tailwind: `inline` hace que las utilidades (bg-card, text-muted…) apunten
+ * directo a las variables de arriba, así cambian solas al cambiar de tema. */
+@theme inline {
+  --color-bg: var(--c-bg);
+  --color-card: var(--c-card);
+  --color-surface2: var(--c-surface2);
+  --color-border: var(--c-border);
+  --color-text: var(--c-text);
+  --color-muted: var(--c-muted);
+  --color-violet: var(--c-violet);
+  --color-primary: var(--c-primary);
+  --color-on-primary: var(--c-on-primary);
+  --color-lime: var(--c-lime);
+  --color-success: var(--c-success);
+  --color-danger: var(--c-danger);
+  --color-warning: var(--c-warning);
+  --color-pink: var(--c-pink);
+  --color-success-solid: var(--c-success-solid);
+  --color-danger-solid: var(--c-danger-solid);
+  --color-on-solid: var(--c-on-solid);
+  --font-sans: 'Inter', system-ui, sans-serif;
+}
+
+/* ── Tamaño de texto: todo lo que está en rem se escala junto ───────────── */
+html { font-size: 100%; }
+html[data-fuente="grande"] { font-size: 115%; }
+html[data-fuente="muy-grande"] { font-size: 130%; }
+
 html, body, #root {
   height: 100%;
   margin: 0;
   padding: 0;
 }
 
-@theme inline {
-  --color-bg: #111218;
-  --color-card: #1A1B23;
-  --color-border: #2A2B36;
-  --color-violet: #8C7DFF;
-  --color-lime: #CFFF5E;
-  --color-green: #3FB950;
-  --color-text: #E8E8F0;
-  --color-muted: #9A9AB0;
-  --font-sans: 'Inter', system-ui, sans-serif;
+body {
+  background: var(--c-bg);
+  color: var(--c-text);
 }
 
 * {
@@ -26,6 +204,13 @@ html, body, #root {
 
 ::-webkit-scrollbar { display: none; }
 * { scrollbar-width: none; }
+
+/* Foco visible para quien navega con teclado (WCAG 2.4.7). Va SIN capa, así que
+ * gana también contra los `outline-none` sueltos de los inputs. */
+:focus-visible {
+  outline: 2px solid var(--c-violet);
+  outline-offset: 2px;
+}
 
 .swipe-card {
   transition: transform 0.3s ease, opacity 0.3s ease;
@@ -38,4 +223,28 @@ html, body, #root {
 .accordion-content {
   overflow: hidden;
   transition: max-height 0.3s ease;
+}
+
+/* ── Movimiento reducido: por el sistema o por la preferencia del Perfil ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+html[data-animaciones="reducidas"] *,
+html[data-animaciones="reducidas"] *::before,
+html[data-animaciones="reducidas"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* Placeholders con el mismo contraste que el texto secundario del tema. */
+::placeholder {
+  color: var(--c-muted);
+  opacity: 1;
 }

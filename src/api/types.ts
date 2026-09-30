@@ -105,7 +105,8 @@ export interface Cursada {
   // Calculado por el backend: si ambos parciales cierran en 7+, es su promedio
   // (promoción); si no, es `examen_final`. Nunca se manda en el body, solo se lee.
   nota_final?: number | null;
-  materia?: Pick<Materia, "id" | "nombre" | "codigo">;
+  // El backend devuelve el nombre de la materia junto a la cursada (`materia_nombre`).
+  materia_nombre?: string;
 }
 
 export type CursadaCreate = {

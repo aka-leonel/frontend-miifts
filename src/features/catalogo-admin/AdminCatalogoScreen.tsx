@@ -19,8 +19,6 @@ const selectClassName =
 const searchInputClassName =
   "w-full max-w-md rounded-xl border border-border bg-bg px-3 py-2 text-sm text-text outline-none transition focus:border-violet placeholder:text-muted";
 
-const nuevoButtonClassName = "flex-shrink-0 rounded-full bg-green px-3 py-1.5 text-xs font-semibold text-white";
-
 function MateriaCard({
   materia,
   mostrarAnio,
@@ -45,14 +43,14 @@ function MateriaCard({
         <button
           type="button"
           onClick={onEditar}
-          className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted transition hover:text-text"
+          className="rounded-lg border border-border px-3 py-2 text-xs font-medium text-muted transition hover:text-text"
         >
           Editar
         </button>
         <button
           type="button"
           onClick={onBorrar}
-          className="rounded-lg border border-red-500/40 px-3 py-1.5 text-xs font-medium text-red-300"
+          className="rounded-lg border border-danger/40 px-3 py-2 text-xs font-medium text-danger"
         >
           Borrar
         </button>
@@ -98,12 +96,13 @@ function CorrelativasPanel({ materias }: { materias: Materia[] }) {
 
   return (
     <div>
-      <div className="mb-3 text-sm font-bold text-text">Correlatividades</div>
+      <h2 className="mb-3 text-sm font-bold text-text">Correlatividades</h2>
 
       <div className="mb-4 grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <label className="block text-xs font-semibold uppercase tracking-[0.08em] text-muted">Esta materia</label>
+          <label htmlFor="correlativas-esta" className="block text-xs font-semibold uppercase tracking-[0.08em] text-muted">Esta materia</label>
           <select
+            id="correlativas-esta"
             value={estaMateriaId ?? ""}
             onChange={(e) => {
               setEstaMateriaId(e.target.value ? Number(e.target.value) : null);
@@ -120,10 +119,11 @@ function CorrelativasPanel({ materias }: { materias: Materia[] }) {
           </select>
         </div>
         <div className="space-y-1.5">
-          <label className="block text-xs font-semibold uppercase tracking-[0.08em] text-muted">
+          <label htmlFor="correlativas-requiere" className="block text-xs font-semibold uppercase tracking-[0.08em] text-muted">
             Requiere aprobada/cursada
           </label>
           <select
+            id="correlativas-requiere"
             value={requiereId}
             disabled={estaMateriaId == null}
             onChange={(e) => setRequiereId(e.target.value ? Number(e.target.value) : "")}
@@ -169,7 +169,7 @@ function CorrelativasPanel({ materias }: { materias: Materia[] }) {
                 <button
                   type="button"
                   onClick={() => void handleBorrar(c.id)}
-                  className="flex-shrink-0 rounded-lg border border-red-500/40 px-3 py-1 text-xs font-medium text-red-300"
+                  className="flex-shrink-0 rounded-lg border border-danger/40 px-3 py-2 text-xs font-medium text-danger"
                 >
                   Borrar
                 </button>
@@ -285,23 +285,23 @@ export default function AdminCatalogoScreen({ onVolver }: { onVolver?: () => voi
     <div className="flex-1 overflow-y-auto pb-24">
       <div className="px-6 pt-14">
         {onVolver ? (
-          <button type="button" onClick={onVolver} className="mb-4 text-sm text-muted transition hover:text-text">
+          <button type="button" onClick={onVolver} className="mb-2 py-2 text-sm text-muted transition hover:text-text">
             ← Materias
           </button>
         ) : null}
 
         <div className="mb-6">
-          <div className="text-2xl font-black tracking-[-0.04em] text-text">Catálogo (Admin)</div>
+          <h1 className="text-2xl font-black tracking-[-0.04em] text-text">Catálogo (Admin)</h1>
           <div className="mt-1 text-sm text-muted">ABM de carreras y materias contra la API real.</div>
         </div>
 
         <div className="mb-8">
           <div className="mb-3 flex items-center justify-between">
-            <span className="text-sm font-bold text-text">Carreras</span>
+            <h2 className="text-sm font-bold text-text">Carreras</h2>
             <button
               type="button"
               onClick={() => setModalCarrera({ open: true, item: null })}
-              className={nuevoButtonClassName}
+              className="px-2 py-2 text-xs font-semibold text-violet"
             >
               + Nueva
             </button>
@@ -342,14 +342,21 @@ export default function AdminCatalogoScreen({ onVolver }: { onVolver?: () => voi
                           {c.duracion_cuatrimestres} cuatrimestres · instituto #{c.ifts_id}
                         </div>
                       </div>
-                      <span
+                      <button
+                        type="button"
+                        aria-pressed={activa}
+                        aria-label={`${activa ? "Viendo" : "Ver"} materias de ${c.nombre}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCarreraSeleccionada(c.id);
+                        }}
                         className={[
-                          "flex-shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold",
-                          activa ? "bg-violet text-white" : "bg-surface2 text-muted",
+                          "flex-shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold",
+                          activa ? "bg-primary text-on-primary" : "bg-surface2 text-muted",
                         ].join(" ")}
                       >
                         {activa ? "Viendo" : "Ver materias"}
-                      </span>
+                      </button>
                     </div>
                     <div className="mt-3 flex gap-2 border-t border-border pt-3">
                       <button
@@ -358,7 +365,7 @@ export default function AdminCatalogoScreen({ onVolver }: { onVolver?: () => voi
                           e.stopPropagation();
                           setModalCarrera({ open: true, item: c });
                         }}
-                        className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted transition hover:text-text"
+                        className="rounded-lg border border-border px-3 py-2 text-xs font-medium text-muted transition hover:text-text"
                       >
                         Editar
                       </button>
@@ -368,7 +375,7 @@ export default function AdminCatalogoScreen({ onVolver }: { onVolver?: () => voi
                           e.stopPropagation();
                           setABorrarCarrera(c);
                         }}
-                        className="rounded-lg border border-red-500/40 px-3 py-1.5 text-xs font-medium text-red-300"
+                        className="rounded-lg border border-danger/40 px-3 py-2 text-xs font-medium text-danger"
                       >
                         Borrar
                       </button>
@@ -382,14 +389,14 @@ export default function AdminCatalogoScreen({ onVolver }: { onVolver?: () => voi
 
         <div>
           <div className="mb-3 flex items-center justify-between">
-            <span className="text-sm font-bold text-text">
+            <h2 className="text-sm font-bold text-text">
               Materias{carreraActiva ? ` · ${carreraActiva.nombre}` : ""}
-            </span>
+            </h2>
             <button
               type="button"
               disabled={!carreraId}
               onClick={() => setModalMateria({ open: true, item: null })}
-              className={[nuevoButtonClassName, "disabled:cursor-not-allowed disabled:opacity-40"].join(" ")}
+              className="px-2 py-2 text-xs font-semibold text-violet disabled:opacity-40"
             >
               + Nueva
             </button>
@@ -414,10 +421,11 @@ export default function AdminCatalogoScreen({ onVolver }: { onVolver?: () => voi
                 <button
                   key={anio}
                   type="button"
+                  aria-pressed={filtroAnio === anio}
                   onClick={() => setFiltroAnio(anio)}
                   className={[
-                    "rounded-full border px-3 py-1 text-xs font-medium transition",
-                    filtroAnio === anio ? "border-violet bg-violet text-white" : "border-border bg-card text-muted",
+                    "rounded-full border px-3 py-1.5 text-xs font-medium transition",
+                    filtroAnio === anio ? "border-primary bg-primary text-on-primary" : "border-border bg-card text-muted",
                   ].join(" ")}
                 >
                   {anio}º año
@@ -425,10 +433,11 @@ export default function AdminCatalogoScreen({ onVolver }: { onVolver?: () => voi
               ))}
               <button
                 type="button"
+                aria-pressed={filtroAnio === "todas"}
                 onClick={() => setFiltroAnio("todas")}
                 className={[
-                  "rounded-full border px-3 py-1 text-xs font-medium transition",
-                  filtroAnio === "todas" ? "border-violet bg-violet text-white" : "border-border bg-card text-muted",
+                  "rounded-full border px-3 py-1.5 text-xs font-medium transition",
+                  filtroAnio === "todas" ? "border-primary bg-primary text-on-primary" : "border-border bg-card text-muted",
                 ].join(" ")}
               >
                 Todas

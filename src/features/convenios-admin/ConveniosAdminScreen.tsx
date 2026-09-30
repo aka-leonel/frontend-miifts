@@ -47,13 +47,13 @@ export default function ConveniosAdminScreen() {
       <div className="mx-auto w-full max-w-lg px-4 pt-14 sm:max-w-2xl sm:px-6 lg:max-w-5xl">
         <div className="mb-6 flex items-start justify-between gap-3">
           <div>
-            <div className="text-2xl font-black tracking-[-0.04em] text-text">Convenios (Admin)</div>
+            <h1 className="text-2xl font-black tracking-[-0.04em] text-text">Convenios (Admin)</h1>
             <div className="mt-1 text-sm text-muted">ABM de convenios contra la API real.</div>
           </div>
           <button
             type="button"
             onClick={() => setModal({ open: true, item: null })}
-            className="flex-shrink-0 rounded-full bg-green px-3 py-1.5 text-xs font-semibold text-white"
+            className="flex-shrink-0 px-2 py-2 text-xs font-semibold text-violet"
           >
             + Nuevo
           </button>
@@ -71,7 +71,7 @@ export default function ConveniosAdminScreen() {
             {items.map((c) => (
               <div key={c.id} className="flex flex-col rounded-2xl border border-border bg-card p-4">
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold text-text">{c.institucion}</div>
+                  <h2 className="truncate text-sm font-semibold text-text">{c.institucion}</h2>
                   <div className="mt-1 text-xs text-muted">{c.carrera_destino}</div>
                   <p className="mt-2 line-clamp-2 text-xs text-muted">{c.descripcion}</p>
                 </div>
@@ -79,14 +79,14 @@ export default function ConveniosAdminScreen() {
                   <button
                     type="button"
                     onClick={() => setModal({ open: true, item: c })}
-                    className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted transition hover:text-text"
+                    className="rounded-lg border border-border px-3 py-2 text-xs font-medium text-muted transition hover:text-text"
                   >
                     Editar
                   </button>
                   <button
                     type="button"
                     onClick={() => setABorrar(c)}
-                    className="rounded-lg border border-red-500/40 px-3 py-1.5 text-xs font-medium text-red-300"
+                    className="rounded-lg border border-danger/40 px-3 py-2 text-xs font-medium text-danger"
                   >
                     Borrar
                   </button>
