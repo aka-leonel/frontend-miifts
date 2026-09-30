@@ -18,12 +18,17 @@ self.addEventListener("push", (event) => {
   if (!event.data) return;
 
   try {
-    const data = event.data.json();
-    const recordatorioId = data.recordatorio_id;
-    const titulo = data.titulo ?? "Nuevo recordatorio";
-    const cuerpo = data.cuerpo ?? "Tenés un recordatorio pendiente";
-    const tipo = data.tipo ?? "general";
-    const materiaId = data.materia_id;
+    // El backend manda { title, body, data: { recordatorio_id, tipo, materia_id } }
+    // (ver scheduler.py) — no "titulo"/"cuerpo" sueltos ni recordatorio_id de
+    // primer nivel. Con los nombres viejos la notificación igual aparecía,
+    // pero siempre con el texto genérico de los `??`.
+    const payload = event.data.json();
+    const extra = payload.data ?? {};
+    const recordatorioId = extra.recordatorio_id;
+    const titulo = payload.title ?? "Nuevo recordatorio";
+    const cuerpo = payload.body ?? "Tenés un recordatorio pendiente";
+    const tipo = extra.tipo ?? "general";
+    const materiaId = extra.materia_id;
 
     const options = {
       body: cuerpo,
