@@ -1,5 +1,6 @@
 import { useId, useState, useEffect } from "react";
 import { Toaster } from "./components";
+import ByteMascot from "./components/ByteMascot";
 import { BadgeNotificaciones } from "./components/BadgeNotificaciones";
 import { usePush } from "./hooks/usePush";
 import { ConveniosScreen as ConveniosFeatureScreen } from "./features/convenios";
@@ -254,9 +255,7 @@ function LoginScreen({ onGo }: { onGo: (s: Screen) => void }) {
     <ScreenWrap>
       <div style={{ padding: "60px 28px 0", display: "flex", flexDirection: "column" }}>
         <div style={{ marginBottom: 48, textAlign: "center" }}>
-          <div style={{ width: 72, height: 72, borderRadius: 20, background: `${PRIMARY}`, display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
-            <svg aria-hidden="true" width="36" height="36" viewBox="0 0 36 36" fill="none"><path d="M8 28V14l10-8 10 8v14H22v-8h-8v8H8z" fill="var(--c-on-primary)" /></svg>
-          </div>
+          <ByteMascot size={120} variant="leyendo" className="byte-login" />
           <h1 style={{ fontSize: "1.625rem", fontWeight: 800, color: TEXT, letterSpacing: -0.5 }}>mi<span style={{ color: VIOLET }}>IFTS</span></h1>
           <div style={{ color: MUTED, fontSize: "0.8125rem", marginTop: 4 }}>Tu organizador académico</div>
         </div>

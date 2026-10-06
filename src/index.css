@@ -248,3 +248,15 @@ html[data-animaciones="reducidas"] *::after {
   color: var(--c-muted);
   opacity: 1;
 }
+
+.byte-login {
+  display: inline-block;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 767px) {
+  .byte-login {
+    width: 96px;
+    height: auto;
+  }
+}

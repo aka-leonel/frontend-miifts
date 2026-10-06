@@ -100,7 +100,9 @@ function MisMateriasContent({ usuario, onOpenMateria }: Props & { usuario: Usuar
           <div className="mt-1 text-sm text-muted">Tus cursadas y tu promedio</div>
         </div>
 
-        <PromedioCard promedio={promedio.data} loading={promedio.loading} />
+        <div className="mb-4">
+          <PromedioCard promedio={promedio.data} loading={promedio.loading} />
+        </div>
         <div className="mb-4">
           <ByteWidget aprobadas={progreso.aprobadas} total={progreso.total} />
         </div>
