@@ -12,6 +12,7 @@ import PerfilFeatureScreen from "./features/perfil/PerfilScreen";
 import { useLogin } from "./features/auth/hooks";
 import { getUsuarioGuardado } from "./auth/storage";
 import AdminScreen from "./features/admin/AdminScreen";
+import TerminosModal from "./features/legal/TerminosModal";
 import { haySesion } from "./features/auth/service";
 import { forgotPasswordRequest, resetPasswordRequest } from "./auth/api";
 import { ApiError } from "./lib/apiClient";
@@ -286,6 +287,7 @@ function RegistroScreen({ onGo }: { onGo: (s: Screen) => void }) {
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
   const [pass2, setPass2] = useState("");
+  const [terminosAbierto, setTerminosAbierto] = useState(false);
   const { pushToast } = useToast();
 
   // El backend (UsuarioCreate) exige mínimo 8 caracteres Y al menos una
@@ -363,8 +365,16 @@ function RegistroScreen({ onGo }: { onGo: (s: Screen) => void }) {
           </PrimaryButton>
         </div>
         <p style={{ color: MUTED, fontSize: "0.75rem", textAlign: "center", marginTop: 20, lineHeight: 1.5 }}>
-          Al registrarte aceptás los <span style={{ color: TEXT, fontWeight: 600 }}>términos y condiciones</span>
+          Al registrarte aceptás los{" "}
+          <button
+            type="button"
+            onClick={() => setTerminosAbierto(true)}
+            style={{ background: "none", border: "none", padding: 0, color: TEXT, fontWeight: 600, textDecoration: "underline", cursor: "pointer", font: "inherit" }}
+          >
+            términos y ética profesional
+          </button>
         </p>
+        {terminosAbierto && <TerminosModal onClose={() => setTerminosAbierto(false)} />}
       </div>
     </ScreenWrap>
   );
