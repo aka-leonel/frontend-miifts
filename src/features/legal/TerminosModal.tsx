@@ -1,27 +1,36 @@
 import Modal from "../../components/Modal";
 
-// TODO(sprint 8): reemplazar [COLEGIO A CONFIRMAR] cuando se defina el colegio
-// profesional aplicable (COPITEC u otro; plan B: Código de Ética de ACM).
+// Colegio aplicable en CABA: COPITEC (Decreto-Ley 6070/58, Ley 14.467), que
+// matricula técnicos en computación/informática. El CPCI es solo de Provincia.
 const SECCIONES = [
   {
     titulo: "Uso de la app",
+    // Cód. Ética 2.1.1.9 y 2.3.1.1: no prometer lo que no se puede cumplir.
     texto:
       "miIFTS es una herramienta personal para organizar tu cursada. No reemplaza los registros oficiales del instituto: ante cualquier diferencia, vale lo que figure en la institución.",
   },
   {
     titulo: "Confidencialidad de tus datos",
+    // Cód. Ética 2.3.1.4: secreto y reserva salvo obligación legal.
     texto:
-      "Tus datos académicos (materias, notas, estados) son tuyos. No los compartimos con terceros ni los usamos para fines distintos a los de la app.",
+      "Tus datos académicos (materias, notas, estados) son tuyos. Los mantenemos en reserva: no los compartimos con terceros ni los usamos para fines distintos a los de la app, salvo obligación legal.",
   },
   {
     titulo: "Tus derechos",
+    // Cód. Ética 1.2: respetar las disposiciones legales que inciden en la profesión.
     texto:
       "Conforme a la Ley 25.326 de Protección de Datos Personales, podés acceder, corregir o pedir la eliminación de tu información en cualquier momento.",
   },
   {
+    titulo: "Errores y correcciones",
+    // Cód. Ética 2.3.1.5: advertir errores y subsanar los propios.
+    texto:
+      "Si detectamos un error en la app que afecte tu información, te lo vamos a informar y lo vamos a corregir. Si vos encontrás uno, avisanos.",
+  },
+  {
     titulo: "Ética profesional",
     texto:
-      "El desarrollo de esta app sigue los principios del Código de Ética de [COLEGIO A CONFIRMAR]: honestidad en el manejo de la información, responsabilidad profesional y respeto por la privacidad de las personas usuarias.",
+      "El desarrollo de esta app sigue el Código de Ética Profesional (Decreto 1099/84) que aplica el COPITEC, el consejo profesional de computación e informática de la Ciudad de Buenos Aires: respetar la buena técnica, actuar con diligencia y probidad, y guardar reserva sobre la información de las personas usuarias.",
   },
 ];
 
