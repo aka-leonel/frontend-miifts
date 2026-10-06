@@ -32,8 +32,7 @@ self.addEventListener("push", (event) => {
 
     const options = {
       body: cuerpo,
-      icon: "/icons/icon-192.svg",
-      badge: "/icons/badge-72.svg",
+      icon: "/pwa-192x192.png",
       tag: `recordatorio-${recordatorioId}`,
       data: {
         recordatorio_id: recordatorioId,

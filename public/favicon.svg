@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512"><rect width="512" height="512" fill="#23205A"/><g transform="translate(56.0 47.0) scale(2.0)"><defs>
+<radialGradient id="hl" cx="0.36" cy="0.3" r="0.6"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0.55"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></radialGradient>
+<linearGradient id="sh" x1="0" y1="0" x2="0" y2="1"><stop offset="0.55" stop-color="#1E1B4B" stop-opacity="0"/><stop offset="1" stop-color="#1E1B4B" stop-opacity="0.22"/></linearGradient>
+</defs>
+<path d="M100 44 C146 44 176 78 176 122 C176 164 144 186 100 186 C56 186 24 164 24 122 C24 78 54 44 100 44 Z" fill="#9C99FF"/><path d="M100 44 C146 44 176 78 176 122 C176 164 144 186 100 186 C56 186 24 164 24 122 C24 78 54 44 100 44 Z" fill="url(#hl)"/><path d="M100 44 C146 44 176 78 176 122 C176 164 144 186 100 186 C56 186 24 164 24 122 C24 78 54 44 100 44 Z" fill="url(#sh)"/>
+<ellipse cx="84" cy="112" rx="6" ry="9" fill="#1E1B4B"/><ellipse cx="116" cy="112" rx="6" ry="9" fill="#1E1B4B"/>
+<path d="M100 150 C84 140 64 140 46 146 L46 184 C64 178 84 178 100 188 C116 178 136 178 154 184 L154 146 C136 140 116 140 100 150 Z" fill="#4B8BF5"/>
+<path d="M100 148 C86 139 68 138 52 143 L52 178 C68 173 86 174 100 182 Z" fill="#FFFFFF"/>
+<path d="M100 148 C114 139 132 138 148 143 L148 178 C132 173 114 174 100 182 Z" fill="#F4F3FF"/>
+<path d="M100 148 L100 182" stroke="#1E1B4B" stroke-width="2" stroke-opacity="0.35"/>
+<path d="M62 154 L88 156 M62 162 L88 164 M112 156 L138 154 M112 164 L138 162" stroke="#1E1B4B" stroke-width="2" stroke-opacity="0.25" stroke-linecap="round"/>
+<path d="M68 50 L68 66 C84 74 116 74 132 66 L132 50 Z" fill="#14123A"/>
+<path d="M100 24 L154 44 L100 62 L46 44 Z" fill="#0F0D2E" stroke="#0F0D2E" stroke-width="6" stroke-linejoin="round"/>
+<path d="M100 43 L148 46 L150 72" fill="none" stroke="#A3F20F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="100" cy="43" r="4.5" fill="#A3F20F"/><rect x="144" y="68" width="12" height="26" rx="6" fill="#A3F20F"/></g></svg>

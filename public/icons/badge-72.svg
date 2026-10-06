@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="72" height="72" viewBox="0 0 72 72">
-  <!-- Badge monocromático para Android (blanco sobre transparente) -->
-  <path d="M36 18L18 30v24a6 6 0 006 6h24a6 6 0 006-6V30L36 18z" fill="white"/>
-  <path d="M36 27L24 33v12a3 3 0 003 3h18a3 3 0 003-3V33L36 27z" fill="#111218"/>
-  <path d="M36 49c-8 0-12-4-12-9.33s4-9.33 12-9.33 12 4 12 9.33-4 9.33-12 9.33z" fill="white"/>
-  <path d="M36 60c-4 0-6.67-2.67-6.67-6.67v-5.33h13.33v5.33c0 4-2.67 6.67-6.67 6.67z" fill="white"/>
-</svg>
