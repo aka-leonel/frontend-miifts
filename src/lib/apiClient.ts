@@ -60,7 +60,7 @@ export async function apiClient<T>(path: string, options: ApiClientOptions = {})
     ...rest,
     method,
     headers: requestHeaders,
-    body: hasBody ? (typeof body === "string" ? body : JSON.stringify(body)) : undefined,
+    body: hasBody ? (typeof body === "string" || body instanceof FormData ? body : JSON.stringify(body)) : undefined,
   });
 
   if (response.status === 204) {

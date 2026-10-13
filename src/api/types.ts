@@ -186,3 +186,6 @@ export interface Paginated<T> {
 
 export { ApiError } from "../lib/apiClient";
 export type { ApiFieldErrors } from "../lib/apiClient";
+// Quiz con IA (POST /quiz), vienen de gen:api
+export type Pregunta = S["Pregunta"];
+export type Quiz = S["QuizResponse"];

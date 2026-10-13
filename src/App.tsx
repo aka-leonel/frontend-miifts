@@ -9,6 +9,7 @@ import InicioReal from "./features/materias/InicioScreen";
 import MisMateriasReal from "./features/materias/MisMateriasScreen";
 import { MateriaDetalleScreen as MateriaDetalleFeatureScreen } from "./features/materia-detalle/MateriaDetalleScreen";
 import { RecordatoriosScreen as RecordatoriosFeatureScreen } from "./features/recordatorios";
+import { QuizScreen as QuizFeatureScreen } from "./features/quiz";
 import PerfilFeatureScreen from "./features/perfil/PerfilScreen";
 import { useLogin } from "./features/auth/hooks";
 import { getUsuarioGuardado } from "./auth/storage";
@@ -31,10 +32,11 @@ type Screen =
   | "detalle"
   | "recordatorios"
   | "convenios"
+  | "quiz"
   | "perfil"
   | "admin";
 
-type NavTab = "inicio" | "materias" | "recordatorios" | "convenios" | "perfil" | "admin";
+type NavTab = "inicio" | "materias" | "recordatorios" | "convenios" | "quiz" | "perfil" | "admin";
 
 // ─── Design tokens ─────────────────────────────────────────────────────────────
 // Colores como variables CSS del tema (src/index.css): cambian solas con el tema
@@ -71,6 +73,10 @@ const navItems = (recordatoriosCount: number): { key: NavTab; label: string; ico
   {
     key: "convenios", label: "Convenios",
     icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /><circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="1.5" /><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>,
+  },
+  {
+    key: "quiz", label: "Quiz",
+    icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.5" /><path d="M9.5 9.5a2.5 2.5 0 114 2c-.9.6-1.5 1.1-1.5 2.2M12 17h.01" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>,
   },
   {
     key: "perfil", label: "Perfil",
@@ -647,6 +653,7 @@ const navToScreen: Record<NavTab, Screen> = {
   materias: "materias",
   recordatorios: "recordatorios",
   convenios: "convenios",
+  quiz: "quiz",
   perfil: "perfil",
   admin: "admin",
 };
@@ -657,6 +664,7 @@ const screenToNav: Partial<Record<Screen, NavTab>> = {
   detalle: "materias",
   recordatorios: "recordatorios",
   convenios: "convenios",
+  quiz: "quiz",
   perfil: "perfil",
   admin: "admin",
 };
@@ -743,6 +751,7 @@ export default function App() {
         );
       case "recordatorios": return <RecordatoriosFeatureScreen />;
       case "convenios": return <ConveniosFeatureScreen />;
+      case "quiz": return <QuizFeatureScreen />;
       case "perfil": return <PerfilFeatureScreen onCerrarSesion={() => setScreen("login")} />;
       case "admin":
         // D019: guard de rol acá además del nav gateado — nadie que no sea

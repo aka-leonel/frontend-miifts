@@ -65,6 +65,11 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           secure: false,
         },
+        '/quiz': {
+          target: 'http://localhost:8000',
+          changeOrigin: true,
+          secure: false,
+        },
       },
     },
     preview: {
@@ -97,6 +102,11 @@ export default defineConfig(({ mode }) => {
           secure: false,
         },
         '/recursos': {
+          target: 'http://localhost:8000',
+          changeOrigin: true,
+          secure: false,
+        },
+        '/quiz': {
           target: 'http://localhost:8000',
           changeOrigin: true,
           secure: false,

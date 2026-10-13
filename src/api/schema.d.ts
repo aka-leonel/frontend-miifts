@@ -611,6 +611,58 @@ export interface paths {
         patch: operations["cambiar_password_auth_password_patch"];
         trace?: never;
     };
+    "/notificaciones/suscripcion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Crear Suscripcion
+         * @description Registra o actualiza la suscripción push del usuario autenticado.
+         *
+         *     - **endpoint**: URL del endpoint de push del navegador
+         *     - **p256dh**: Clave pública P-256 en base64 URL-safe
+         *     - **auth**: Secreto de autenticación en base64 URL-safe
+         *
+         *     Retorna la suscripción creada/actualizada con su ID y fecha de creación.
+         */
+        post: operations["crear_suscripcion_notificaciones_suscripcion_post"];
+        /**
+         * Eliminar Suscripcion
+         * @description Elimina la suscripción push del usuario autenticado.
+         *
+         *     - **endpoint**: URL del endpoint de la suscripción a eliminar
+         *
+         *     Retorna 204 No Content si se eliminó correctamente.
+         *     Retorna 404 si la suscripción no existe para este usuario.
+         */
+        delete: operations["eliminar_suscripcion_notificaciones_suscripcion_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/quiz/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Generar Quiz */
+        post: operations["generar_quiz_quiz__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/": {
         parameters: {
             query?: never;
@@ -649,6 +701,15 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** Body_generar_quiz_quiz__post */
+        Body_generar_quiz_quiz__post: {
+            /**
+             * Archivo
+             * Format: binary
+             * @description PDF con el material de estudio (máx. 10 MB)
+             */
+            archivo: string;
+        };
         /**
          * CambiarPasswordRequest
          * @description `PATCH /auth/password` — el usuario ya está logueado, pero igual tiene
@@ -848,6 +909,8 @@ export interface components {
             usuario_id: number;
             /** Materia Id */
             materia_id: number;
+            /** Materia Nombre */
+            materia_nombre: string;
             /** Cursando */
             cursando: boolean;
             /** Estado */
@@ -1007,12 +1070,96 @@ export interface components {
              */
             apellido?: string | null;
         };
+        /** Pregunta */
+        Pregunta: {
+            /** Enunciado */
+            enunciado: string;
+            /** Opciones */
+            opciones: string[];
+            /**
+             * Correcta
+             * @description Índice (0-3) de la opción correcta
+             */
+            correcta: number;
+            /**
+             * Explicacion
+             * @default
+             */
+            explicacion: string;
+        };
         /** PromedioResponse */
         PromedioResponse: {
             /** Promedio */
             promedio: number | null;
             /** Materias Computadas */
             materias_computadas: number;
+        };
+        /**
+         * PushSubscriptionCreate
+         * @description Datos para crear una suscripción push (POST /notificaciones/suscripcion).
+         *
+         *     endpoint: URL del endpoint de push del navegador (validada como HttpUrl).
+         *     p256dh: Clave pública P-256 en base64 URL-safe (mínimo 88 caracteres).
+         *     auth: Secreto de autenticación en base64 URL-safe (mínimo 24 caracteres).
+         */
+        PushSubscriptionCreate: {
+            /**
+             * Endpoint
+             * Format: uri
+             * @description URL del endpoint de push del navegador
+             */
+            endpoint: string;
+            /**
+             * P256Dh
+             * @description Clave pública P-256 (base64 URL-safe)
+             */
+            p256dh: string;
+            /**
+             * Auth
+             * @description Secreto de autenticación (base64 URL-safe)
+             */
+            auth: string;
+        };
+        /**
+         * PushSubscriptionDelete
+         * @description Datos para eliminar una suscripción push (DELETE /notificaciones/suscripcion).
+         *
+         *     Se identifica la suscripción a eliminar por su endpoint.
+         */
+        PushSubscriptionDelete: {
+            /**
+             * Endpoint
+             * @description URL del endpoint de la suscripción a eliminar
+             */
+            endpoint: string;
+        };
+        /**
+         * PushSubscriptionResponse
+         * @description Respuesta con los datos de una suscripción push.
+         *
+         *     Incluye las claves para que el frontend pueda gestionarlas si es necesario.
+         */
+        PushSubscriptionResponse: {
+            /** Id */
+            id: number;
+            /** Usuario Id */
+            usuario_id: number;
+            /** Endpoint */
+            endpoint: string;
+            /** P256Dh */
+            p256dh: string;
+            /** Auth */
+            auth: string;
+            /**
+             * Fecha Creacion
+             * Format: date-time
+             */
+            fecha_creacion: string;
+        };
+        /** QuizResponse */
+        QuizResponse: {
+            /** Preguntas */
+            preguntas: components["schemas"]["Pregunta"][];
         };
         /** RecordatorioCreate */
         RecordatorioCreate: {
@@ -2969,6 +3116,106 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MensajeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    crear_suscripcion_notificaciones_suscripcion_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PushSubscriptionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PushSubscriptionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    eliminar_suscripcion_notificaciones_suscripcion_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PushSubscriptionDelete"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    generar_quiz_quiz__post: {
+        parameters: {
+            query?: {
+                /** @description Cantidad de preguntas */
+                cantidad?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_generar_quiz_quiz__post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuizResponse"];
                 };
             };
             /** @description Validation Error */
