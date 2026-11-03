@@ -1,6 +1,6 @@
 import { type ChangeEvent, type ReactNode, useId, useMemo } from "react";
 
-export type FormFieldType = "text" | "number" | "select" | "switch" | "datetime" | "url";
+export type FormFieldType = "text" | "number" | "select" | "multiselect" | "switch" | "datetime" | "url";
 
 export type FormOption = {
   value: string;
@@ -119,6 +119,53 @@ function renderField<T extends Record<string, unknown>>(
         </select>
         {errorEl}
       </div>
+    );
+  }
+
+  if (field.type === "multiselect") {
+    const selected = Array.isArray(value) ? (value as string[]) : [];
+    return (
+      <fieldset
+        key={key}
+        {...requiredProps}
+        {...errorProps}
+        className="space-y-1.5 rounded-xl border border-border bg-bg px-3 py-3"
+      >
+        <legend className="px-1 text-xs font-semibold uppercase tracking-[0.08em] text-muted">
+          {field.label}
+        </legend>
+        <div className="space-y-1.5">
+          {(field.options ?? []).map((option) => {
+            const optionId = `${id}-${option.value}`;
+            return (
+              <label key={option.value} htmlFor={optionId} className="flex items-center gap-2 text-sm text-text">
+                <input
+                  id={optionId}
+                  type="checkbox"
+                  checked={selected.includes(option.value)}
+                  disabled={field.readOnly}
+                  onChange={() =>
+                    onChange(
+                      field.name as keyof T,
+                      selected.includes(option.value)
+                        ? selected.filter((item) => item !== option.value)
+                        : [...selected, option.value],
+                    )
+                  }
+                  className="h-4 w-4 rounded border-border accent-violet"
+                />
+                {option.label}
+              </label>
+            );
+          })}
+        </div>
+        {field.hint ? (
+          <span id={hintId} className="block text-xs text-muted">
+            {field.hint}
+          </span>
+        ) : null}
+        {errorEl}
+      </fieldset>
     );
   }
 

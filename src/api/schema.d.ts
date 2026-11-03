@@ -377,7 +377,8 @@ export interface paths {
         delete: operations["delete_convenios__convenio_id__delete"];
         options?: never;
         head?: never;
-        patch?: never;
+        /** Update Parcial */
+        patch: operations["update_parcial_convenios__convenio_id__patch"];
         trace?: never;
     };
     "/convenios/": {
@@ -749,6 +750,13 @@ export interface components {
             /** Ifts Id */
             ifts_id: number;
         };
+        /** CarreraResumen */
+        CarreraResumen: {
+            /** Id */
+            id: number;
+            /** Nombre */
+            nombre: string;
+        };
         /** CarreraUpdate */
         CarreraUpdate: {
             /** Nombre */
@@ -769,26 +777,51 @@ export interface components {
              * Format: uri
              */
             link_info: string;
-            /** Carrera Id */
-            carrera_id: number;
+            /** Carrera Ids */
+            carrera_ids?: number[] | null;
+            /**
+             * Todas Las Carreras
+             * @default false
+             */
+            todas_las_carreras: boolean;
         };
-        /** ConvenioResponse */
+        /**
+         * ConvenioResponse
+         * @description Contrato de salida: `carreras` es `[]` cuando `todas_las_carreras` es true.
+         */
         ConvenioResponse: {
+            /** Id */
+            id: number;
             /** Institucion */
             institucion: string;
             /** Carrera Destino */
             carrera_destino: string;
             /** Descripcion */
             descripcion: string;
-            /**
-             * Link Info
-             * Format: uri
-             */
+            /** Link Info */
             link_info: string;
-            /** Carrera Id */
-            carrera_id: number;
-            /** Id */
-            id: number;
+            /** Todas Las Carreras */
+            todas_las_carreras: boolean;
+            /** Carreras */
+            carreras: components["schemas"]["CarreraResumen"][];
+        };
+        /**
+         * ConvenioUpdate
+         * @description Edición parcial: sólo se aplican los campos presentes en el body.
+         */
+        ConvenioUpdate: {
+            /** Institucion */
+            institucion?: string | null;
+            /** Carrera Destino */
+            carrera_destino?: string | null;
+            /** Descripcion */
+            descripcion?: string | null;
+            /** Link Info */
+            link_info?: string | null;
+            /** Carrera Ids */
+            carrera_ids?: number[] | null;
+            /** Todas Las Carreras */
+            todas_las_carreras?: boolean | null;
         };
         /** CorrelativaCreate */
         CorrelativaCreate: {
@@ -2462,6 +2495,8 @@ export interface operations {
     get_by_carrera_convenios_carrera__carrera_id__get: {
         parameters: {
             query?: {
+                /** @description Búsqueda por texto libre */
+                q?: string | null;
                 /** @description Número de página (empieza en 1) */
                 page?: number;
                 /** @description Elementos por página (máx. 100) */
@@ -2590,9 +2625,46 @@ export interface operations {
             };
         };
     };
+    update_parcial_convenios__convenio_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                convenio_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConvenioUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConvenioResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_all_convenios__get: {
         parameters: {
             query?: {
+                /** @description Búsqueda por texto libre */
+                q?: string | null;
                 /** @description Número de página (empieza en 1) */
                 page?: number;
                 /** @description Elementos por página (máx. 100) */

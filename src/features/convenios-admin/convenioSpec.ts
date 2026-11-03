@@ -1,8 +1,8 @@
 // Panel Admin (ver decisions D016) — validaciones: todos los campos
 // requeridos, `link_info` se valida como URL http(s) ACÁ antes de pegarle al
 // backend (requirements §6b: "validar formato en el form antes de enviar").
-// PUT reemplaza el registro completo (no hay `ConvenioUpdate` parcial), así
-// que create/update mandan el mismo body.
+// El backend exige `carrera_ids` (mín. 1) O `todas_las_carreras: true`, nunca
+// ambos; esa invariante se valida en `aBody`.
 import { ApiError } from "../../api/client";
 import type { FormFieldSpec, FormOption, FormSpec } from "../../components";
 import { crearConvenio, editarConvenio } from "./service";
@@ -13,7 +13,8 @@ export type ConvenioForm = {
   carrera_destino: string;
   descripcion: string;
   link_info: string;
-  carrera_id: string | number;
+  todas_las_carreras: boolean;
+  carrera_ids: string[];
 };
 
 export const convenioInitial: ConvenioForm = {
@@ -21,7 +22,8 @@ export const convenioInitial: ConvenioForm = {
   carrera_destino: "",
   descripcion: "",
   link_info: "",
-  carrera_id: "",
+  todas_las_carreras: false,
+  carrera_ids: [],
 };
 
 export function convenioFormInitial(c?: Convenio): ConvenioForm {
@@ -31,7 +33,8 @@ export function convenioFormInitial(c?: Convenio): ConvenioForm {
     carrera_destino: c.carrera_destino,
     descripcion: c.descripcion,
     link_info: c.link_info,
-    carrera_id: c.carrera_id,
+    todas_las_carreras: c.todas_las_carreras,
+    carrera_ids: c.carreras.map((carrera) => String(carrera.id)),
   };
 }
 
@@ -52,12 +55,20 @@ function aBody(values: ConvenioForm): ConvenioCreate {
     });
   }
 
+  const carreraIds = values.carrera_ids.map(Number).filter((id) => Number.isFinite(id));
+  if (!values.todas_las_carreras && carreraIds.length === 0) {
+    throw new ApiError(422, "Elegí al menos una carrera de origen.", {
+      carrera_ids: "Elegí al menos una carrera o marcá 'Todas las carreras'.",
+    });
+  }
+
   return {
     institucion: values.institucion.trim(),
     carrera_destino: values.carrera_destino.trim(),
     descripcion: values.descripcion.trim(),
     link_info: link,
-    carrera_id: Number(values.carrera_id),
+    todas_las_carreras: values.todas_las_carreras,
+    ...(values.todas_las_carreras ? {} : { carrera_ids: carreraIds }),
   };
 }
 
@@ -67,7 +78,18 @@ export function convenioSpec(carrerasOptions: FormOption[]): FormSpec<ConvenioFo
     { name: "carrera_destino", label: "Carrera destino", type: "text", required: true },
     { name: "descripcion", label: "Descripción", type: "text", required: true },
     { name: "link_info", label: "Link de información", type: "url", required: true, placeholder: "https://..." },
-    { name: "carrera_id", label: "Carrera (IFTS)", type: "select", required: true, options: carrerasOptions },
+    {
+      name: "todas_las_carreras",
+      label: "Disponible para todas las carreras",
+      type: "switch",
+    },
+    {
+      name: "carrera_ids",
+      label: "Carreras de origen (IFTS)",
+      type: "multiselect",
+      options: carrerasOptions,
+      hint: "Si marcás 'Todas las carreras', esta selección se ignora.",
+    },
   ];
 
   return {
@@ -77,7 +99,7 @@ export function convenioSpec(carrerasOptions: FormOption[]): FormSpec<ConvenioFo
       create: (values) => crearConvenio(aBody(values)),
       update: (id, values) => editarConvenio(Number(id), aBody(values)),
     },
-    onError: { "422": "fields" },
+    onError: { "409": "toast", "422": "fields" },
     invalidates: () => [["convenios-admin"]],
   };
 }

@@ -1,12 +1,23 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ListState, Paginador } from "../../components";
+import ConvenioCard from "./ConvenioCard";
+import ConvenioDetalleModal from "./ConvenioDetalleModal";
 import { useConvenios, useTalentoTech } from "./hooks";
+import type { ConvenioItem } from "./service";
 
 export default function ConveniosScreen() {
   const [tab, setTab] = useState<"universidades" | "talento">("universidades");
   const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [selected, setSelected] = useState<ConvenioItem | null>(null);
 
-  const universidades = useConvenios({ page });
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 350);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const universidades = useConvenios({ page, q: debouncedSearch });
   const talento = useTalentoTech({ page });
   const active = tab === "universidades" ? universidades : talento;
 
@@ -20,7 +31,7 @@ export default function ConveniosScreen() {
           <div className="mt-1 text-sm text-muted">Oportunidades para estudiantes IFTS</div>
         </div>
 
-        <div className="mb-6 flex rounded-xl border border-border bg-card p-1">
+        <div className="mb-4 flex rounded-xl border border-border bg-card p-1">
           {(["universidades", "talento"] as const).map((option) => (
             <button
               key={option}
@@ -40,45 +51,44 @@ export default function ConveniosScreen() {
           ))}
         </div>
 
+        {tab === "universidades" ? (
+          <div className="mb-5">
+            <label htmlFor="convenios-buscar" className="sr-only">
+              Buscar convenios
+            </label>
+            <input
+              id="convenios-buscar"
+              type="search"
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+              }}
+              placeholder="Buscar por institución, carrera o descripción…"
+              className="w-full rounded-xl border border-border bg-bg px-3 py-2.5 text-sm text-text transition placeholder:text-muted focus:border-violet"
+            />
+          </div>
+        ) : null}
+
         <ListState
           loading={active.loading}
           error={active.error}
           items={items}
           emptyTitle="No hay convenios disponibles"
-          emptyDescription="Todavía no se publicaron oportunidades para esta sección."
+          emptyDescription={
+            tab === "universidades" && debouncedSearch
+              ? "No se encontraron convenios para esa búsqueda."
+              : "Todavía no se publicaron oportunidades para esta sección."
+          }
           onRetry={() => setPage(1)}
         >
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {items.map((item) => (
-              <div key={item.id} className="flex flex-col rounded-2xl border border-border bg-card p-4">
-                <div className="mb-3 flex items-center gap-3">
-                  <div
-                    aria-hidden="true"
-                    className={[
-                      "flex h-11 w-11 items-center justify-center rounded-xl text-base font-extrabold",
-                      tab === "universidades" ? "bg-violet/15 text-violet" : "bg-lime/15 text-lime",
-                    ].join(" ")}
-                  >
-                    {item.logo}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h2 className="truncate text-sm font-semibold text-text">{item.nombre}</h2>
-                    <div className="mt-1 line-clamp-2 text-xs text-muted">{item.requisitos}</div>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    const url = item.link_info ?? item.link_inscripcion ?? "#";
-                    window.open(url, "_blank", "noopener,noreferrer");
-                  }}
-                  aria-label={`Más información sobre ${item.nombre} (se abre en una pestaña nueva)`}
-                  className="mt-auto w-full rounded-xl border border-violet/70 bg-violet/10 px-3 py-2.5 text-sm font-semibold text-violet"
-                >
-                  Más info
-                </button>
-              </div>
+              <ConvenioCard
+                key={`${item.tipo}-${item.id}`}
+                item={item}
+                onOpen={setSelected}
+              />
             ))}
           </div>
         </ListState>
@@ -91,6 +101,8 @@ export default function ConveniosScreen() {
           />
         ) : null}
       </div>
+
+      <ConvenioDetalleModal item={selected} onClose={() => setSelected(null)} />
     </div>
   );
 }

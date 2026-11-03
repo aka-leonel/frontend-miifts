@@ -1,13 +1,17 @@
 import { apiClient } from "../../api/client";
-import type { Paginated } from "../../api/types";
+import type { CarreraResumen, Convenio, Paginated } from "../../api/types";
 
 export type ConvenioItem = {
   id: number;
   nombre: string;
-  requisitos: string;
+  carrera_destino?: string;
+  descripcion: string;
+  carreras: CarreraResumen[];
+  todas_las_carreras: boolean;
   logo: string;
   tipo: "universidad" | "talentotech";
   categoria?: string;
+  duracion?: string;
   link_info?: string;
   link_inscripcion?: string;
 };
@@ -17,15 +21,6 @@ export type ConvenioPage = {
   page: number;
   totalPages: number;
 };
-
-interface ConvenioApi {
-  id: number;
-  institucion: string;
-  carrera_destino: string;
-  descripcion: string;
-  link_info: string;
-  carrera_id: number;
-}
 
 interface TalentoTechApi {
   id: number;
@@ -37,12 +32,15 @@ interface TalentoTechApi {
   link_inscripcion: string;
 }
 
-function mapConvenio(c: ConvenioApi): ConvenioItem {
+function mapConvenio(c: Convenio): ConvenioItem {
   return {
     id: c.id,
     nombre: c.institucion,
-    requisitos: c.carrera_destino || c.descripcion,
-    logo: c.institucion.charAt(0).toUpperCase() || "U",
+    carrera_destino: c.carrera_destino,
+    descripcion: c.descripcion,
+    carreras: c.carreras,
+    todas_las_carreras: c.todas_las_carreras,
+    logo: c.institucion.trim().charAt(0).toUpperCase() || "U",
     tipo: "universidad",
     link_info: c.link_info,
   };
@@ -52,10 +50,13 @@ function mapTalentoTech(t: TalentoTechApi): ConvenioItem {
   return {
     id: t.id,
     nombre: t.nombre_curso,
-    requisitos: `${t.categoria} · ${t.duracion}`,
-    logo: t.nombre_curso.charAt(0).toUpperCase() || "T",
+    descripcion: t.descripcion,
+    carreras: [],
+    todas_las_carreras: false,
+    logo: t.nombre_curso.trim().charAt(0).toUpperCase() || "T",
     tipo: "talentotech",
     categoria: t.categoria,
+    duracion: t.duracion,
     link_inscripcion: t.link_inscripcion,
   };
 }
@@ -64,25 +65,33 @@ function toConvenioPage<T>(res: Paginated<T>, map: (item: T) => ConvenioItem): C
   return { items: res.items.map(map), page: res.page, totalPages: res.total_pages };
 }
 
-export async function getConvenios(params: { page?: number; carrera_id?: number } = {}): Promise<ConvenioPage> {
-  const page = Math.max(1, params.page ?? 1);
+function buildQuery(params: { page?: number; per_page?: number; q?: string }): string {
+  const query = new URLSearchParams({
+    page: String(Math.max(1, params.page ?? 1)),
+    per_page: String(params.per_page ?? 20),
+  });
+  const q = params.q?.trim();
+  if (q) query.set("q", q);
+  return query.toString();
+}
 
+export async function getConvenios(
+  params: { page?: number; per_page?: number; q?: string; carrera_id?: number } = {},
+): Promise<ConvenioPage> {
   const path =
     params.carrera_id != null ? `/convenios/carrera/${params.carrera_id}` : "/convenios/";
-  const res = await apiClient<Paginated<ConvenioApi>>(`${path}?page=${page}`, { auth: false });
+  const res = await apiClient<Paginated<Convenio>>(`${path}?${buildQuery(params)}`, { auth: false });
   return toConvenioPage(res, mapConvenio);
 }
 
 export async function getTalentoTech(
-  params: { page?: number; categoria?: string; carrera_id?: number } = {},
+  params: { page?: number; per_page?: number; q?: string; categoria?: string; carrera_id?: number } = {},
 ): Promise<ConvenioPage> {
-  const page = Math.max(1, params.page ?? 1);
-
   const path = params.categoria
     ? `/talentotech/categoria/${encodeURIComponent(params.categoria)}`
     : params.carrera_id != null
       ? `/talentotech/carrera/${params.carrera_id}`
       : "/talentotech/";
-  const res = await apiClient<Paginated<TalentoTechApi>>(`${path}?page=${page}`, { auth: false });
+  const res = await apiClient<Paginated<TalentoTechApi>>(`${path}?${buildQuery(params)}`, { auth: false });
   return toConvenioPage(res, mapTalentoTech);
 }

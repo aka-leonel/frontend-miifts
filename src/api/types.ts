@@ -161,8 +161,10 @@ export type RecursoCreate = {
 
 // Panel Admin (ver decisions D016): forma cruda del backend, sin mapear a la
 // forma UI que usa `features/convenios` (estudiante, solo lectura).
+export type CarreraResumen = S["CarreraResumen"];
 export type Convenio = S["ConvenioResponse"];
 export type ConvenioCreate = S["ConvenioCreate"];
+export type ConvenioUpdate = S["ConvenioUpdate"];
 
 export interface Token {
   access_token: string;

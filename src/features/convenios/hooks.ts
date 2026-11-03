@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { getConvenios, getTalentoTech, type ConvenioPage } from "./service";
 
-export function useConvenios(params: { page?: number; carrera_id?: number } = {}) {
+type ConveniosParams = { page?: number; q?: string; carrera_id?: number };
+
+export function useConvenios(params: ConveniosParams = {}) {
   const [state, setState] = useState<{ data: ConvenioPage | null; loading: boolean; error: unknown }>({
     data: null,
     loading: true,
@@ -32,12 +34,12 @@ export function useConvenios(params: { page?: number; carrera_id?: number } = {}
     return () => {
       mounted = false;
     };
-  }, [params.page, params.carrera_id]);
+  }, [params.page, params.q, params.carrera_id]);
 
   return state;
 }
 
-export function useTalentoTech(params: { page?: number; categoria?: string; carrera_id?: number } = {}) {
+export function useTalentoTech(params: ConveniosParams & { categoria?: string } = {}) {
   const [state, setState] = useState<{ data: ConvenioPage | null; loading: boolean; error: unknown }>({
     data: null,
     loading: true,
@@ -66,7 +68,7 @@ export function useTalentoTech(params: { page?: number; categoria?: string; carr
     return () => {
       mounted = false;
     };
-  }, [params.page, params.categoria, params.carrera_id]);
+  }, [params.page, params.q, params.categoria, params.carrera_id]);
 
   return state;
 }
