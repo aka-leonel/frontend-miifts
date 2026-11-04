@@ -1334,10 +1334,16 @@ export interface components {
          * @enum {string}
          */
         RolUsuario: "estudiante" | "admin";
-        /** TalentoTechCreate */
+        /**
+         * TalentoTechCreate
+         * @description Alta/edición de un curso TalentoTech.
+         *
+         *     Igual que convenios: `carrera_ids` (mín. 1) **o** `todas_las_carreras: true`,
+         *     excluyentes.
+         */
         TalentoTechCreate: {
-            /** Carrera Id */
-            carrera_id: number;
+            /** Institucion */
+            institucion: string;
             /** Nombre Curso */
             nombre_curso: string;
             /** Categoria */
@@ -1346,31 +1352,52 @@ export interface components {
             descripcion: string;
             /** Duracion */
             duracion: string;
+            /** Modalidad Cursada */
+            modalidad_cursada: string;
+            /** Dificultad */
+            dificultad?: string | null;
             /**
              * Link Inscripcion
              * Format: uri
              */
             link_inscripcion: string;
+            /** Carrera Ids */
+            carrera_ids?: number[] | null;
+            /**
+             * Todas Las Carreras
+             * @default false
+             */
+            todas_las_carreras: boolean;
         };
-        /** TalentoTechResponse */
+        /**
+         * TalentoTechResponse
+         * @description Contrato de salida para cards: incluye carrera(s) de origen.
+         *
+         *     `carreras` es `[]` cuando `todas_las_carreras` es true (aplica a todas).
+         */
         TalentoTechResponse: {
-            /** Carrera Id */
-            carrera_id: number;
-            /** Nombre Curso */
-            nombre_curso: string;
-            /** Categoria */
-            categoria: string;
-            /** Descripcion */
-            descripcion: string;
-            /** Duracion */
-            duracion: string;
-            /**
-             * Link Inscripcion
-             * Format: uri
-             */
-            link_inscripcion: string;
             /** Id */
             id: number;
+            /** Institucion */
+            institucion: string;
+            /** Nombre Curso */
+            nombre_curso: string;
+            /** Categoria */
+            categoria: string;
+            /** Descripcion */
+            descripcion: string;
+            /** Duracion */
+            duracion: string;
+            /** Modalidad Cursada */
+            modalidad_cursada: string;
+            /** Dificultad */
+            dificultad?: string | null;
+            /** Link Inscripcion */
+            link_inscripcion: string;
+            /** Todas Las Carreras */
+            todas_las_carreras: boolean;
+            /** Carreras */
+            carreras: components["schemas"]["CarreraResumen"][];
         };
         /**
          * TokenResponse

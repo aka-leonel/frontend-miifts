@@ -166,6 +166,11 @@ export type Convenio = S["ConvenioResponse"];
 export type ConvenioCreate = S["ConvenioCreate"];
 export type ConvenioUpdate = S["ConvenioUpdate"];
 
+// TalentoTech (docs/contexto_taletoTech/TALENTOTECH_FRONT.md). `PUT` usa el
+// mismo body que `POST`, por eso no hay `TalentoTechUpdate`.
+export type TalentoTech = S["TalentoTechResponse"];
+export type TalentoTechCreate = S["TalentoTechCreate"];
+
 export interface Token {
   access_token: string;
   token_type: string;

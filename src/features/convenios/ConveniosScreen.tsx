@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { ListState, Paginador } from "../../components";
 import ConvenioCard from "./ConvenioCard";
 import ConvenioDetalleModal from "./ConvenioDetalleModal";
-import { useConvenios, useTalentoTech } from "./hooks";
+import { useConvenios } from "./hooks";
 import type { ConvenioItem } from "./service";
+import { TalentoTechSection } from "../talentotech";
 
 export default function ConveniosScreen() {
   const [tab, setTab] = useState<"universidades" | "talento">("universidades");
@@ -18,10 +19,7 @@ export default function ConveniosScreen() {
   }, [search]);
 
   const universidades = useConvenios({ page, q: debouncedSearch });
-  const talento = useTalentoTech({ page });
-  const active = tab === "universidades" ? universidades : talento;
-
-  const items = active.data?.items ?? [];
+  const items = universidades.data?.items ?? [];
 
   return (
     <div className="flex-1 overflow-y-auto pb-24">
@@ -40,6 +38,7 @@ export default function ConveniosScreen() {
               onClick={() => {
                 setTab(option);
                 setPage(1);
+                setSelected(null);
               }}
               className={[
                 "flex-1 rounded-lg px-3 py-2 text-sm font-medium transition",
@@ -52,54 +51,54 @@ export default function ConveniosScreen() {
         </div>
 
         {tab === "universidades" ? (
-          <div className="mb-5">
-            <label htmlFor="convenios-buscar" className="sr-only">
-              Buscar convenios
-            </label>
-            <input
-              id="convenios-buscar"
-              type="search"
-              value={search}
-              onChange={(event) => {
-                setSearch(event.target.value);
-                setPage(1);
-              }}
-              placeholder="Buscar por institución, carrera o descripción…"
-              className="w-full rounded-xl border border-border bg-bg px-3 py-2.5 text-sm text-text transition placeholder:text-muted focus:border-violet"
-            />
-          </div>
-        ) : null}
-
-        <ListState
-          loading={active.loading}
-          error={active.error}
-          items={items}
-          emptyTitle="No hay convenios disponibles"
-          emptyDescription={
-            tab === "universidades" && debouncedSearch
-              ? "No se encontraron convenios para esa búsqueda."
-              : "Todavía no se publicaron oportunidades para esta sección."
-          }
-          onRetry={() => setPage(1)}
-        >
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {items.map((item) => (
-              <ConvenioCard
-                key={`${item.tipo}-${item.id}`}
-                item={item}
-                onOpen={setSelected}
+          <>
+            <div className="mb-5">
+              <label htmlFor="convenios-buscar" className="sr-only">
+                Buscar convenios
+              </label>
+              <input
+                id="convenios-buscar"
+                type="search"
+                value={search}
+                onChange={(event) => {
+                  setSearch(event.target.value);
+                  setPage(1);
+                }}
+                placeholder="Buscar por institución, carrera o descripción…"
+                className="w-full rounded-xl border border-border bg-bg px-3 py-2.5 text-sm text-text transition placeholder:text-muted focus:border-violet"
               />
-            ))}
-          </div>
-        </ListState>
+            </div>
 
-        {active.data ? (
-          <Paginador
-            page={active.data.page}
-            totalPages={active.data.totalPages}
-            onPageChange={(nextPage) => setPage(nextPage)}
-          />
-        ) : null}
+            <ListState
+              loading={universidades.loading}
+              error={universidades.error}
+              items={items}
+              emptyTitle="No hay convenios disponibles"
+              emptyDescription={
+                debouncedSearch
+                  ? "No se encontraron convenios para esa búsqueda."
+                  : "Todavía no se publicaron convenios en esta sección."
+              }
+              onRetry={() => universidades.refetch()}
+            >
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {items.map((item) => (
+                  <ConvenioCard key={item.id} item={item} onOpen={setSelected} />
+                ))}
+              </div>
+            </ListState>
+
+            {universidades.data && !universidades.loading ? (
+              <Paginador
+                page={universidades.data.page}
+                totalPages={universidades.data.totalPages}
+                onPageChange={(nextPage) => setPage(nextPage)}
+              />
+            ) : null}
+          </>
+        ) : (
+          <TalentoTechSection />
+        )}
       </div>
 
       <ConvenioDetalleModal item={selected} onClose={() => setSelected(null)} />

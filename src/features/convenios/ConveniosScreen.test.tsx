@@ -1,12 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ConveniosScreen from "./ConveniosScreen";
 import * as hooks from "./hooks";
 
 vi.mock("./hooks", () => ({
   useConvenios: vi.fn(),
-  useTalentoTech: vi.fn(),
+}));
+
+// La pestaña de TalentoTech tiene su propia suite (TalentoTechSection.test.tsx):
+// acá solo se verifica que Convenios la monte al cambiar de tab.
+vi.mock("../talentotech", () => ({
+  TalentoTechSection: () => <div>Talento Tech section</div>,
 }));
 
 describe("ConveniosScreen", () => {
@@ -20,7 +25,6 @@ describe("ConveniosScreen", () => {
         carreras: [{ id: 1, nombre: "Tecnicatura Superior en Desarrollo de Software" }],
         todas_las_carreras: false,
         logo: "U",
-        tipo: "universidad" as const,
         link_info: "https://example.com/info",
       },
       {
@@ -31,27 +35,7 @@ describe("ConveniosScreen", () => {
         carreras: [],
         todas_las_carreras: true,
         logo: "U",
-        tipo: "universidad" as const,
         link_info: "https://example.com/palermo",
-      },
-    ],
-    page: 1,
-    totalPages: 1,
-  };
-
-  const mockTalentoData = {
-    items: [
-      {
-        id: 2,
-        nombre: "Python Avanzado",
-        descripcion: "Curso intensivo de backend.",
-        carreras: [],
-        todas_las_carreras: false,
-        logo: "P",
-        tipo: "talentotech" as const,
-        categoria: "Backend",
-        duracion: "3 meses",
-        link_inscripcion: "https://example.com/inscripcion",
       },
     ],
     page: 1,
@@ -63,16 +47,12 @@ describe("ConveniosScreen", () => {
     vi.spyOn(window, "open").mockImplementation(() => null);
   });
 
-  it("should render convenios list and switch tabs correctly", async () => {
+  it("should render convenios list and switch to the TalentoTech tab", async () => {
     vi.mocked(hooks.useConvenios).mockReturnValue({
       data: mockConvenioData,
       loading: false,
       error: null,
-    });
-    vi.mocked(hooks.useTalentoTech).mockReturnValue({
-      data: mockTalentoData,
-      loading: false,
-      error: null,
+      refetch: vi.fn(),
     });
 
     render(<ConveniosScreen />);
@@ -85,14 +65,10 @@ describe("ConveniosScreen", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("Todas las carreras")).toBeInTheDocument();
 
-    // Switch to Talento Tech tab
-    const talentoTab = screen.getByRole("button", { name: "Talento Tech" });
-    await userEvent.click(talentoTab);
+    await userEvent.click(screen.getByRole("button", { name: "Talento Tech" }));
 
-    await waitFor(() => {
-      expect(screen.getByText("Python Avanzado")).toBeInTheDocument();
-      expect(screen.getByText("Backend · 3 meses")).toBeInTheDocument();
-    });
+    expect(screen.getByText("Talento Tech section")).toBeInTheDocument();
+    expect(screen.queryByText("Universidad Tecnológica")).not.toBeInTheDocument();
   });
 
   it("should open the detail modal and then the external site", async () => {
@@ -100,11 +76,7 @@ describe("ConveniosScreen", () => {
       data: mockConvenioData,
       loading: false,
       error: null,
-    });
-    vi.mocked(hooks.useTalentoTech).mockReturnValue({
-      data: { items: [], page: 1, totalPages: 1 },
-      loading: false,
-      error: null,
+      refetch: vi.fn(),
     });
 
     render(<ConveniosScreen />);

@@ -1,6 +1,6 @@
 import { type ChangeEvent, type ReactNode, useId, useMemo } from "react";
 
-export type FormFieldType = "text" | "number" | "select" | "multiselect" | "switch" | "datetime" | "url";
+export type FormFieldType = "text" | "textarea" | "number" | "select" | "multiselect" | "switch" | "datetime" | "url";
 
 export type FormOption = {
   value: string;
@@ -16,6 +16,7 @@ export type FormFieldSpec = {
   options?: FormOption[];
   min?: number;
   max?: number;
+  maxLength?: number;
   lockOnEdit?: boolean;
   readOnly?: boolean;
   hint?: string;
@@ -169,6 +170,26 @@ function renderField<T extends Record<string, unknown>>(
     );
   }
 
+  if (field.type === "textarea") {
+    return (
+      <div key={key} className="space-y-1.5">
+        {labelEl}
+        <textarea
+          id={id}
+          {...requiredProps}
+          {...errorProps}
+          rows={4}
+          maxLength={field.maxLength}
+          value={String(value ?? "")}
+          onChange={(event) => onChange(field.name as keyof T, event.target.value)}
+          className={[fieldClassName, "min-h-[96px] resize-y", hasError ? "border-danger" : ""].join(" ")}
+          placeholder={field.placeholder}
+        />
+        {errorEl}
+      </div>
+    );
+  }
+
   if (field.type === "number") {
     return (
       <div key={key} className="space-y-1.5">
@@ -207,6 +228,7 @@ function renderField<T extends Record<string, unknown>>(
         type={field.type === "datetime" ? "datetime-local" : field.type === "url" ? "url" : "text"}
         value={String(value ?? "")}
         onChange={(event) => onChange(field.name as keyof T, event.target.value)}
+        maxLength={field.maxLength}
         className={[fieldClassName, hasError ? "border-danger" : ""].join(" ")}
         placeholder={field.placeholder}
       />
