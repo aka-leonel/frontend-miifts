@@ -1,11 +1,11 @@
 import { useAsync, useAsyncAction } from "../../hooks/useAsyncQuery";
 import { borrarConvenio, crearConvenio, editarConvenio, getConveniosAdmin } from "./service";
-import type { Convenio, ConvenioCreate, Paginated } from "../../api/types";
+import type { Convenio, ConvenioCreate, ConvenioUpdate, Paginated } from "../../api/types";
 
 type Refresh = () => Promise<void> | void;
 
-export function useConveniosAdmin(params: { page?: number } = {}) {
-  return useAsync<Paginated<Convenio>>(() => getConveniosAdmin(params), [params.page]);
+export function useConveniosAdmin(params: { page?: number; q?: string } = {}) {
+  return useAsync<Paginated<Convenio>>(() => getConveniosAdmin(params), [params.page, params.q]);
 }
 
 export function useCrearConvenio(onSuccess?: Refresh) {
@@ -19,8 +19,8 @@ export function useCrearConvenio(onSuccess?: Refresh) {
 }
 
 export function useEditarConvenio(onSuccess?: Refresh) {
-  const action = useAsyncAction<[number, ConvenioCreate], Convenio>((id, body) => editarConvenio(id, body));
-  const run = async (id: number, body: ConvenioCreate) => {
+  const action = useAsyncAction<[number, ConvenioUpdate], Convenio>((id, body) => editarConvenio(id, body));
+  const run = async (id: number, body: ConvenioUpdate) => {
     const result = await action.run(id, body);
     await onSuccess?.();
     return result;

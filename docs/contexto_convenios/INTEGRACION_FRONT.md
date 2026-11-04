@@ -1,0 +1,533 @@
+# Integración Front ↔ Backend miIFTS
+
+Cómo consumir la API tal como está construida hoy. Fuente de verdad viva:
+`GET /openapi.json` y Swagger en `/docs`. Copia versionada del contrato en
+`docs/openapi.json` (regenerar con `python scripts/export_openapi.py` cuando
+cambie la API).
+
+- **Base URL (dev):** `http://localhost:8000` (uvicorn). Configurable por
+  `VITE_API_URL`.
+- **CORS:** por defecto acepta `http://localhost:5173` y `http://127.0.0.1:5173`
+  (puerto default de Vite). Para otro origen hay que agregarlo a `CORS_ORIGINS`
+  en el backend.
+- **Formato:** todo JSON. Fechas ISO 8601.
+
+---
+
+## 1. Convenciones globales
+
+### 1.1 Shape de respuestas
+
+| Caso | Forma |
+|------|-------|
+| **Colección** (todo `GET` que lista) | `{ items: T[], total, page, per_page, total_pages }` |
+| **Recurso** (`GET`/`POST`/`PUT`/`PATCH` de un ítem) | objeto plano `T` |
+| **DELETE** | `204` sin body |
+| **Error** | `{ detail: string }` |
+| **Error de validación (`422`)** | `{ detail: string, errors: { campo: string, msg: string }[] }` |
+
+`detail` es **siempre** un string → mostrarlo tal cual en un toast.
+En formularios, usar `errors[]` para marcar cada campo (`campo` es el nombre del
+field; en anidados viene con punto, ej. `"requiere.codigo"`).
+
+### 1.2 Paginación
+
+**Todos** los listados aceptan:
+
+| Query param | Default | Rango |
+|-------------|---------|-------|
+| `page` | `1` | ≥ 1 |
+| `per_page` | `20` | 1–100 |
+
+Pedir una página fuera de rango devuelve `items: []` con el `total` real.
+Para paginar en el front: `total_pages` te dice cuántas hay.
+
+### 1.3 Códigos de estado
+
+| Código | Cuándo | Qué hace el front |
+|--------|--------|-------------------|
+| `200` | OK (GET/PUT/PATCH) | — |
+| `201` | Creado (POST) | — |
+| `204` | Borrado (DELETE) | no parsear body |
+| `401` | Sin token o token inválido/expirado | limpiar sesión → ir a login |
+| `403` | Rol insuficiente / recurso de otro usuario | “no tenés permiso” |
+| `404` | No existe | pantalla/estado “no encontrado” |
+| `409` | Duplicado o regla de negocio (ej. borrar carrera con materias) | mostrar `detail` |
+| `422` | Validación | pintar `errors[]` en el form |
+
+---
+
+## 2. Autenticación
+
+JWT Bearer, HS256, expira a las **24 h**. No hay refresh token ni logout de
+servidor: “cerrar sesión” = borrar el token del cliente.
+
+### 2.1 Registro
+
+`POST /auth/registro` — **público**
+
+```jsonc
+// request
+{ "nombre": "Ada", "apellido": "Lovelace", "email": "ada@ifts.edu.ar",
+  "password": "secreta123", "carrera_id": 1 }
+// 201 -> UsuarioResponse (NO devuelve token)
+```
+
+- `password`: mínimo 8, **al menos una letra y un número**.
+- `nombre`, `apellido`: 2–100 caracteres.
+- `carrera_id`: tiene que existir → conseguí la lista con
+  `GET /materias/carreras` (público) para armar el `<select>`.
+- El campo `rol` se ignora: siempre se crea `estudiante`.
+- Después del registro → hacer login (o auto-login reusando las credenciales).
+
+### 2.2 Login
+
+`POST /auth/login` — **público**
+
+```jsonc
+// request
+{ "email": "ada@ifts.edu.ar", "password": "secreta123" }
+// 200 -> TokenResponse
+{ "access_token": "eyJ...", "token_type": "bearer",
+  "usuario": { "id": 1, "nombre": "...", "apellido": "...", "email": "...", "carrera_id": 1,
+               "fecha_registro": "2026-09-02T12:00:00", "rol": "estudiante" } }
+```
+
+El login ya trae el `usuario` → no hace falta llamar a `/auth/me` después.
+Credenciales inválidas → `401` `{ "detail": "Email o contraseña incorrectos" }`.
+
+### 2.3 Usar el token
+
+- Guardarlo (memoria + `localStorage`, o cookie). Guardar también `usuario`.
+- Header en cada request autenticado: `Authorization: Bearer <access_token>`.
+- Interceptor: si una respuesta es `401` → borrar token + `usuario` y redirigir a
+  login (el token venció o es inválido).
+
+### 2.4 Endpoints de sesión
+
+| Método | Path | Auth | Respuesta |
+|--------|------|------|-----------|
+| `GET` | `/auth/me` | Bearer | `UsuarioResponse` |
+| `PATCH` | `/auth/me` | Bearer | `PerfilUpdate` `{ nombre?, apellido? }` → `UsuarioResponse`. `422` si `nombre`/`apellido` < 2 caracteres. **Solo nombre y apellido son editables**: la carrera se muestra en el perfil pero no se cambia desde acá; `carrera_id`/`email`/`rol` en el body se ignoran |
+| `GET` | `/auth/verify` | Bearer | `{ valid: true, user_id: number }` |
+
+### 2.4bis Olvidé mi contraseña
+
+Flujo de dos pasos, ambos endpoints **públicos** (sin token):
+
+```jsonc
+// 1) POST /auth/forgot-password — pide el email
+{ "email": "ada@ifts.edu.ar" }
+// 200 -> { "detail": "Si el email está registrado, vas a recibir instrucciones
+//          para restablecer tu contraseña." }
+```
+
+- Responde **siempre `200` con el mismo mensaje**, exista o no el email — no
+  reveles si una dirección está registrada. El front no debe distinguir estos
+  casos (así lo pide S5-13: mostrar directamente el estado de éxito).
+- El backend genera un token de un solo uso (vence a los **30 minutos**) y lo
+  manda por email con un link a `FRONTEND_RESET_PASSWORD_URL?token=<token>`
+  (`FRONTEND_RESET_PASSWORD_URL` es una env var del backend, default
+  `http://localhost:5173/reset-password` — avisar si la URL real del front es otra).
+- El email se manda por SMTP (env vars `SMTP_*` del backend). Si el backend no
+  tiene `SMTP_HOST` configurado, no se envía nada y el token **no** se loguea.
+
+```jsonc
+// 2) POST /auth/reset-password — con el token de la URL + contraseña nueva
+{ "token": "b8f2b3b7c1a9...", "password": "nuevaSecreta123" }
+// 200 -> { "detail": "Contraseña actualizada correctamente." }
+```
+
+- `password`: misma validación que en Registro (≥8 caracteres, al menos una
+  letra y un número) → `422` si no cumple.
+- `400` con `{ "detail": "Token inválido o expirado" }` si el token no existe,
+  ya se usó, o pasaron más de 30 minutos → volver a la pantalla de "olvidé mi
+  contraseña" (S5-15), no mostrar un error genérico.
+- El token es de **un solo uso**: se marca como usado recién cuando el reset
+  se completa con éxito (`200`); un `422` de validación no lo consume, podés
+  reintentar con el mismo token. Un segundo intento después de un `200` da `400`.
+
+### 2.4ter Cambiar contraseña (logueado)
+
+`PATCH /auth/password` — **Bearer**. Para la pantalla de Perfil: a diferencia
+de `PATCH /auth/me`, éste sí puede tocar la contraseña, pero exige la actual
+como reautenticación (si te roban la sesión, no alcanza para tomarte la cuenta).
+
+```jsonc
+// request
+{ "password_actual": "claveVieja123", "password_nueva": "claveNueva123" }
+// 200 -> { "detail": "Contraseña actualizada correctamente." }
+```
+
+- `401` si `password_actual` no coincide con la real (mismo criterio que login).
+- `400` con `{ "detail": "La contraseña nueva debe ser distinta a la actual" }`
+  si mandás la misma.
+- `422` si `password_nueva` no cumple la validación (≥8, letra + número).
+- No hace falta pasar por email para esto — es un solo request, sin token de
+  reset. Reemplaza la idea anterior de reutilizar `forgot-password` desde
+  Perfil: ya no hace falta ese workaround.
+
+### 2.5 Roles
+
+- `estudiante`: default. Gestiona lo suyo (cursadas, recursos, recordatorios).
+- `admin`: además administra el catálogo (carreras y materias).
+- El front puede usar `usuario.rol` para mostrar/ocultar el ABM de catálogo,
+  pero la autorización real la hace el backend (`403` si corresponde).
+
+---
+
+## 3. Referencia de endpoints
+
+Convención: **Pub** = sin token · **Auth** = Bearer · **Admin** = Bearer + rol admin.
+
+### 3.1 Catálogo académico
+
+| Método | Path | Acceso | Notas |
+|--------|------|--------|-------|
+| `GET` | `/materias/carreras` | Pub | paginado → `CarreraResponse` |
+| `GET` | `/materias/carreras/{carrera_id}` | Pub | detalle de una carrera → `CarreraResponse`. `404` si no existe |
+| `POST` | `/materias/carreras` | Admin | `CarreraCreate` |
+| `PUT` | `/materias/carreras/{id}` | Admin | `CarreraUpdate` (parcial) |
+| `DELETE` | `/materias/carreras/{id}` | Admin | `409` si la carrera tiene materias |
+| `GET` | `/materias/carrera/{carrera_id}` | Pub | materias de una carrera, paginado → `MateriaResponse` |
+| `GET` | `/materias/buscar?q=` | Pub | `q` **requerido**; opcionales `anio`, `cuatrimestre`. Paginado → `MateriaResponse` |
+| `GET` | `/materias/correlativas/{materia_id}` | Pub | paginado → `CorrelativaResponse` (trae la materia correlativa embebida en `requiere`) |
+| `GET` | `/materias/{materia_id}` | Pub | detalle de una materia → `MateriaResponse`. `404` si no existe |
+| `POST` | `/materias/` | Admin | `MateriaCreate`. `409` si el `codigo` ya existe en esa carrera |
+| `PUT` | `/materias/{id}` | Admin | `MateriaUpdate` (parcial) |
+| `DELETE` | `/materias/{id}` | Admin | `409` si la materia tiene cursadas |
+
+> Nota de ruteo: `GET /materias/{materia_id}` y `GET /materias/carreras/{carrera_id}`
+> son comodines: `materia_id`/`carrera_id` deben ser enteros. `/materias/carreras`,
+> `/materias/buscar`, `/materias/carrera/{id}`, etc. tienen prioridad por orden.
+
+Validaciones de catálogo (todas devuelven `422` con `errors[]`):
+`anio` 1–6 · `cuatrimestre` 1 o 2 · `duracion_cuatrimestres` 1–12 ·
+`nombre` ≥ 2 · `codigo` no vacío.
+
+### 3.2 Cursadas y promedio
+
+> ✅ Sprint 2 (Integrante 1): la identidad sale del **token**. En `POST/PATCH/DELETE`
+> el `usuario_id` ya **no** viaja en la URL (se toma del JWT). En los `GET` con
+> `{usuario_id}` un alumno sólo puede consultar lo suyo (`403` si pide lo de otro);
+> un admin puede consultar cualquiera. Todos requieren `Authorization: Bearer`.
+
+| Método | Path | Acceso | Notas |
+|--------|------|--------|-------|
+| `GET` | `/materias/usuario/{usuario_id}` | Auth (propio o admin) | cursadas del alumno, paginado → `MateriaUsuarioResponse`. `403` si `usuario_id` no es el del token y no sos admin |
+| `POST` | `/materias/usuario` | Auth | `MateriaUsuarioCreate`. El dueño sale del token. `409` si ya está cargada o si la materia no es de la carrera del alumno |
+| `PATCH` | `/materias/cursada/{materia_usuario_id}` | Auth (dueño) | `MateriaUsuarioUpdate` (parcial). `404` si la cursada es de otro alumno |
+| `DELETE` | `/materias/cursada/{materia_usuario_id}` | Auth (dueño) | `204`. `404` si la cursada es de otro alumno |
+| `GET` | `/materias/promedio/{usuario_id}` | Auth (propio o admin) | `{ promedio: number\|null, materias_computadas: number }`. `403` igual que el `GET` de cursadas |
+
+Notas 1–10 (`422` fuera de rango). Los campos que se mandan en `MateriaUsuarioCreate`/
+`MateriaUsuarioUpdate` son `nota_parcial_1`, `nota_parcial_2` y **`examen_final`**
+(la nota del examen final, si lo rindió). **`nota_final` no se manda nunca** — es
+un campo calculado que solo aparece en la respuesta, junto con `estado`:
+
+- `"cursando"` si `cursando=true` (manda por sobre cualquier nota cargada). `nota_final: null`.
+- si no, y **ambos parciales `>= 7`**: `"promocionada"` (exime del final). `nota_final` =
+  promedio de los dos parciales — **no** el `examen_final` (si había uno cargado de antes, se ignora).
+- si no promocionó y rindió `examen_final`: `"aprobada"` si `>= 4`, `"desaprobada"` si `< 4`.
+  `nota_final` = `examen_final`.
+- si no promocionó y no rindió `examen_final`: `"pendiente"`. `nota_final: null`.
+
+`GET /materias/promedio/{usuario_id}` promedia el `nota_final` (calculado) de todas
+las cursadas que ya cerraron (promocionada, aprobada o desaprobada); las que siguen
+`cursando` o están `pendiente` no entran en la cuenta.
+
+### 3.3 Recursos de estudio
+
+| Método | Path | Acceso | Notas |
+|--------|------|--------|-------|
+| `GET` | `/recursos/` | Pub | filtros `materia_id`, `tipo`, `desde`, `hasta` (fechas `YYYY-MM-DD`) + paginación → `RecursoResponse` |
+| `GET` | `/recursos/materia/{materia_id}` | Pub | paginado |
+| `GET` | `/recursos/usuario/{usuario_id}` | Pub | paginado |
+| `GET` | `/recursos/{id}` | Pub | `RecursoResponse` |
+| `POST` | `/recursos/` | Auth | `RecursoCreate`. El dueño sale del token → **no** mandes `usuario_id` |
+| `PUT` | `/recursos/{id}` | Auth (**solo dueño**) | `403` si el recurso es de otro |
+| `DELETE` | `/recursos/{id}` | Auth (**solo dueño**) | `403` si es de otro, `204` si OK |
+
+`url` tiene que ser una URL válida (`http/https`). `titulo` 1–150.
+`tipo` es libre (convención: `"pdf"`, `"video"`, `"link"`).
+
+### 3.4 Convenios y TalentoTech
+
+> **Convenios tiene documento propio y actualizado:** `docs/CONVENIOS_FRONT.md`
+> (N:M con carreras de origen, `todas_las_carreras`, PATCH, búsqueda `q`, orden
+> estable, 422/409). Esta sección queda como referencia general.
+
+> Lectura pública. Escritura **solo admin** (`403` estudiante, `401` sin token).
+> Desde el front del alumno son **solo lectura**.
+
+| Método | Path | Acceso | Notas |
+|--------|------|--------|-------|
+| `GET` | `/convenios/` | Pub | paginado → `ConvenioResponse`. Filtro opcional `?q=` (texto libre, case-insensitive, sobre institución/destino/descripción). Orden `lower(institucion) ASC, id ASC` (case-insensitive) |
+| `GET` | `/convenios/carrera/{carrera_id}` | Pub | paginado. Convenios explícitos de esa carrera **+** los `todas_las_carreras`; mismo `?q=` y orden |
+| `GET` | `/convenios/{id}` | Pub | `ConvenioResponse`; `404` si no existe |
+| `GET` | `/talentotech/` | Pub | paginado → `TalentoTechResponse` |
+| `GET` | `/talentotech/carrera/{carrera_id}` | Pub | paginado |
+| `GET` | `/talentotech/categoria/{categoria}` | Pub | paginado |
+| `GET` | `/talentotech/{id}` | Pub | `TalentoTechResponse` |
+| `POST/PUT/PATCH/DELETE` | `/convenios/*`, `/talentotech/*` | Admin | `require_admin`: `403` estudiante, `401` sin token |
+
+Convenios — reglas de escritura:
+- `POST` y `PUT` reciben `ConvenioCreate`: `institucion`, `carrera_destino`,
+  `descripcion`, `link_info` + `carrera_ids` (mín. 1) **o** `todas_las_carreras: true`
+  (excluyentes). `PUT` es reemplazo total.
+- `PATCH /convenios/{id}` recibe `ConvenioUpdate` (todos opcionales) y aplica **sólo los
+  campos presentes**. Body `{}` devuelve `200` con el convenio sin cambios. `404` si el id no existe.
+  `carrera_ids` reemplaza el conjunto; `todas_las_carreras: true` limpia las carreras explícitas.
+- `carrera_ids` inexistente en `POST`/`PUT`/`PATCH` → `422` con `detail` que enumera los ids faltantes.
+- Flag e ids incompatibles, o flag `false` sin carreras → `422`.
+- Duplicado por `(institucion, carrera_destino)` → `409` (incluye `PATCH`), aunque cambien las carreras.
+- Los textos se normalizan con `strip()` (los espacios al borde no cuentan).
+- La comparación de unicidad es case-sensitive.
+
+### 3.5 Recordatorios
+
+> ✅ Sprint 2 (Integrante 1): la identidad sale del **token**. Ya **no** se manda
+> `usuario_id`. Un alumno sólo ve/borra los suyos; borrar uno ajeno da `404` (no
+> se revela que existe). Todos requieren `Authorization: Bearer`.
+
+| Método | Path | Acceso | Notas |
+|--------|------|--------|-------|
+| `GET` | `/recordatorios/` | Auth | Filtros `tipo`, `desde`, `hasta`, `materia_id` + paginación → `RecordatorioResponse` (ordenado por fecha desc). Sólo los del usuario del token |
+| `POST` | `/recordatorios/` | Auth | `RecordatorioCreate`. El dueño sale del token. `201`. `422` si `fecha` no es futura |
+| `PATCH` | `/recordatorios/{id}` | Auth (dueño) | `RecordatorioUpdate` `{ titulo?, fecha?, tipo?, materia_id? }` (parcial, solo se aplican los campos presentes) → `RecordatorioResponse`. `404` si es de otro. `422` si `fecha` no es futura |
+| `DELETE` | `/recordatorios/{id}` | Auth (dueño) | `204`. `404` si el recordatorio es de otro |
+
+`fecha` es datetime ISO y **tiene que ser futura**. `tipo` libre (convención
+`"parcial"`, `"tp"`, `"final"`, `"otro"`).
+
+---
+
+## 4. Endpoints por pantalla del MVP
+
+Las 5 pantallas del MVP y qué llama cada una. `T` = token en `Authorization`.
+
+### 4.1 Registro / Login
+
+| Acción | Request |
+|--------|---------|
+| Cargar `<select>` de carreras | `GET /materias/carreras` |
+| Registrarse | `POST /auth/registro` → después `POST /auth/login` |
+| Iniciar sesión | `POST /auth/login` → guardar `access_token` + `usuario` |
+| Rehidratar sesión al recargar | `GET /auth/me` (T) — o confiar en el `usuario` guardado |
+
+### 4.2 Plan de estudios (carreras → materias → correlativas)
+
+| Acción | Request |
+|--------|---------|
+| Lista de carreras | `GET /materias/carreras` |
+| Detalle de una carrera | `GET /materias/carreras/{id}` |
+| Materias de la carrera | `GET /materias/carrera/{carrera_id}` (paginado) |
+| Buscar materia | `GET /materias/buscar?q=...&anio=&cuatrimestre=` |
+| Detalle de una materia | `GET /materias/{id}` |
+| Correlativas de una materia | `GET /materias/correlativas/{materia_id}` (trae `requiere` embebido) |
+
+### 4.3 Mis cursadas + promedio
+
+| Acción | Request |
+|--------|---------|
+| Mis cursadas | `GET /materias/usuario/{miId}` (T) |
+| Mi promedio | `GET /materias/promedio/{miId}` (T) |
+| Agregar una cursada | `POST /materias/usuario` (T) — sin `usuario_id` en el body |
+| Editar notas / estado | `PATCH /materias/cursada/{id}` (T) |
+| Quitar una cursada | `DELETE /materias/cursada/{id}` (T) |
+
+`{miId}` = `usuario.id` del login. Pedir el de otro → `403`.
+
+### 4.4 Recursos (lista con filtros + alta)
+
+| Acción | Request |
+|--------|---------|
+| Lista con filtros | `GET /recursos/?materia_id=&tipo=&desde=&hasta=` (paginado) |
+| Recursos de una materia | `GET /recursos/materia/{materia_id}` |
+| Detalle | `GET /recursos/{id}` |
+| Subir un recurso | `POST /recursos/` (T) — sin `usuario_id` |
+| Editar / borrar (solo dueño) | `PUT` / `DELETE /recursos/{id}` (T) → `403` si es de otro |
+| Convenios / TalentoTech (solo lectura) | `GET /convenios/…`, `GET /talentotech/…` |
+
+### 4.5 Recordatorios (agenda)
+
+| Acción | Request |
+|--------|---------|
+| Mi agenda | `GET /recordatorios/?tipo=&desde=&hasta=&materia_id=` (T, paginado) |
+| Crear recordatorio | `POST /recordatorios/` (T) — `fecha` futura, sin `usuario_id` |
+| Editar recordatorio | `PATCH /recordatorios/{id}` (T, parcial) → `404` si es de otro |
+| Borrar recordatorio | `DELETE /recordatorios/{id}` (T) → `404` si es de otro |
+
+---
+
+## 5. Tipos (TypeScript)
+
+```ts
+// ---- envoltorios ----
+export interface Paginated<T> {
+  items: T[]; total: number; page: number; per_page: number; total_pages: number;
+}
+export interface ApiError { detail: string; errors?: { campo: string; msg: string }[]; }
+
+// ---- auth ----
+export type Rol = "estudiante" | "admin";
+export interface Usuario {
+  id: number; nombre: string; apellido: string; email: string; carrera_id: number;
+  fecha_registro: string; rol: Rol;
+}
+export interface LoginRequest { email: string; password: string; }
+export interface RegistroRequest {
+  nombre: string; apellido: string; email: string; password: string; carrera_id: number;
+}
+export interface TokenResponse {
+  access_token: string; token_type: "bearer"; usuario: Usuario | null;
+}
+export interface PerfilUpdate { nombre?: string; apellido?: string; }   // PATCH /auth/me — la carrera y el email no se editan acá
+export interface ForgotPasswordRequest { email: string; }   // POST /auth/forgot-password
+export interface ResetPasswordRequest { token: string; password: string; }   // POST /auth/reset-password
+export interface CambiarPasswordRequest { password_actual: string; password_nueva: string; }   // PATCH /auth/password
+export interface MensajeResponse { detail: string; }   // respuesta de los 3 endpoints de arriba
+
+// ---- catálogo ----
+export interface Carrera {
+  id: number; nombre: string; duracion_cuatrimestres: number; ifts_id: number;
+}
+export interface Materia {
+  id: number; nombre: string; codigo: string; carrera_id: number;
+  anio: number; cuatrimestre: 1 | 2;
+}
+export interface Correlativa {
+  id: number; materia_id: number; requiere_id: number; requiere: Materia | null;
+}
+export interface MateriaCreate {
+  carrera_id: number; nombre: string; codigo: string; anio: number; cuatrimestre: 1 | 2;
+}
+
+// ---- cursadas ----
+export type EstadoCursada =
+  | "cursando" | "promocionada" | "aprobada" | "desaprobada" | "pendiente";
+export interface Cursada {
+  id: number; usuario_id: number; materia_id: number; cursando: boolean;
+  estado: EstadoCursada;
+  nota_parcial_1: number | null; nota_parcial_2: number | null;
+  examen_final: number | null;   // lo que se rindió (o null si promocionó / no rindió)
+  nota_final: number | null;     // CALCULADO: promedio de parciales si promocionó, si no examen_final
+}
+export interface CursadaCreate {
+  materia_id: number; cursando?: boolean;
+  nota_parcial_1?: number | null; nota_parcial_2?: number | null; examen_final?: number | null;
+  // nota_final NO se manda nunca, la calcula el backend
+}
+export interface CursadaUpdate {   // PATCH /materias/cursada/{id} — parcial
+  cursando?: boolean;
+  nota_parcial_1?: number | null; nota_parcial_2?: number | null; examen_final?: number | null;
+}
+export interface Promedio { promedio: number | null; materias_computadas: number; }
+
+// ---- recursos ----
+export interface Recurso {
+  id: number; usuario_id: number; fecha_creacion: string;
+  titulo: string; url: string; descripcion: string; tipo: string | null; materia_id: number;
+}
+export interface RecursoCreate {
+  titulo: string; url: string; descripcion: string; tipo?: string | null; materia_id: number;
+}
+export interface CarreraResumen {
+  id: number; nombre: string;
+}
+export interface Convenio {
+  id: number; institucion: string; carrera_destino: string; descripcion: string;
+  link_info: string; todas_las_carreras: boolean; carreras: CarreraResumen[];
+}
+export interface ConvenioCreate {
+  institucion: string; carrera_destino: string; descripcion: string;
+  link_info: string; carrera_ids?: number[] | null; todas_las_carreras?: boolean;
+}
+export interface ConvenioUpdate {   // PATCH /convenios/{id} — todos opcionales
+  institucion?: string; carrera_destino?: string; descripcion?: string;
+  link_info?: string; carrera_ids?: number[]; todas_las_carreras?: boolean;
+}
+export interface TalentoTech {
+  id: number; carrera_id: number; nombre_curso: string; categoria: string;
+  descripcion: string; duracion: string; link_inscripcion: string;
+}
+
+// ---- recordatorios ----
+export interface Recordatorio {
+  id: number; titulo: string; fecha: string; tipo: string;
+  usuario_id: number; materia_id: number | null;
+}
+export interface RecordatorioCreate {
+  titulo: string; fecha: string; tipo: string; materia_id?: number | null;
+}
+export interface RecordatorioUpdate {   // PATCH /recordatorios/{id} — parcial
+  titulo?: string; fecha?: string; tipo?: string; materia_id?: number | null;
+}
+```
+
+---
+
+## 6. Cambios del Sprint 2 y gaps abiertos
+
+Puntos 1–3: **resueltos** en Sprint 2 (changelog para el front). Punto 4: único
+caveat vigente.
+
+1. **Identidad desde el token: cursadas ✅ / recordatorios ✅ (resuelto en Sprint 2).**
+   **Cursadas:** `POST /materias/usuario` ya no lleva `usuario_id` y
+   `PATCH`/`DELETE /materias/cursada/{id}` lo toman del JWT (`404` si la cursada
+   es de otro). Los `GET /materias/usuario/{id}` y `/materias/promedio/{id}` sólo
+   permiten el `id` propio o un token admin (`403`).
+   **Recordatorios:** `GET`/`POST /recordatorios/` y `DELETE /recordatorios/{id}`
+   toman el `usuario_id` del token; ya **no** se manda por query. Borrar uno
+   ajeno → `404`.
+   → En el cliente API alcanza con mandar el header `Authorization`; no armes
+   URLs con `usuario_id`.
+
+2. **`/convenios` y `/talentotech`: escritura protegida (resuelto en Sprint 2).**
+   `POST`/`PUT`/`DELETE` exigen token admin (`403` estudiante, `401` sin token).
+   El front del estudiante los sigue tratando como **solo lectura**.
+
+3. **Endpoints de detalle disponibles (resuelto en Sprint 2).**
+   `GET /materias/{id}` y `GET /materias/carreras/{id}` devuelven el ítem
+   individual (`404` si no existe). Lectura pública.
+
+4. **CORS**: si el front no corre en `:5173`, pedir que agreguen el origin.
+
+5. **Ya disponibles, sin workaround (resuelto — dejan de ser gaps):**
+   - `PATCH /recordatorios/{id}` + schema `RecordatorioUpdate` (parcial): el botón
+     "editar" de un recordatorio ya no necesita hacer `DELETE` + `POST`.
+   - `PATCH /auth/me` + schema `PerfilUpdate` `{ nombre?, apellido? }`: la pantalla
+     de perfil ya puede editar nombre y apellido. **Ojo:** la carrera y el email
+     quedaron **de solo lectura** — no hay forma de cambiarlos desde el perfil
+     (`carrera_id`/`email` en el body se ignoran).
+   - `POST /auth/forgot-password` + `POST /auth/reset-password` (contrato en
+     §2.4bis): ya se puede armar el flujo completo de "olvidé mi contraseña"
+     (S5-12 a S5-15). **Gap vigente**: no hay proveedor de SMTP configurado
+     todavía, el link de reset se loguea en el backend en vez de mandarse por
+     email real — para pruebas manuales end-to-end hay que pedirlo por consola.
+   - `PATCH /auth/password` (contrato en §2.4ter): cambio de contraseña estando
+     logueado, con reautenticación por contraseña actual. Con esto, **S5-08 queda
+     desactualizado** — ya sí hay una forma legítima de tocar la contraseña
+     desde Perfil, solo que por este endpoint dedicado, no agregando password
+     a `PATCH /auth/me`.
+
+---
+
+## 7. Recomendaciones de implementación
+
+- **Cliente generado**: `npx openapi-typescript ../backend-ifts/docs/openapi.json
+  -o src/api/schema.d.ts` para tipos (o contra `http://localhost:8000/openapi.json`
+  si el backend está levantado); o `orval`/`openapi-generator` para cliente +
+  hooks. El backend regenera `docs/openapi.json` con `python scripts/export_openapi.py`.
+- **Data fetching**: TanStack Query. Key por endpoint + params; invalidar en
+  mutations (ej. crear cursada → invalidar `["cursadas", userId]` y
+  `["promedio", userId]`).
+- **Wrapper HTTP** único con: base URL, header `Authorization`, parseo de error a
+  `ApiError`, side-effect en `401`.
+- **Formularios**: al recibir `422`, recorrer `errors[]` y setear el error por
+  `campo`. Para el resto de los códigos, toast con `detail`.
+- **Ownership**: en recursos, comparar `recurso.usuario_id === usuario.id` para
+  mostrar/ocultar Editar/Borrar; igual manejar el `403` por si acaso.
+- **Paginación**: componente reutilizable que recibe `Paginated<T>` y setea
+  `page`.
+- **`.env`**: `VITE_API_URL=http://localhost:8000`.

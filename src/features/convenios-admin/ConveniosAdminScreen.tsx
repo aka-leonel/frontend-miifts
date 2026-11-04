@@ -74,6 +74,22 @@ export default function ConveniosAdminScreen() {
                   <h2 className="truncate text-sm font-semibold text-text">{c.institucion}</h2>
                   <div className="mt-1 text-xs text-muted">{c.carrera_destino}</div>
                   <p className="mt-2 line-clamp-2 text-xs text-muted">{c.descripcion}</p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {c.todas_las_carreras ? (
+                      <span className="rounded-full bg-violet/15 px-2 py-0.5 text-[10px] font-semibold text-violet">
+                        Todas las carreras
+                      </span>
+                    ) : (
+                      c.carreras.map((carrera) => (
+                        <span
+                          key={carrera.id}
+                          className="rounded-full border border-border bg-surface2 px-2 py-0.5 text-[10px] text-muted"
+                        >
+                          {carrera.nombre}
+                        </span>
+                      ))
+                    )}
+                  </div>
                 </div>
                 <div className="mt-3 flex gap-2 border-t border-border pt-3">
                   <button

@@ -161,8 +161,15 @@ export type RecursoCreate = {
 
 // Panel Admin (ver decisions D016): forma cruda del backend, sin mapear a la
 // forma UI que usa `features/convenios` (estudiante, solo lectura).
+export type CarreraResumen = S["CarreraResumen"];
 export type Convenio = S["ConvenioResponse"];
 export type ConvenioCreate = S["ConvenioCreate"];
+export type ConvenioUpdate = S["ConvenioUpdate"];
+
+// TalentoTech (docs/contexto_taletoTech/TALENTOTECH_FRONT.md). `PUT` usa el
+// mismo body que `POST`, por eso no hay `TalentoTechUpdate`.
+export type TalentoTech = S["TalentoTechResponse"];
+export type TalentoTechCreate = S["TalentoTechCreate"];
 
 export interface Token {
   access_token: string;
